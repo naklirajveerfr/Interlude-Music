@@ -32,6 +32,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -63,8 +64,7 @@ fun UpdaterScreen(
     var isChecking by remember { mutableStateOf(false) }
     var updateAvailable by remember { mutableStateOf(false) }
     var latestVersion by remember { mutableStateOf<String?>(null) }
-    var showChangelog by remember { mutableStateOf(false) }
-    var changelogContent by remember { mutableStateOf<String?>(null) }
+    val uriHandler = LocalUriHandler.current
     var checkError by remember { mutableStateOf<String?>(null) }
     val failedToCheckUpdatesTemplate = stringResource(R.string.failed_to_check_updates)
 
@@ -81,7 +81,6 @@ fun UpdaterScreen(
                         if (releaseInfo != null) {
                             latestVersion = releaseInfo.versionName
                             updateAvailable = hasUpdate
-                            changelogContent = releaseInfo.description
                         }
                     }.onFailure {
                         checkError = String.format(failedToCheckUpdatesTemplate, it.message ?: "Unknown error")
@@ -217,25 +216,13 @@ fun UpdaterScreen(
         if (updateAvailable && latestVersion != null) {
             Spacer(Modifier.height(16.dp))
             Button(
-                onClick = { showChangelog = !showChangelog },
+                onClick = { uriHandler.openUri(Updater.DOWNLOAD_URL) },
                 modifier =
                     Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp),
             ) {
-                Text(if (showChangelog) stringResource(R.string.hide_changelog) else stringResource(R.string.view_changelog))
-            }
-
-            if (showChangelog && changelogContent != null) {
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    text = changelogContent!!,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                )
+                Text(stringResource(R.string.update_action))
             }
         }
 
