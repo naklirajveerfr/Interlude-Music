@@ -78,6 +78,8 @@ import com.metrolist.music.constants.HidePlayerThumbnailKey
 import com.metrolist.music.constants.PlayerBackgroundStyle
 import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.constants.PlayerHorizontalPadding
+import com.metrolist.music.constants.IconRoundednessKey
+import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.constants.SeekExtraSeconds
 import com.metrolist.music.constants.SwipeThumbnailKey
 import com.metrolist.music.constants.ThumbnailCornerRadius
@@ -352,10 +354,12 @@ fun Thumbnail(
                     }
                 ) {
                     // Calculate dimensions once per size change, considering landscape mode
-                    val dimensions = remember(maxWidth, maxHeight, isLandscape) {
+                    val (iconRoundedness, _) = rememberPreference(IconRoundednessKey, defaultValue = 3f)
+                    val dimensions = remember(maxWidth, maxHeight, isLandscape, iconRoundedness) {
                         calculateThumbnailDimensions(
                             containerWidth = maxWidth,
                             containerHeight = maxHeight,
+                            cornerRadius = iconRoundedness.dp,
                             isLandscape = isLandscape
                         )
                     }

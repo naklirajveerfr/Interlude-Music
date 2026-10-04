@@ -62,7 +62,6 @@ import com.metrolist.music.constants.DynamicThemeKey
 import com.metrolist.music.constants.EnableDynamicIconKey
 import com.metrolist.music.constants.EnableHighRefreshRateKey
 import com.metrolist.music.constants.EnableLandscapeScalingKey
-import com.metrolist.music.constants.ExperimentalLyricsKey
 import com.metrolist.music.constants.ForceBottomNavBarKey
 import com.metrolist.music.constants.GridItemSize
 import com.metrolist.music.constants.GridItemsSizeKey
@@ -78,12 +77,25 @@ import com.metrolist.music.constants.LyricsLineSpacingKey
 import com.metrolist.music.constants.LyricsScrollKey
 import com.metrolist.music.constants.LyricsTextPositionKey
 import com.metrolist.music.constants.LyricsTextSizeKey
+import com.metrolist.music.constants.LyricsFadeInDurationKey
+import com.metrolist.music.constants.LyricsFadeOutDurationKey
 import com.metrolist.music.constants.MiniPlayerBackgroundStyle
 import com.metrolist.music.constants.MiniPlayerBackgroundStyleKey
 import com.metrolist.music.constants.PlayerBackgroundStyle
 import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.constants.PlayerButtonsStyle
 import com.metrolist.music.constants.PlayerButtonsStyleKey
+import com.metrolist.music.constants.PlayerButtonShape
+import com.metrolist.music.constants.PlayerStyle
+import com.metrolist.music.constants.PlayerStyleKey
+import com.metrolist.music.constants.SpeedDialCarouselOutlineKey
+import com.metrolist.music.constants.IconRoundednessKey
+import com.metrolist.music.constants.MenuBackgroundStyle
+import com.metrolist.music.constants.MenuBackgroundStyleKey
+import com.metrolist.music.constants.MenuBlurLevelKey
+import com.metrolist.music.constants.MenuTransparencyLevelKey
+import androidx.compose.runtime.LaunchedEffect
+import com.metrolist.music.constants.PlayerButtonShapeKey
 import com.metrolist.music.constants.PureBlackMiniPlayerKey
 import com.metrolist.music.constants.RespectAgentPositioningKey
 import com.metrolist.music.constants.SelectedThemeColorKey
@@ -167,7 +179,7 @@ fun AppearanceSettings(
     val (miniPlayerBackground, onMiniPlayerBackgroundChange) =
         rememberEnumPreference(
             MiniPlayerBackgroundStyleKey,
-            defaultValue = MiniPlayerBackgroundStyle.DEFAULT,
+            defaultValue = MiniPlayerBackgroundStyle.BLUR,
         )
 
     val availableMiniPlayerBackgroundStyles =
@@ -208,6 +220,23 @@ fun AppearanceSettings(
             PlayerButtonsStyleKey,
             defaultValue = PlayerButtonsStyle.DEFAULT,
         )
+    val (playerButtonShape, onPlayerButtonShapeChange) =
+        rememberEnumPreference(
+            PlayerButtonShapeKey,
+            defaultValue = PlayerButtonShape.ROUND,
+        )
+    val (playerStyle, onPlayerStyleChange) =
+        rememberEnumPreference(
+            PlayerStyleKey,
+            defaultValue = PlayerStyle.DEFAULT,
+        )
+    val isFullArtStyle = playerStyle == PlayerStyle.FULLART
+    val (speedDialCarouselOutline, onSpeedDialCarouselOutlineChange) = rememberPreference(SpeedDialCarouselOutlineKey, defaultValue = false)
+    val (iconRoundedness, onIconRoundednessChange) = rememberPreference(IconRoundednessKey, defaultValue = 3f)
+    var showIconRoundednessDialog by rememberSaveable { mutableStateOf(false) }
+    val (menuBackgroundStyle, onMenuBackgroundStyleChange) = rememberEnumPreference(MenuBackgroundStyleKey, defaultValue = MenuBackgroundStyle.OPAQUE)
+    val (menuBlurLevel, onMenuBlurLevelChange) = rememberPreference(MenuBlurLevelKey, defaultValue = 40f)
+    val (menuTransparencyLevel, onMenuTransparencyLevelChange) = rememberPreference(MenuTransparencyLevelKey, defaultValue = 0.85f)
     val (lyricsPosition, onLyricsPositionChange) =
         rememberEnumPreference(
             LyricsTextPositionKey,
@@ -225,7 +254,6 @@ fun AppearanceSettings(
             defaultValue = false,
         )
     val (respectAgentPositioning, onRespectAgentPositioningChange) = rememberPreference(RespectAgentPositioningKey, defaultValue = true)
-    val (experimentalLyrics, onExperimentalLyricsChange) = rememberPreference(ExperimentalLyricsKey, defaultValue = true)
 
     val (lyricsGlowEffect, onLyricsGlowEffectChange) = rememberPreference(LyricsGlowEffectKey, defaultValue = false)
     val (lyricsAnimationStyle, onLyricsAnimationStyleChange) =
@@ -234,12 +262,15 @@ fun AppearanceSettings(
             defaultValue = LyricsAnimationStyle.FADE,
         )
     val (lyricsTextSize, onLyricsTextSizeChange) = rememberPreference(LyricsTextSizeKey, defaultValue = 24f)
+    val (lyricsFadeInDuration, onLyricsFadeInDurationChange) = rememberPreference(LyricsFadeInDurationKey, defaultValue = 350f)
+    val (lyricsFadeOutDuration, onLyricsFadeOutDurationChange) = rememberPreference(LyricsFadeOutDurationKey, defaultValue = 200f)
     val (lyricsLineSpacing, onLyricsLineSpacingChange) = rememberPreference(LyricsLineSpacingKey, defaultValue = 1.2f)
 
-    var showExperimentalLyricsBetaDialog by remember { mutableStateOf(false) }
     var showLyricsAnimationStyleDialog by remember { mutableStateOf(false) }
     var showLyricsTextSizeDialog by remember { mutableStateOf(false) }
     var showLyricsLineSpacingDialog by remember { mutableStateOf(false) }
+    var showLyricsFadeInDurationDialog by remember { mutableStateOf(false) }
+    var showLyricsFadeOutDurationDialog by remember { mutableStateOf(false) }
 
     val (sliderStyle, onSliderStyleChange) =
         rememberEnumPreference(
@@ -256,6 +287,12 @@ fun AppearanceSettings(
             SwipeThumbnailKey,
             defaultValue = true,
         )
+
+    LaunchedEffect(isFullArtStyle) {
+        if (isFullArtStyle && swipeThumbnail) {
+            onSwipeThumbnailChange(false)
+        }
+    }
     val (swipeSensitivity, onSwipeSensitivityChange) =
         rememberPreference(
             SwipeSensitivityKey,
@@ -347,6 +384,21 @@ fun AppearanceSettings(
     var showPlayerButtonsStyleDialog by rememberSaveable {
         mutableStateOf(false)
     }
+    var showPlayerButtonShapeDialog by rememberSaveable {
+        mutableStateOf(false)
+    }
+    var showPlayerStyleDialog by rememberSaveable {
+        mutableStateOf(false)
+    }
+    var showMenuBackgroundStyleDialog by rememberSaveable {
+        mutableStateOf(false)
+    }
+    var showMenuBlurLevelDialog by rememberSaveable {
+        mutableStateOf(false)
+    }
+    var showMenuTransparencyLevelDialog by rememberSaveable {
+        mutableStateOf(false)
+    }
 
     var showLyricsPositionDialog by rememberSaveable {
         mutableStateOf(false)
@@ -393,6 +445,108 @@ fun AppearanceSettings(
                 }
             },
         )
+    }
+
+        if (showLyricsFadeInDurationDialog) {
+        var tempFadeIn by remember { mutableFloatStateOf(lyricsFadeInDuration) }
+
+        DefaultDialog(
+            onDismiss = {
+                tempFadeIn = lyricsFadeInDuration
+                showLyricsFadeInDurationDialog = false
+            },
+            buttons = {
+                TextButton(onClick = { tempFadeIn = 350f }) {
+                    Text(stringResource(R.string.reset))
+                }
+                Spacer(modifier = Modifier.weight(1f))
+                TextButton(onClick = {
+                    tempFadeIn = lyricsFadeInDuration
+                    showLyricsFadeInDurationDialog = false
+                }) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+                TextButton(onClick = {
+                    onLyricsFadeInDurationChange(tempFadeIn)
+                    showLyricsFadeInDurationDialog = false
+                }) {
+                    Text(stringResource(android.R.string.ok))
+                }
+            },
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(16.dp),
+            ) {
+                Text(
+                    text = "Lyrics fade in duration",
+                    style = MaterialTheme.typography.headlineSmall,
+                    modifier = Modifier.padding(bottom = 16.dp),
+                )
+                Text(
+                    text = "${tempFadeIn.roundToInt()} ms",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(bottom = 16.dp),
+                )
+                Slider(
+                    value = tempFadeIn,
+                    onValueChange = { tempFadeIn = it },
+                    valueRange = 100f..1000f,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+    }
+
+    if (showLyricsFadeOutDurationDialog) {
+        var tempFadeOut by remember { mutableFloatStateOf(lyricsFadeOutDuration) }
+
+        DefaultDialog(
+            onDismiss = {
+                tempFadeOut = lyricsFadeOutDuration
+                showLyricsFadeOutDurationDialog = false
+            },
+            buttons = {
+                TextButton(onClick = { tempFadeOut = 200f }) {
+                    Text(stringResource(R.string.reset))
+                }
+                Spacer(modifier = Modifier.weight(1f))
+                TextButton(onClick = {
+                    tempFadeOut = lyricsFadeOutDuration
+                    showLyricsFadeOutDurationDialog = false
+                }) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+                TextButton(onClick = {
+                    onLyricsFadeOutDurationChange(tempFadeOut)
+                    showLyricsFadeOutDurationDialog = false
+                }) {
+                    Text(stringResource(android.R.string.ok))
+                }
+            },
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(16.dp),
+            ) {
+                Text(
+                    text = "Lyrics fade out duration",
+                    style = MaterialTheme.typography.headlineSmall,
+                    modifier = Modifier.padding(bottom = 16.dp),
+                )
+                Text(
+                    text = "${tempFadeOut.roundToInt()} ms",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(bottom = 16.dp),
+                )
+                Slider(
+                    value = tempFadeOut,
+                    onValueChange = { tempFadeOut = it },
+                    valueRange = 100f..1000f,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
     }
 
     if (showLyricsTextSizeDialog) {
@@ -519,6 +673,218 @@ fun AppearanceSettings(
                 )
             }
         }
+    }
+
+    if (showIconRoundednessDialog) {
+        var tempRoundedness by remember { mutableFloatStateOf(iconRoundedness) }
+
+        DefaultDialog(
+            onDismiss = {
+                tempRoundedness = iconRoundedness
+                showIconRoundednessDialog = false
+            },
+            buttons = {
+                TextButton(onClick = { tempRoundedness = 3f }) {
+                    Text(stringResource(R.string.reset))
+                }
+                Spacer(modifier = Modifier.weight(1f))
+                TextButton(onClick = {
+                    tempRoundedness = iconRoundedness
+                    showIconRoundednessDialog = false
+                }) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+                TextButton(onClick = {
+                    onIconRoundednessChange(tempRoundedness)
+                    showIconRoundednessDialog = false
+                }) {
+                    Text(stringResource(android.R.string.ok))
+                }
+            },
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(16.dp),
+            ) {
+                Text(
+                    text = "Icon roundedness",
+                    style = MaterialTheme.typography.headlineSmall,
+                    modifier = Modifier.padding(bottom = 16.dp),
+                )
+                Text(
+                    text = "${tempRoundedness.roundToInt()} dp",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(bottom = 16.dp),
+                )
+                Slider(
+                    value = tempRoundedness,
+                    onValueChange = { tempRoundedness = it },
+                    valueRange = 0f..32f,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+    }
+
+    if (showMenuBackgroundStyleDialog) {
+        EnumDialog(
+            onDismiss = { showMenuBackgroundStyleDialog = false },
+            onSelect = {
+                onMenuBackgroundStyleChange(it)
+                showMenuBackgroundStyleDialog = false
+            },
+            title = "Menu background",
+            current = menuBackgroundStyle,
+            values = MenuBackgroundStyle.values().toList(),
+            valueText = {
+                when (it) {
+                    MenuBackgroundStyle.BLUR -> "Blur"
+                    MenuBackgroundStyle.TRANSPARENT -> "Transparent"
+                    MenuBackgroundStyle.OPAQUE -> "Opaque"
+                }
+            },
+        )
+    }
+
+    if (showMenuBlurLevelDialog) {
+        var tempBlurLevel by remember { mutableFloatStateOf(menuBlurLevel) }
+
+        DefaultDialog(
+            onDismiss = {
+                tempBlurLevel = menuBlurLevel
+                showMenuBlurLevelDialog = false
+            },
+            buttons = {
+                TextButton(onClick = { tempBlurLevel = 40f }) {
+                    Text(stringResource(R.string.reset))
+                }
+                Spacer(modifier = Modifier.weight(1f))
+                TextButton(onClick = {
+                    tempBlurLevel = menuBlurLevel
+                    showMenuBlurLevelDialog = false
+                }) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+                TextButton(onClick = {
+                    onMenuBlurLevelChange(tempBlurLevel)
+                    showMenuBlurLevelDialog = false
+                }) {
+                    Text(stringResource(android.R.string.ok))
+                }
+            },
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(16.dp),
+            ) {
+                Text(
+                    text = "Menu blur level",
+                    style = MaterialTheme.typography.headlineSmall,
+                    modifier = Modifier.padding(bottom = 16.dp),
+                )
+                Text(
+                    text = "${tempBlurLevel.roundToInt()} dp",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(bottom = 16.dp),
+                )
+                Slider(
+                    value = tempBlurLevel,
+                    onValueChange = { tempBlurLevel = it },
+                    valueRange = 5f..100f,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+    }
+
+    if (showMenuTransparencyLevelDialog) {
+        var tempTransparency by remember { mutableFloatStateOf(menuTransparencyLevel) }
+
+        DefaultDialog(
+            onDismiss = {
+                tempTransparency = menuTransparencyLevel
+                showMenuTransparencyLevelDialog = false
+            },
+            buttons = {
+                TextButton(onClick = { tempTransparency = 0.85f }) {
+                    Text(stringResource(R.string.reset))
+                }
+                Spacer(modifier = Modifier.weight(1f))
+                TextButton(onClick = {
+                    tempTransparency = menuTransparencyLevel
+                    showMenuTransparencyLevelDialog = false
+                }) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+                TextButton(onClick = {
+                    onMenuTransparencyLevelChange(tempTransparency)
+                    showMenuTransparencyLevelDialog = false
+                }) {
+                    Text(stringResource(android.R.string.ok))
+                }
+            },
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(16.dp),
+            ) {
+                Text(
+                    text = "Menu transparency level",
+                    style = MaterialTheme.typography.headlineSmall,
+                    modifier = Modifier.padding(bottom = 16.dp),
+                )
+                Text(
+                    text = "${(tempTransparency * 100).roundToInt()}%",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(bottom = 16.dp),
+                )
+                Slider(
+                    value = tempTransparency,
+                    onValueChange = { tempTransparency = it },
+                    valueRange = 0.1f..1f,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+    }
+
+    if (showPlayerStyleDialog) {
+        EnumDialog(
+            onDismiss = { showPlayerStyleDialog = false },
+            onSelect = {
+                onPlayerStyleChange(it)
+                showPlayerStyleDialog = false
+            },
+            title = "Player style",
+            current = playerStyle,
+            values = PlayerStyle.values().toList(),
+            valueText = {
+                when (it) {
+                    PlayerStyle.DEFAULT -> "Default"
+                    PlayerStyle.FULLART -> "Full Art"
+                }
+            },
+        )
+    }
+
+    if (showPlayerButtonShapeDialog) {
+        EnumDialog(
+            onDismiss = { showPlayerButtonShapeDialog = false },
+            onSelect = {
+                onPlayerButtonShapeChange(it)
+                showPlayerButtonShapeDialog = false
+            },
+            title = "Player button shape",
+            current = playerButtonShape,
+            values = PlayerButtonShape.values().toList(),
+            valueText = {
+                when (it) {
+                    PlayerButtonShape.ROUND -> "Round"
+                    PlayerButtonShape.PILL -> "Pill"
+                    PlayerButtonShape.APPLE -> "Apple Music"
+                }
+            },
+        )
     }
 
     if (showPlayerButtonsStyleDialog) {
@@ -1016,6 +1382,42 @@ fun AppearanceSettings(
                             onClick = { navController.navigate("settings/appearance/theme") },
                         ),
                     )
+                    add(
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.gradient),
+                            title = { Text("Menu background") },
+                            description = {
+                                Text(
+                                    when (menuBackgroundStyle) {
+                                        MenuBackgroundStyle.BLUR -> "Blur"
+                                        MenuBackgroundStyle.TRANSPARENT -> "Transparent"
+                                        MenuBackgroundStyle.OPAQUE -> "Opaque"
+                                    },
+                                )
+                            },
+                            onClick = { showMenuBackgroundStyleDialog = true },
+                        ),
+                    )
+                    if (menuBackgroundStyle == MenuBackgroundStyle.BLUR) {
+                        add(
+                            Material3SettingsItem(
+                                icon = painterResource(R.drawable.gradient),
+                                title = { Text("Menu blur level") },
+                                description = { Text("${menuBlurLevel.roundToInt()} dp") },
+                                onClick = { showMenuBlurLevelDialog = true },
+                            ),
+                        )
+                    }
+                    if (menuBackgroundStyle == MenuBackgroundStyle.TRANSPARENT) {
+                        add(
+                            Material3SettingsItem(
+                                icon = painterResource(R.drawable.gradient),
+                                title = { Text("Menu transparency level") },
+                                description = { Text("${(menuTransparencyLevel * 100).roundToInt()}%") },
+                                onClick = { showMenuTransparencyLevelDialog = true },
+                            ),
+                        )
+                    }
                 },
         )
 
@@ -1103,28 +1505,7 @@ fun AppearanceSettings(
         Material3SettingsGroup(
             title = stringResource(R.string.player),
             items =
-                listOf(
-                    Material3SettingsItem(
-                        icon = painterResource(R.drawable.palette),
-                        title = { Text(stringResource(R.string.new_player_design)) },
-                        trailingContent = {
-                            Switch(
-                                checked = useNewPlayerDesign,
-                                onCheckedChange = onUseNewPlayerDesignChange,
-                                thumbContent = {
-                                    Icon(
-                                        painter =
-                                            painterResource(
-                                                id = if (useNewPlayerDesign) R.drawable.check else R.drawable.close,
-                                            ),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(SwitchDefaults.IconSize),
-                                    )
-                                },
-                            )
-                        },
-                        onClick = { onUseNewPlayerDesignChange(!useNewPlayerDesign) },
-                    ),
+                listOfNotNull(
                     Material3SettingsItem(
                         icon = painterResource(R.drawable.gradient),
                         title = { Text(stringResource(R.string.player_background_style)) },
@@ -1138,7 +1519,8 @@ fun AppearanceSettings(
                             )
                         },
                         onClick = { showPlayerBackgroundDialog = true },
-                    ),
+                    enabled = !isFullArtStyle,
+                ),
                     Material3SettingsItem(
                         icon = painterResource(R.drawable.hide_image),
                         title = { Text(stringResource(R.string.hide_player_thumbnail)) },
@@ -1169,6 +1551,7 @@ fun AppearanceSettings(
                             Switch(
                                 checked = cropAlbumArt,
                                 onCheckedChange = onCropAlbumArtChange,
+                                enabled = !isFullArtStyle,
                                 thumbContent = {
                                     Icon(
                                         painter =
@@ -1182,7 +1565,8 @@ fun AppearanceSettings(
                             )
                         },
                         onClick = { onCropAlbumArtChange(!cropAlbumArt) },
-                    ),
+                    enabled = !isFullArtStyle,
+                ),
                     Material3SettingsItem(
                         icon = painterResource(R.drawable.palette),
                         title = { Text(stringResource(R.string.player_buttons_style)) },
@@ -1196,6 +1580,34 @@ fun AppearanceSettings(
                             )
                         },
                         onClick = { showPlayerButtonsStyleDialog = true },
+                    ),
+                    Material3SettingsItem(
+                        icon = painterResource(R.drawable.palette),
+                        title = { Text("Player button shape") },
+                        description = {
+                            Text(
+                                when (playerButtonShape) {
+                                    PlayerButtonShape.ROUND -> "Round"
+                                    PlayerButtonShape.PILL -> "Pill"
+                                    PlayerButtonShape.APPLE -> "Apple Music"
+                                },
+                            )
+                        },
+                        onClick = { showPlayerButtonShapeDialog = true },
+                    ),
+
+                    Material3SettingsItem(
+                        icon = painterResource(R.drawable.palette),
+                        title = { Text("Player style") },
+                        description = {
+                            Text(
+                                when (playerStyle) {
+                                    PlayerStyle.DEFAULT -> "Default"
+                                    PlayerStyle.FULLART -> "Full Art"
+                                },
+                            )
+                        },
+                        onClick = { showPlayerStyleDialog = true },
                     ),
                     Material3SettingsItem(
                         icon = painterResource(R.drawable.sliders),
@@ -1232,6 +1644,7 @@ fun AppearanceSettings(
                             Switch(
                                 checked = swipeThumbnail,
                                 onCheckedChange = onSwipeThumbnailChange,
+                                enabled = !isFullArtStyle,
                                 thumbContent = {
                                     Icon(
                                         painter =
@@ -1245,7 +1658,8 @@ fun AppearanceSettings(
                             )
                         },
                         onClick = { onSwipeThumbnailChange(!swipeThumbnail) },
-                    ),
+                    enabled = !isFullArtStyle,
+                ),
                 ) +
                     if (swipeThumbnail) {
                         listOf(
@@ -1344,102 +1758,35 @@ fun AppearanceSettings(
                     add(
                         Material3SettingsItem(
                             icon = painterResource(R.drawable.lyrics),
-                            title = { Text(stringResource(R.string.experimental_lyrics)) },
-                            description = { Text(stringResource(R.string.experimental_lyrics_desc)) },
-                            showBadge = true,
-                            trailingContent = {
-                                Switch(
-                                    checked = experimentalLyrics,
-                                    onCheckedChange = {
-                                        if (!experimentalLyrics) {
-                                            showExperimentalLyricsBetaDialog = true
-                                        } else {
-                                            onExperimentalLyricsChange(false)
-                                        }
-                                    },
-                                    thumbContent = {
-                                        Icon(
-                                            painter =
-                                                painterResource(
-                                                    id = if (experimentalLyrics) R.drawable.check else R.drawable.close,
-                                                ),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(SwitchDefaults.IconSize),
-                                        )
-                                    },
-                                )
-                            },
-                            onClick = {
-                                if (!experimentalLyrics) {
-                                    showExperimentalLyricsBetaDialog = true
-                                } else {
-                                    onExperimentalLyricsChange(false)
-                                }
-                            },
+                            title = { Text(stringResource(R.string.lyrics_text_size)) },
+                            description = { Text("${lyricsTextSize.roundToInt()} sp") },
+                            onClick = { showLyricsTextSizeDialog = true },
                         ),
                     )
-
-                    if (!experimentalLyrics) {
-                        add(
-                            Material3SettingsItem(
-                                icon = painterResource(R.drawable.lyrics),
-                                title = { Text(stringResource(R.string.lyrics_glow_effect)) },
-                                description = { Text(stringResource(R.string.lyrics_glow_effect_desc)) },
-                                trailingContent = {
-                                    Switch(
-                                        checked = lyricsGlowEffect,
-                                        onCheckedChange = onLyricsGlowEffectChange,
-                                        thumbContent = {
-                                            Icon(
-                                                painter =
-                                                    painterResource(
-                                                        id = if (lyricsGlowEffect) R.drawable.check else R.drawable.close,
-                                                    ),
-                                                contentDescription = null,
-                                                modifier = Modifier.size(SwitchDefaults.IconSize),
-                                            )
-                                        },
-                                    )
-                                },
-                                onClick = { onLyricsGlowEffectChange(!lyricsGlowEffect) },
-                            ),
-                        )
-                        add(
-                            Material3SettingsItem(
-                                icon = painterResource(R.drawable.lyrics),
-                                title = { Text(stringResource(R.string.lyrics_animation_style_title)) },
-                                description = {
-                                    Text(
-                                        when (lyricsAnimationStyle) {
-                                            LyricsAnimationStyle.NONE -> stringResource(R.string.lyrics_animation_none)
-                                            LyricsAnimationStyle.FADE -> stringResource(R.string.lyrics_animation_fade)
-                                            LyricsAnimationStyle.GLOW -> stringResource(R.string.lyrics_animation_glow)
-                                            LyricsAnimationStyle.SLIDE -> stringResource(R.string.lyrics_animation_slide)
-                                            LyricsAnimationStyle.KARAOKE -> stringResource(R.string.lyrics_animation_karaoke)
-                                            LyricsAnimationStyle.APPLE -> stringResource(R.string.lyrics_animation_apple)
-                                        },
-                                    )
-                                },
-                                onClick = { showLyricsAnimationStyleDialog = true },
-                            ),
-                        )
-                        add(
-                            Material3SettingsItem(
-                                icon = painterResource(R.drawable.lyrics),
-                                title = { Text(stringResource(R.string.lyrics_text_size)) },
-                                description = { Text("${lyricsTextSize.roundToInt()} sp") },
-                                onClick = { showLyricsTextSizeDialog = true },
-                            ),
-                        )
-                        add(
-                            Material3SettingsItem(
-                                icon = painterResource(R.drawable.lyrics),
-                                title = { Text(stringResource(R.string.lyrics_line_spacing)) },
-                                description = { Text(String.format(Locale.US, "%.1f", lyricsLineSpacing)) },
-                                onClick = { showLyricsLineSpacingDialog = true },
-                            ),
-                        )
-                    }
+                    add(
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.lyrics),
+                            title = { Text(stringResource(R.string.lyrics_line_spacing)) },
+                            description = { Text(String.format(Locale.US, "%.1f", lyricsLineSpacing)) },
+                            onClick = { showLyricsLineSpacingDialog = true },
+                        ),
+                    )
+                    add(
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.lyrics),
+                            title = { Text("Lyrics fade in duration") },
+                            description = { Text("${lyricsFadeInDuration.roundToInt()} ms") },
+                            onClick = { showLyricsFadeInDurationDialog = true },
+                        ),
+                    )
+                    add(
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.lyrics),
+                            title = { Text("Lyrics fade out duration") },
+                            description = { Text("${lyricsFadeOutDuration.roundToInt()} ms") },
+                            onClick = { showLyricsFadeOutDurationDialog = true },
+                        ),
+                    )
 
                     add(
                         Material3SettingsItem(
@@ -1560,6 +1907,32 @@ fun AppearanceSettings(
             title = stringResource(R.string.misc),
             items =
                 listOf(
+                    Material3SettingsItem(
+                        icon = painterResource(R.drawable.gradient),
+                        title = { Text("Icon roundedness") },
+                        description = { Text("${iconRoundedness.roundToInt()} dp") },
+                        onClick = { showIconRoundednessDialog = true },
+                    ),
+                    Material3SettingsItem(
+                        icon = painterResource(R.drawable.gradient),
+                        title = { Text("Speed dial carousel outline") },
+                        trailingContent = {
+                            Switch(
+                                checked = speedDialCarouselOutline,
+                                onCheckedChange = onSpeedDialCarouselOutlineChange,
+                                thumbContent = {
+                                    Icon(
+                                        painter = painterResource(
+                                            id = if (speedDialCarouselOutline) R.drawable.check else R.drawable.close,
+                                        ),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(SwitchDefaults.IconSize),
+                                    )
+                                },
+                            )
+                        },
+                        onClick = { onSpeedDialCarouselOutlineChange(!speedDialCarouselOutline) },
+                    ),
                     Material3SettingsItem(
                         icon = painterResource(R.drawable.nav_bar),
                         title = { Text(stringResource(R.string.default_open_tab)) },
@@ -1836,25 +2209,6 @@ fun AppearanceSettings(
         )
         Spacer(modifier = Modifier.height(16.dp))
 
-        if (showExperimentalLyricsBetaDialog) {
-            DefaultDialog(
-                onDismiss = { showExperimentalLyricsBetaDialog = false },
-                title = { Text(stringResource(R.string.experimental_lyrics_beta_title)) },
-                buttons = {
-                    TextButton(onClick = { showExperimentalLyricsBetaDialog = false }) {
-                        Text(stringResource(R.string.cancel))
-                    }
-                    TextButton(onClick = {
-                        showExperimentalLyricsBetaDialog = false
-                        onExperimentalLyricsChange(true)
-                    }) {
-                        Text(stringResource(R.string.enable))
-                    }
-                },
-            ) {
-                Text(stringResource(R.string.experimental_lyrics_beta_message))
-            }
-        }
     }
 
     TopAppBar(

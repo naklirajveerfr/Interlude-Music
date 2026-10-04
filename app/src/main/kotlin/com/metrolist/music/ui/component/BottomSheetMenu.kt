@@ -40,6 +40,11 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.draw.blur
+import androidx.compose.foundation.layout.fillMaxSize
+import coil3.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
+import com.metrolist.music.constants.MenuBackgroundStyle
 
 val LocalMenuState = compositionLocalOf { MenuState() }
 
@@ -122,6 +127,10 @@ fun BottomSheetMenu(
     modifier: Modifier = Modifier,
     state: MenuState,
     background: Color = MaterialTheme.colorScheme.surface,
+    menuBackgroundStyle: MenuBackgroundStyle = MenuBackgroundStyle.OPAQUE,
+    menuBlurLevel: Float = 40f,
+    menuTransparencyLevel: Float = 0.85f,
+    blurArtworkUrl: String? = null,
 ) {
     val focusManager = LocalFocusManager.current
     val sheetState = rememberMaterialBottomSheetState(initialValue = SheetValue.Hidden)
@@ -133,7 +142,11 @@ fun BottomSheetMenu(
             state.isVisible = false
         },
         sheetState = sheetState,
-        containerColor = background,
+        containerColor = when (menuBackgroundStyle) {
+            MenuBackgroundStyle.OPAQUE -> background
+            MenuBackgroundStyle.TRANSPARENT -> background.copy(alpha = menuTransparencyLevel)
+            MenuBackgroundStyle.BLUR -> Color.Transparent
+        },
         contentColor = MaterialTheme.colorScheme.onSurface,
         dragHandle = {
             Box(
@@ -146,12 +159,42 @@ fun BottomSheetMenu(
         },
         modifier = modifier.fillMaxHeight()
     ) {
-        Column(
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp)
+                .fillMaxSize()
+                .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
         ) {
-            state.content(this)
+            if (menuBackgroundStyle == MenuBackgroundStyle.BLUR) {
+                if (blurArtworkUrl != null) {
+                    AsyncImage(
+                        model = blurArtworkUrl,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        alpha = 0.35f,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .blur(radius = menuBlurLevel.dp, edgeTreatment = androidx.compose.ui.draw.BlurredEdgeTreatment.Unbounded),
+                    )
+                }
+                Box(Modifier.fillMaxSize().background(background.copy(alpha = 0.15f)))
+            }
+            val effectiveColorScheme = if (menuBackgroundStyle != MenuBackgroundStyle.OPAQUE) {
+                MaterialTheme.colorScheme.copy(
+                    surfaceVariant = Color.Transparent,
+                    onSurfaceVariant = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                )
+            } else {
+                MaterialTheme.colorScheme
+            }
+            MaterialTheme(colorScheme = effectiveColorScheme) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp)
+                ) {
+                    state.content(this)
+                }
+            }
         }
     }
 }

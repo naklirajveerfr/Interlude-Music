@@ -29,6 +29,8 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
+import androidx.compose.ui.graphics.Color
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -186,6 +188,7 @@ fun YouTubeSongMenu(
     }  
 
     ListItem(  
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         content = {
             Text(
                 text = song.title,

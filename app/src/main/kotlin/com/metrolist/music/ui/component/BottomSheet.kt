@@ -34,6 +34,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
@@ -64,6 +65,8 @@ fun BottomSheet(
     onDismiss: (() -> Unit)? = null,
     collapsedContent: @Composable BoxScope.() -> Unit,
     isExpandable: Boolean = true,
+    collapsedClickable: Boolean = true,
+    collapsedDragHeight: Dp = 140.dp,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val density = LocalDensity.current
@@ -87,26 +90,32 @@ fun BottomSheet(
                     .coerceAtLeast(0f)
                 translationY = y
             }
-            .pointerInput(state, isExpandable) {
-                if (!isExpandable) return@pointerInput
-                val velocityTracker = VelocityTracker()
+            .then(
+                if (state.isCollapsed && !collapsedClickable) {
+                    Modifier
+                } else {
+                    Modifier.pointerInput(state, isExpandable) {
+                        if (!isExpandable) return@pointerInput
+                        val velocityTracker = VelocityTracker()
 
-                detectVerticalDragGestures(
-                    onVerticalDrag = { change, dragAmount ->
-                        velocityTracker.addPointerInputChange(change)
-                        state.dispatchRawDelta(dragAmount)
-                    },
-                    onDragCancel = {
-                        velocityTracker.resetTracking()
-                        state.snapTo(state.collapsedBound)
-                    },
-                    onDragEnd = {
-                        val velocity = -velocityTracker.calculateVelocity().y
-                        velocityTracker.resetTracking()
-                        state.performFling(velocity, onDismiss)
+                        detectVerticalDragGestures(
+                            onVerticalDrag = { change, dragAmount ->
+                                velocityTracker.addPointerInputChange(change)
+                                state.dispatchRawDelta(dragAmount)
+                            },
+                            onDragCancel = {
+                                velocityTracker.resetTracking()
+                                state.snapTo(state.collapsedBound)
+                            },
+                            onDragEnd = {
+                                val velocity = -velocityTracker.calculateVelocity().y
+                                velocityTracker.resetTracking()
+                                state.performFling(velocity, onDismiss)
+                            }
+                        )
                     }
-                )
-            }
+                }
+            )
             .graphicsLayer {
                 val cornerRadius = if (!state.isExpanded) 16.dp.toPx() else 0f
                 shape = RoundedCornerShape(topStart = cornerRadius, topEnd = cornerRadius)
@@ -142,7 +151,7 @@ fun BottomSheet(
             )
         }
 
-        if (!state.isExpanded && (onDismiss == null || !state.isDismissed)) {
+        if (!state.isExpanded && (onDismiss == null || !state.isDismissed) && collapsedClickable) {
             Box(
                 modifier =
                 Modifier
@@ -157,6 +166,33 @@ fun BottomSheet(
                     .fillMaxWidth()
                     .height(state.collapsedBound),
                 content = collapsedContent,
+            )
+        }
+
+        if (state.isCollapsed && !collapsedClickable) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .height(collapsedDragHeight)
+                    .pointerInput(state, collapsedDragHeight) {
+                        val velocityTracker = VelocityTracker()
+                        detectVerticalDragGestures(
+                            onVerticalDrag = { change, dragAmount ->
+                                velocityTracker.addPointerInputChange(change)
+                                state.dispatchRawDelta(dragAmount)
+                            },
+                            onDragCancel = {
+                                velocityTracker.resetTracking()
+                                state.snapTo(state.collapsedBound)
+                            },
+                            onDragEnd = {
+                                val velocity = -velocityTracker.calculateVelocity().y
+                                velocityTracker.resetTracking()
+                                state.performFling(velocity, onDismiss)
+                            }
+                        )
+                    }
             )
         }
     }

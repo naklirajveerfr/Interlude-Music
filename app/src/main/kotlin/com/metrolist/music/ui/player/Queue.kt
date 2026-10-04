@@ -18,6 +18,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.ui.draw.blur
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -157,6 +158,8 @@ fun Queue(
     pureBlack: Boolean,
     showInlineLyrics: Boolean,
     playerBackground: PlayerBackgroundStyle = PlayerBackgroundStyle.DEFAULT,
+    blurArtworkUrl: String? = null,
+    hideCollapsedBar: Boolean = false,
     onToggleLyrics: () -> Unit = {},
 ) {
     val navController = LocalNavController.current
@@ -258,11 +261,25 @@ fun Queue(
 
     BottomSheet(
         state = state,
+        collapsedClickable = !hideCollapsedBar,
         modifier = modifier,
         background = {
-            Box(Modifier.fillMaxSize().background(Color.Unspecified))
+            if (blurArtworkUrl != null) {
+                Box(Modifier.fillMaxSize()) {
+                    coil3.compose.AsyncImage(
+                        model = blurArtworkUrl,
+                        contentDescription = null,
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize().blur(60.dp),
+                    )
+                    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.55f)))
+                }
+            } else {
+                Box(Modifier.fillMaxSize().background(Color.Unspecified))
+            }
         },
         collapsedContent = {
+            if (!hideCollapsedBar) {
             if (useNewPlayerDesign) {
                 // New design
                 Row(
@@ -651,6 +668,8 @@ fun Queue(
                         }
                     },
                 )
+            }
+        
             }
         },
     ) {

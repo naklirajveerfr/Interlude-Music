@@ -211,6 +211,10 @@ import com.metrolist.music.utils.safeDataStoreEdit
 import com.metrolist.music.utils.get
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
+import com.metrolist.music.constants.MenuBackgroundStyle
+import com.metrolist.music.constants.MenuBackgroundStyleKey
+import com.metrolist.music.constants.MenuBlurLevelKey
+import com.metrolist.music.constants.MenuTransparencyLevelKey
 import com.metrolist.music.utils.reportException
 import com.metrolist.music.utils.setAppLocale
 import com.metrolist.music.viewmodels.HomeViewModel
@@ -434,7 +438,7 @@ class MainActivity : FragmentActivity() {
             val currentVersion = BuildConfig.BASE_VERSION_NAME
 
             // SimpMusic Removal Migration
-            if (preferences[SimpMusicMigrationDoneKey] != true) {
+            if (false && preferences[SimpMusicMigrationDoneKey] != true) { // SimpMusic is available again, migration disabled
                 safeDataStoreEdit { settings ->
                     val currentOrder = settings[LyricsProviderOrderKey] ?: ""
                     if (currentOrder.contains("SimpMusic")) {
@@ -601,7 +605,7 @@ class MainActivity : FragmentActivity() {
             }
         }
 
-        val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.AUTO)
+        val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.ON)
         val isSystemInDarkTheme = isSystemInDarkTheme()
         val useDarkTheme =
             remember(darkTheme, isSystemInDarkTheme) {
@@ -614,7 +618,7 @@ class MainActivity : FragmentActivity() {
 
         val enableLandscapeScaling by rememberPreference(EnableLandscapeScalingKey, defaultValue = false)
         val userDensityScale by rememberPreference(DensityScaleKey, defaultValue = 1f)
-        val pureBlackEnabled by rememberPreference(PureBlackKey, defaultValue = false)
+        val pureBlackEnabled by rememberPreference(PureBlackKey, defaultValue = true)
         val pureBlack =
             remember(pureBlackEnabled, useDarkTheme) {
                 pureBlackEnabled && useDarkTheme
@@ -861,6 +865,7 @@ class MainActivity : FragmentActivity() {
                 val playerReadyState =
                     playerConnection?.service?.isPlayerReady?.collectAsStateWithLifecycle()
                         ?: remember { mutableStateOf(false) }
+                com.metrolist.music.constants.SyncIconRoundness()
                 val playerReady by playerReadyState
                 val activePlayerConnection = if (playerReady) playerConnection else null
 
@@ -870,12 +875,15 @@ class MainActivity : FragmentActivity() {
                         shouldShowNavigationBar,
                         playerBottomSheetState.isDismissed,
                         showRail,
+                        useNewMiniPlayerDesign,
                     ) {
                         var bottom = bottomInset
                         if (shouldShowNavigationBar && !showRail) {
                             bottom += NavigationBarHeight
                         }
-                        if (!playerBottomSheetState.isDismissed) bottom += MiniPlayerHeight
+                        if (!playerBottomSheetState.isDismissed) {
+                            bottom += MiniPlayerHeight + (if (useNewMiniPlayerDesign) MiniPlayerBottomSpacing else 0.dp)
+                        }
                         windowsInsets
                             .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top)
                             .add(WindowInsets(top = AppBarHeight, bottom = bottom))
@@ -1406,9 +1414,18 @@ class MainActivity : FragmentActivity() {
                         }
                     }
 
+                    val menuBackgroundStyle by rememberEnumPreference(MenuBackgroundStyleKey, MenuBackgroundStyle.OPAQUE)
+                    val menuBlurLevel by rememberPreference(MenuBlurLevelKey, defaultValue = 40f)
+                    val menuTransparencyLevel by rememberPreference(MenuTransparencyLevelKey, defaultValue = 0.85f)
+                    val menuBlurArtworkUrl = LocalPlayerConnection.current?.mediaMetadata?.collectAsStateWithLifecycle(initialValue = null)?.value?.thumbnailUrl
+
                     BottomSheetMenu(
                         state = LocalMenuState.current,
                         modifier = Modifier.align(Alignment.BottomCenter),
+                        menuBackgroundStyle = menuBackgroundStyle,
+                        menuBlurLevel = menuBlurLevel,
+                        menuTransparencyLevel = menuTransparencyLevel,
+                        blurArtworkUrl = menuBlurArtworkUrl,
                     )
 
                     BottomSheetPage(

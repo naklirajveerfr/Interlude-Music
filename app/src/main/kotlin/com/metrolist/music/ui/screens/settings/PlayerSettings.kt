@@ -170,6 +170,7 @@ fun PlayerSettings(
         DisableLoadMoreWhenRepeatAllKey,
         defaultValue = false
     )
+    val (automixEnabled, onAutomixEnabledChange) = rememberPreference(com.metrolist.music.constants.AutomixEnabledKey, defaultValue = false)
     val (autoDownloadOnLike, onAutoDownloadOnLikeChange) = rememberPreference(
         AutoDownloadOnLikeKey,
         defaultValue = false
@@ -322,6 +323,27 @@ fun PlayerSettings(
                     onClick = { onCrossfadeEnabledChange(!crossfadeEnabled) }
                 ))
                 if (crossfadeEnabled) {
+                    add(Material3SettingsItem(
+                        icon = painterResource(R.drawable.gradient),
+                        title = { Text("Seamless transition (beta)") },
+                        description = { Text("Matches the tempo of the ending and next song for a smoother mix") },
+                        trailingContent = {
+                            Switch(
+                                checked = automixEnabled,
+                                onCheckedChange = onAutomixEnabledChange,
+                                thumbContent = {
+                                    Icon(
+                                        painter = painterResource(
+                                            id = if (automixEnabled) R.drawable.check else R.drawable.close
+                                        ),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(SwitchDefaults.IconSize)
+                                    )
+                                }
+                            )
+                        },
+                        onClick = { onAutomixEnabledChange(!automixEnabled) }
+                    ))
                     add(Material3SettingsItem(
                         icon = painterResource(R.drawable.timer),
                         title = { Text(stringResource(R.string.crossfade_duration)) },

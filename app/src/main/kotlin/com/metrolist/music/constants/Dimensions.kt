@@ -9,6 +9,9 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import com.metrolist.music.utils.rememberPreference
 
 const val CONTENT_TYPE_HEADER = 0
 const val CONTENT_TYPE_LIST = 1
@@ -21,7 +24,7 @@ val NavigationBarHeight = 80.dp
 val SlimNavBarHeight = 64.dp
 val MiniPlayerHeight = 64.dp
 val MinMiniPlayerHeight = 16.dp
-val MiniPlayerBottomSpacing = 8.dp // Space between MiniPlayer and NavigationBar
+val MiniPlayerBottomSpacing = 28.dp // Space between MiniPlayer and NavigationBar
 val QueuePeekHeight = 64.dp
 val AppBarHeight = 64.dp
 
@@ -33,7 +36,14 @@ val SmallGridThumbnailHeight = 104.dp
 val GridThumbnailHeight = 128.dp
 val AlbumThumbnailSize = 144.dp
 
-val ThumbnailCornerRadius = 3.dp
+private val thumbnailCornerRadiusState = androidx.compose.runtime.mutableStateOf(3.dp)
+
+val ThumbnailCornerRadius: androidx.compose.ui.unit.Dp
+    get() = thumbnailCornerRadiusState.value
+
+fun setThumbnailCornerRadius(value: androidx.compose.ui.unit.Dp) {
+    thumbnailCornerRadiusState.value = value
+}
 
 val PlayerHorizontalPadding = 32.dp
 

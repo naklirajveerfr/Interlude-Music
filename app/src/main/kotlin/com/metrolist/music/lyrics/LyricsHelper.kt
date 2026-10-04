@@ -7,6 +7,7 @@ package com.metrolist.music.lyrics
 
 import android.content.Context
 import android.util.LruCache
+import androidx.datastore.preferences.core.edit
 import com.metrolist.music.constants.LyricsProviderOrderKey
 import com.metrolist.music.db.entities.LyricsEntity.Companion.LYRICS_NOT_FOUND
 import com.metrolist.music.models.MediaMetadata
@@ -45,6 +46,23 @@ constructor(
     private val cache = LruCache<String, List<LyricsResult>>(MAX_CACHE_SIZE)
     private var currentLyricsJob: Job? = null
 
+    fun clearCache(mediaId: String) {
+        cache.remove(mediaId)
+    }
+
+    suspend fun getSongProvider(mediaId: String): String? =
+        context.dataStore.data.first()[androidx.datastore.preferences.core.stringPreferencesKey("lyricsProviderOverride_$mediaId")]
+
+    /** Saves the lyrics provider used only for this song. Pass null to go back to the normal order. */
+    suspend fun setSongProvider(mediaId: String, providerName: String?) {
+        val key = androidx.datastore.preferences.core.stringPreferencesKey("lyricsProviderOverride_$mediaId")
+        context.dataStore.edit { prefs ->
+            prefs.remove(key)
+            if (providerName != null) prefs[key] = providerName
+        }
+        cache.remove(mediaId)
+    }
+
     suspend fun getLyrics(mediaMetadata: MediaMetadata): LyricsWithProvider {
         currentLyricsJob?.cancel()
 
@@ -56,6 +74,8 @@ constructor(
         val orderedProviders = context.dataStore.data
             .map { preferences -> resolveLyricsProviders(preferences) }
             .first()
+        val songProviderName = context.dataStore.data.first()[androidx.datastore.preferences.core.stringPreferencesKey("lyricsProviderOverride_${mediaMetadata.id}")]
+        val songProvider = songProviderName?.let { LyricsProviderRegistry.getProviderByName(it) }
 
         val isNetworkAvailable = try {
             networkConnectivity.isCurrentlyConnected()
@@ -69,7 +89,7 @@ constructor(
 
         val result = withTimeoutOrNull(MAX_LYRICS_FETCH_MS) {
             val cleanedTitle = LyricsUtils.cleanTitleForSearch(mediaMetadata.title)
-            val enabledProviders = orderedProviders.filter { it.isEnabled(context) }
+            val enabledProviders = if (songProvider != null) listOf(songProvider) else orderedProviders.filter { it.isEnabled(context) }
 
             Timber.tag("LyricsHelper").d("Starting sequential fetch for: $cleanedTitle by ${mediaMetadata.artists.joinToString { it.name }}")
             Timber.tag("LyricsHelper").d("Enabled providers in order: ${enabledProviders.joinToString { it.name }}")

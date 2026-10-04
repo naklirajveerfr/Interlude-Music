@@ -73,6 +73,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import androidx.media3.common.C
+import com.metrolist.music.extensions.toggleRepeatMode
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadService
@@ -118,6 +119,17 @@ fun PlayerMenu(
     val database = LocalDatabase.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val playerVolume = playerConnection.service.playerVolume.collectAsStateWithLifecycle()
+    val lyricsProviderDialogState = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    if (lyricsProviderDialogState.value) {
+        com.metrolist.music.ui.menu.SongLyricsProviderDialog(
+            mediaId = mediaMetadata.id,
+            onDismiss = { lyricsProviderDialogState.value = false },
+            onDone = {
+                lyricsProviderDialogState.value = false
+                onDismiss()
+            },
+        )
+    }
 
     // Cast state for volume control - safely access castConnectionHandler to prevent crashes
     val castHandler =
@@ -133,6 +145,8 @@ fun PlayerMenu(
     val castDeviceName by castHandler?.castDeviceName?.collectAsStateWithLifecycle() ?: remember { mutableStateOf<String?>(null) }
 
     val varispeedMode by rememberPreference(VarispeedKey, defaultValue = false)
+    val nmShuffle by playerConnection.shuffleModeEnabled.collectAsStateWithLifecycle()
+    val nmRepeat by playerConnection.repeatMode.collectAsStateWithLifecycle()
 
     val librarySong by database.song(mediaMetadata.id).collectAsStateWithLifecycle(initialValue = null)
     val coroutineScope = rememberCoroutineScope()
@@ -376,6 +390,60 @@ fun PlayerMenu(
                                 onDismiss()
                             },
                         ),
+                        if (!isListenTogetherGuest) {
+                            NewAction(
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.shuffle),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(32.dp),
+                                        tint =
+                                            if (nmShuffle) {
+                                                MaterialTheme.colorScheme.primary
+                                            } else {
+                                                MaterialTheme.colorScheme.onSurfaceVariant
+                                            },
+                                    )
+                                },
+                                text = if (nmShuffle) "Shuffle: On" else "Shuffle: Off",
+                                onClick = { playerConnection.player.shuffleModeEnabled = !nmShuffle },
+                            )
+                        } else {
+                            null
+                        },
+                        if (!isListenTogetherGuest) {
+                            NewAction(
+                                icon = {
+                                    Icon(
+                                        painter =
+                                            painterResource(
+                                                if (nmRepeat == androidx.media3.common.Player.REPEAT_MODE_ONE) {
+                                                    R.drawable.repeat_one
+                                                } else {
+                                                    R.drawable.repeat
+                                                },
+                                            ),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(32.dp),
+                                        tint =
+                                            if (nmRepeat != androidx.media3.common.Player.REPEAT_MODE_OFF) {
+                                                MaterialTheme.colorScheme.primary
+                                            } else {
+                                                MaterialTheme.colorScheme.onSurfaceVariant
+                                            },
+                                    )
+                                },
+                                text =
+                                    when (nmRepeat) {
+                                        androidx.media3.common.Player.REPEAT_MODE_ONE -> "Repeat: One"
+                                        androidx.media3.common.Player.REPEAT_MODE_ALL -> "Repeat: All"
+                                        else -> "Repeat: Off"
+                                    },
+                                onClick = { playerConnection.player.toggleRepeatMode() },
+                            )
+                        } else {
+                            null
+                        },
                     ),
                 columns = if (isListenTogetherGuest) 2 else 3,
                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 16.dp),
@@ -670,6 +738,20 @@ fun PlayerMenu(
                                     onShowDetailsDialog()
                                     onDismiss()
                                 },
+                            ),
+                        )
+                        add(
+                            Material3MenuItemData(
+                                title = { Text(text = "Choose different lyric provider") },
+                                description = { Text(text = "Applies only to this song") },
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.lyrics),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(24.dp),
+                                    )
+                                },
+                                onClick = { lyricsProviderDialogState.value = true },
                             ),
                         )
 

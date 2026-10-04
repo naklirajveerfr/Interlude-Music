@@ -389,6 +389,7 @@ class MusicService :
     @Inject
     @PlayerCache
     lateinit var playerCache: Cache
+    private val automixAnalyzer by lazy { com.metrolist.music.automix.AutomixAnalyzer(java.io.File(cacheDir, "automix")) { listOf(playerCache, downloadCache) } }
 
     @Inject
     @DownloadCache
@@ -2544,6 +2545,28 @@ class MusicService :
         }
         previousMediaItemIndex = player.currentMediaItemIndex
 
+        Timber.tag("RepeatDebug").d("transition reason=$reason repeat=${player.repeatMode} idx=${player.currentMediaItemIndex}/${player.mediaItemCount}")
+        Timber.tag("AutomixDebug").d("transition seen, enabled=${dataStore.get(com.metrolist.music.constants.AutomixEnabledKey, false)}")
+        cancelAutomixRamp(restoreSpeed = true)
+        if (automixOn()) {
+            val automixIds = listOfNotNull(
+                player.currentMediaItem?.mediaId,
+                if (player.hasNextMediaItem()) player.getMediaItemAt(player.nextMediaItemIndex).mediaId else null,
+            )
+            scope.launch(Dispatchers.Default) {
+                automixIds.forEach { id ->
+                    launch {
+                        val res = automixAnalyzer.analyzeWhenReady(id, needTail = id == automixIds.first())
+                        if (res != null) {
+                            withContext(Dispatchers.Main) {
+                                if (player.currentMediaItem?.mediaId == automixIds.first()) scheduleCrossfade()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT && player.repeatMode == REPEAT_MODE_ONE) { player.repeatMode = Player.REPEAT_MODE_OFF }
         lastPlaybackSpeed = -1.0f // force update song
 
         setupAudioNormalization()
@@ -2608,8 +2631,8 @@ class MusicService :
             }
 
             // Check sleep timer guard - don't autoplay/repeat if sleep timer will pause
-            val timer = sleepTimer ?: return
-            if (timer.isActive && timer.pauseWhenSongEnd) {
+            val timer = sleepTimer
+            if (timer != null && timer.isActive && timer.pauseWhenSongEnd) {
                 return
             }
 
@@ -2883,6 +2906,10 @@ class MusicService :
 
     override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) {
         super.onPlaybackParametersChanged(playbackParameters)
+        if (automixSpeedActive) {
+            lastPlaybackSpeed = playbackParameters.speed
+            return
+        }
         if (playbackParameters.speed != lastPlaybackSpeed) {
             Timber.tag("DiscordSvc").d("onPlaybackParametersChanged: speed changed %s -> %s", lastPlaybackSpeed, playbackParameters.speed)
             lastPlaybackSpeed = playbackParameters.speed
@@ -4763,7 +4790,153 @@ class MusicService :
         }
     }
 
+    // Starts analysis of the current and next song if not done yet (covers restarts, seeks and queue changes).
+    private fun automixEnsureAnalysis() {
+        if (!automixOn()) return
+        val ids = listOfNotNull(player.currentMediaItem?.mediaId, automixNextMediaId())
+        if (ids.isEmpty()) return
+        val todo =
+            ids.withIndex().filter { (idx, id) ->
+                val have = automixAnalyzer.get(id)
+                have == null || (idx == 0 && !have.tailKnown)
+            }
+        if (todo.isEmpty()) return
+        val currentId = ids.first()
+        scope.launch(Dispatchers.Default) {
+            todo.forEach { (idx, id) ->
+                launch {
+                    val res = automixAnalyzer.analyzeWhenReady(id, needTail = idx == 0)
+                    if (res != null) {
+                        withContext(Dispatchers.Main) {
+                            if (player.currentMediaItem?.mediaId == currentId) scheduleCrossfade()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // ---- Automix: tempo matching and mix timing ----
+    private var automixRampMessage: PlayerMessage? = null
+    private var automixRampJob: Job? = null
+    private var automixSpeedActive = false
+    private var automixBaseSpeed = 1f
+
+    private fun automixOn(): Boolean =
+        dataStore.get(com.metrolist.music.constants.AutomixEnabledKey, false) &&
+            dataStore.get(com.metrolist.music.constants.CrossfadeEnabledKey, false)
+
+    private fun automixNextMediaId(): String? =
+        when {
+            player.repeatMode == REPEAT_MODE_ONE -> player.currentMediaItem?.mediaId
+            player.hasNextMediaItem() -> player.getMediaItemAt(player.nextMediaItemIndex).mediaId
+            else -> null
+        }
+
+    private fun automixTailShiftMs(): Long {
+        if (!automixOn()) return 0L
+        val a = player.currentMediaItem?.mediaId?.let { automixAnalyzer.get(it) } ?: return 0L
+        if (!a.tailKnown) return 0L
+        return (a.quietTailSec * 1000f).toLong().coerceIn(0L, 12_000L)
+    }
+
+    private fun automixEntryOffsetMs(targetIndex: Int): Long {
+        if (!automixOn() || targetIndex == C.INDEX_UNSET || targetIndex >= player.mediaItemCount) return 0L
+        val a = automixAnalyzer.get(player.getMediaItemAt(targetIndex).mediaId) ?: return 0L
+        return if (a.introSilenceSec >= 0.25f) (a.introSilenceSec * 1000f).toLong().coerceAtMost(6_000L) else 0L
+    }
+
+    private fun automixIncomingParams(): PlaybackParameters {
+        val current = player.playbackParameters
+        return if (automixSpeedActive) current.withSpeed(automixBaseSpeed) else current
+    }
+
+    private fun automixTargetRatio(): Float? {
+        if (!automixOn()) return null
+        val aId = player.currentMediaItem?.mediaId ?: return null
+        val bId = automixNextMediaId() ?: return null
+        if (aId == bId) return null
+        val a = automixAnalyzer.get(aId)
+        val b = automixAnalyzer.get(bId)
+        if (a == null || b == null || !a.hasReliableBpm || !b.hasReliableBpm) {
+            Timber.tag("AutomixDebug").d("ramp skipped: A=${a?.bpm}/${a?.confidence} B=${b?.bpm}/${b?.confidence}")
+            return null
+        }
+        val maxChange = dataStore.get(com.metrolist.music.constants.AutomixMaxTempoKey, 6f) / 100f
+        val r = b.bpm!! / a.bpm!!
+        val best = listOf(r, r * 2f, r / 2f).minByOrNull { kotlin.math.abs(it - 1f) } ?: return null
+        val diff = kotlin.math.abs(best - 1f)
+        Timber.tag("AutomixDebug").d("ramp plan: bpmA=${a.bpm} bpmB=${b.bpm} ratio=$best maxChange=$maxChange")
+        if (diff < 0.004f) return null
+        return best
+    }
+
+    private fun cancelAutomixRamp(restoreSpeed: Boolean) {
+        automixRampMessage?.cancel()
+        automixRampMessage = null
+        automixRampJob?.cancel()
+        automixRampJob = null
+        if (restoreSpeed && automixSpeedActive) {
+            try {
+                player.setPlaybackSpeed(automixBaseSpeed)
+            } catch (_: Exception) {
+            }
+        }
+        automixSpeedActive = false
+    }
+
+    private fun startAutomixRamp(rampPlayer: Player, ratio: Float, durationMs: Long) {
+        automixRampJob?.cancel()
+        automixBaseSpeed = rampPlayer.playbackParameters.speed
+        automixSpeedActive = true
+        val target = automixBaseSpeed * ratio
+        val steps = (durationMs / 400L).toInt().coerceIn(5, 80)
+        Timber.tag("AutomixDebug").d("ramp start: $automixBaseSpeed -> $target over ${durationMs}ms")
+        automixRampJob =
+            scope.launch {
+                for (i in 1..steps) {
+                    delay(durationMs / steps)
+                    if (!isActive || rampPlayer !== player) return@launch
+                    val p = i / steps.toFloat()
+                    val eased = p * p * (3f - 2f * p)
+                    rampPlayer.setPlaybackSpeed(automixBaseSpeed + (target - automixBaseSpeed) * eased)
+                }
+            }
+    }
+
+    private fun scheduleAutomixRamp(triggerTime: Long, targetMediaId: String?) {
+        Timber.tag("AutomixDebug").d("scheduleAutomixRamp called, trigger=$triggerTime")
+        val ratio = automixTargetRatio() ?: return
+        val leadMs = 20_000L
+        val now = player.currentPosition
+        val startAt = triggerTime - leadMs
+        val rampPlayer: Player = player
+        val begin = {
+            val remaining = triggerTime - rampPlayer.currentPosition
+            if (rampPlayer === player &&
+                rampPlayer.isPlaying &&
+                rampPlayer.currentMediaItem?.mediaId == targetMediaId &&
+                remaining > 1_500L
+            ) {
+                startAutomixRamp(rampPlayer, ratio, kotlin.math.min(remaining, leadMs))
+            }
+        }
+        if (startAt - now > 500L) {
+            automixRampMessage =
+                player.createMessage { _, _ -> begin() }.apply {
+                    setLooper(Looper.getMainLooper())
+                    setPosition(startAt)
+                    send()
+                }
+        } else if (triggerTime - now > 2_500L) {
+            begin()
+        }
+    }
+
     private fun scheduleCrossfade() {
+        cancelAutomixRamp(restoreSpeed = true)
+        automixEnsureAnalysis()
+        Timber.tag("AutomixDebug").d("scheduleCrossfade: enabled=$crossfadeEnabled dur=$crossfadeDuration gapless=$crossfadeGapless nextGapless=${isNextItemGapless()} hasNext=${player.hasNextMediaItem()} playerDur=${player.duration} pos=${player.currentPosition}")
         crossfadeMessage?.cancel()
         crossfadeMessage = null
         
@@ -4773,11 +4946,14 @@ class MusicService :
         if (crossfadeGapless && isNextItemGapless()) return
         if (!player.hasNextMediaItem() && player.repeatMode != REPEAT_MODE_ONE) return
 
-        val triggerTime = player.duration - mediaCrossfadeDuration
+        val baseTrigger = player.duration - mediaCrossfadeDuration
+        val shiftedTrigger = baseTrigger - automixTailShiftMs()
+        val triggerTime = if (shiftedTrigger - player.currentPosition > 500) shiftedTrigger else baseTrigger
         val mediaTimeRemaining = triggerTime - player.currentPosition
         if (mediaTimeRemaining <= 0) return
 
         val targetMediaId = player.currentMediaItem?.mediaId
+        scheduleAutomixRamp(triggerTime, targetMediaId)
 
         crossfadeMessage = player.createMessage { _, _ ->
             val timer = sleepTimer
@@ -4825,14 +5001,14 @@ class MusicService :
         }
 
         secPlayer.setMediaItems(items)
-        secPlayer.seekTo(targetIndex, 0)
+        secPlayer.seekTo(targetIndex, automixEntryOffsetMs(targetIndex))
         secPlayer.volume = 0f
 
-        secPlayer.setPlaybackParameters(player.playbackParameters)
+        secPlayer.setPlaybackParameters(automixIncomingParams())
 
         secPlayer.repeatMode = repeatMode
         secPlayer.shuffleModeEnabled = shuffleModeEnabled
-        secPlayer.playbackParameters = player.playbackParameters
+        secPlayer.playbackParameters = automixIncomingParams()
 
         try {
             secPlayer.prepare()
@@ -4846,6 +5022,9 @@ class MusicService :
         }
 
         performCrossfadeSwap()
+        automixRampJob?.cancel()
+        automixRampJob = null
+        automixSpeedActive = false
 
         if (shuffleModeEnabled) {
             val shufflePlaylistFirst = dataStore.get(ShufflePlaylistFirstKey, false)

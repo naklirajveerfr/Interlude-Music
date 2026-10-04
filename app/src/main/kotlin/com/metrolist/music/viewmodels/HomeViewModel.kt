@@ -98,7 +98,7 @@ class HomeViewModel @Inject constructor(
     private val networkConnectivity: NetworkConnectivityObserver,
 ) : ViewModel() {
     val isRefreshing = MutableStateFlow(false)
-    val isLoading = MutableStateFlow(false)
+    val isLoading = MutableStateFlow(true)
     val isRandomizing = MutableStateFlow(false)
 
     private val quickPicksEnum = context.dataStore.data.map {
@@ -439,6 +439,14 @@ class HomeViewModel @Inject constructor(
     }
 
     private suspend fun load() {
+        try {
+            loadInner()
+        } finally {
+            isLoading.value = false
+        }
+    }
+
+    private suspend fun loadInner() {
         isLoading.value = true
         val hideExplicit = context.dataStore.get(HideExplicitKey, false)
         val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
@@ -718,6 +726,10 @@ class HomeViewModel @Inject constructor(
     }
 
     init {
+        viewModelScope.launch {
+            kotlinx.coroutines.delay(20_000)
+            isLoading.value = false
+        }
         // Run sync in separate coroutine with cooldown to avoid blocking UI
         viewModelScope.launch(Dispatchers.IO) {
             syncUtils.tryAutoSync()
