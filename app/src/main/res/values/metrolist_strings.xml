@@ -992,4 +992,16 @@
     <string name="stream_source_android_vr_desc">Android VR clients (all versions).</string>
     <string name="stream_source_web_creator">WEB_CREATOR</string>
     <string name="stream_source_web_creator_desc">Creator web client.</string>
+
+    <string name="onboarding_welcome">Welcome to Interlude</string>
+    <string name="onboarding_sign_in_google">Sign in with Google</string>
+    <string name="onboarding_sign_in_token">Sign in with login token</string>
+    <string name="onboarding_do_it_later">I\'ll do it later</string>
+    <string name="onboarding_follow_title">Follow %1$d artists</string>
+    <string name="onboarding_follow_subtitle">Search for artists you like (%1$d/%2$d)</string>
+    <string name="onboarding_search_hint">Search artists</string>
+    <string name="onboarding_no_artists">No artists found</string>
+    <string name="onboarding_follow">Follow</string>
+    <string name="onboarding_following">Following</string>
+    <string name="onboarding_matching_taste">Matching your taste</string>
 </resources>

@@ -17,6 +17,7 @@ import com.metrolist.music.constants.DataSyncIdKey
 import com.metrolist.music.constants.InnerTubeAuthUserKey
 import com.metrolist.music.constants.InnerTubeCookieKey
 import com.metrolist.music.constants.VisitorDataKey
+import com.metrolist.music.ui.screens.advanceOnboardingAfterLogin
 import com.metrolist.music.utils.SyncUtils
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.safeDataStoreEdit
@@ -97,6 +98,7 @@ class AccountSettingsViewModel @Inject constructor(
                 settings[AccountNameKey] = accountName
                 settings[AccountEmailKey] = accountEmail
                 settings[AccountChannelHandleKey] = accountChannelHandle
+                settings.advanceOnboardingAfterLogin()
             }
             if (!saved) {
                 Timber.e("saveTokenAndRestart: DataStore write failed — skipping restart to avoid losing credentials")

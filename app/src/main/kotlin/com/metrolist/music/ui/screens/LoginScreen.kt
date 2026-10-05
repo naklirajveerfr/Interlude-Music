@@ -197,6 +197,7 @@ fun LoginScreen(
                         settings[AccountNameKey] = accountInfo.name
                         settings[AccountEmailKey] = accountInfo.email.orEmpty()
                         settings[AccountChannelHandleKey] = accountInfo.channelHandle.orEmpty()
+                        settings.advanceOnboardingAfterLogin()
                     }
                 }
             check(saved) { "Failed to persist account data" }

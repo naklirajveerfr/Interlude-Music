@@ -41,6 +41,7 @@ import com.metrolist.music.db.entities.SpeedDialItem
 import com.metrolist.music.extensions.filterVideoSongs
 import com.metrolist.music.extensions.toEnum
 import com.metrolist.music.models.SimilarRecommendation
+import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.ui.screens.wrapped.WrappedAudioService
 import com.metrolist.music.ui.screens.wrapped.WrappedManager
 import com.metrolist.music.utils.NetworkConnectivityObserver
@@ -52,6 +53,8 @@ import com.metrolist.music.utils.reportException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -274,6 +277,7 @@ class HomeViewModel @Inject constructor(
     private suspend fun getDailyDiscover() {
         val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
         val likedSongs = database.likedSongsByCreateDateAsc().first()
+            .ifEmpty { getFollowedArtistSongs(hideVideoSongs) }
         if (likedSongs.isEmpty()) return
 
         val seeds = likedSongs.shuffled().distinctBy { it.id }.take(5)
@@ -319,6 +323,29 @@ class HomeViewModel @Inject constructor(
         dailyDiscover.value = items.toList().distinctBy { it.recommendation.id }.shuffled()
     }
 
+    /** Top songs of a few random followed artists, so quick picks reflect them even with no listening history. */
+    private suspend fun getFollowedArtistSongs(hideVideoSongs: Boolean): List<Song> {
+        val seeds = database.bookmarkedArtistEntitiesByNameAsc()
+            .filter { it.isYouTubeArtist }
+            .shuffled().take(3)
+
+        return coroutineScope {
+            seeds.map { seed ->
+                async(Dispatchers.IO) {
+                    val page = YouTube.artist(seed.id).getOrNull() ?: return@async emptyList<Song>()
+                    page.sections.flatMap { it.items }
+                        .filterIsInstance<SongItem>()
+                        .filter { !hideVideoSongs || !it.isVideoSong }
+                        .take(6)
+                        .mapNotNull { songItem ->
+                            database.insert(songItem.toMediaMetadata())
+                            database.song(songItem.id).first()
+                        }
+                }
+            }.awaitAll().flatten()
+        }
+    }
+
     private suspend fun getQuickPicks() {
         val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
         when (quickPicksEnum.first()) {
@@ -346,8 +373,10 @@ class HomeViewModel @Inject constructor(
                     }
                 }
 
+                val followedSongs = getFollowedArtistSongs(hideVideoSongs)
+
                 // Combine all sources and remove duplicates
-                val combined = (relatedSongs + forgotten + ytSimilarSongs)
+                val combined = (followedSongs + relatedSongs + forgotten + ytSimilarSongs)
                     .distinctBy { it.id }
                     .shuffled()
                     .take(20)
@@ -365,9 +394,15 @@ class HomeViewModel @Inject constructor(
 
     private suspend fun getCommunityPlaylists() {
         val fromTimeStamp = LocalDateTime.now().minusWeeks(4)
-        val artistSeeds = database.mostPlayedArtists(fromTimeStamp, limit = 10).first()
+        val followedSeeds = database.artistsBookmarkedByNameAsc().first()
             .filter { it.artist.isYouTubeArtist }
-            .shuffled().take(3)
+            .shuffled().take(2)
+        val artistSeeds = (
+            followedSeeds +
+                database.mostPlayedArtists(fromTimeStamp, limit = 10).first()
+                    .filter { it.artist.isYouTubeArtist }
+                    .shuffled().take(3)
+            ).distinctBy { it.id }
         val songSeeds = database.mostPlayedSongs(fromTimeStamp = fromTimeStamp, limit = 5, offset = 0, toTimeStamp = LocalDateTime.now()).first()
             .shuffled().take(2)
 
@@ -513,9 +548,15 @@ class HomeViewModel @Inject constructor(
         }
 
         viewModelScope.launch(Dispatchers.IO) {
-            val artistRecommendations = database.mostPlayedArtists(fromTimeStamp, limit = 15).first()
+            val followedArtistSeeds = database.artistsBookmarkedByNameAsc().first()
                 .filter { it.artist.isYouTubeArtist }
-                .shuffled().take(4)
+                .shuffled().take(3)
+            val artistRecommendations = (
+                followedArtistSeeds +
+                    database.mostPlayedArtists(fromTimeStamp, limit = 15).first()
+                        .filter { it.artist.isYouTubeArtist }
+                        .shuffled().take(4)
+                ).distinctBy { it.id }
                 .mapNotNull {
                     val items = mutableListOf<YTItem>()
                     YouTube.artist(it.id).onSuccess { page ->
