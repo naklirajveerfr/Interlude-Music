@@ -117,6 +117,11 @@ fun OnlineSearchScreen(
     val viewState by viewModel.viewState.collectAsStateWithLifecycle()
     val recentSongs by remember { database.recentlyPlayedSongs() }
         .collectAsStateWithLifecycle(initialValue = emptyList())
+    val recentRowState = rememberLazyListState()
+
+    LaunchedEffect(recentSongs.firstOrNull()?.id) {
+        if (recentSongs.isNotEmpty()) recentRowState.animateScrollToItem(0)
+    }
 
     val lazyListState = rememberLazyListState()
 
@@ -399,6 +404,7 @@ fun OnlineSearchScreen(
 
             item(key = "recently_played_row") {
                 LazyRow(
+                    state = recentRowState,
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.padding(bottom = 16.dp),

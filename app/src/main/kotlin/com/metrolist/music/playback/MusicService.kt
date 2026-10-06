@@ -2461,6 +2461,56 @@ class MusicService :
     // onMediaItemTransition call, so we can decide whether IT finished
     // naturally (and is therefore safe to mark as fully cached).
     private var lastTransitionedMediaId: String? = null
+
+    private var livePlayCountJob: Job? = null
+    private var liveListenedMs = 0L
+    private var liveListenStartedAt = 0L
+    private var liveCountedThisItem = false
+    private val liveRecordedPlays = mutableMapOf<String, Pair<LocalDateTime, Long>>()
+
+    private fun resetLivePlayCount() {
+        livePlayCountJob?.cancel()
+        livePlayCountJob = null
+        liveListenedMs = 0L
+        liveListenStartedAt = 0L
+        liveCountedThisItem = false
+    }
+
+    private fun startLivePlayCount() {
+        if (liveCountedThisItem || livePlayCountJob != null) return
+        val mediaId = player.currentMediaItem?.mediaId ?: return
+        val thresholdMs = (dataStore[HistoryDuration]?.times(1000f) ?: 30000f).toLong()
+        liveListenStartedAt = System.currentTimeMillis()
+        livePlayCountJob =
+            scope.launch {
+                delay((thresholdMs - liveListenedMs).coerceAtLeast(0L))
+                livePlayCountJob = null
+                liveCountedThisItem = true
+                if (dataStore.get(PauseListenHistoryKey, false)) return@launch
+                val timestamp = LocalDateTime.now()
+                liveRecordedPlays[mediaId] = timestamp to thresholdMs
+                database.query {
+                    incrementTotalPlayTime(mediaId, thresholdMs)
+                    try {
+                        insert(Event(songId = mediaId, timestamp = timestamp, playTime = thresholdMs))
+                    } catch (_: SQLException) {
+                    }
+                }
+            }
+    }
+
+    private fun pauseLivePlayCount() {
+        livePlayCountJob?.cancel()
+        livePlayCountJob = null
+        if (liveListenStartedAt != 0L) {
+            liveListenedMs += System.currentTimeMillis() - liveListenStartedAt
+            liveListenStartedAt = 0L
+        }
+    }
+
+    override fun onIsPlayingChanged(isPlaying: Boolean) {
+        if (isPlaying) startLivePlayCount() else pauseLivePlayCount()
+    }
     private var previousEpisodePosition: Long = 0L
 
     /**
@@ -2510,6 +2560,8 @@ class MusicService :
             }
         }
         lastTransitionedMediaId = mediaItem?.mediaId
+        resetLivePlayCount()
+        if (player.isPlaying) startLivePlayCount()
         initialBufferRecoveryJob?.cancel()
         initialBufferRecoveryJob = null
         initialBufferRecoveryAttemptedMediaId = null
@@ -4066,21 +4118,30 @@ class MusicService :
     ) {
         val mediaItem = eventTime.timeline.getWindow(eventTime.windowIndex, Timeline.Window()).mediaItem
         val historyDurationMs = dataStore[HistoryDuration]?.times(1000f) ?: 30000f
+        val liveRecorded = liveRecordedPlays.remove(mediaItem.mediaId)
 
         if (playbackStats.totalPlayTimeMs >= historyDurationMs &&
             !dataStore.get(PauseListenHistoryKey, false)
         ) {
             database.query {
-                incrementTotalPlayTime(mediaItem.mediaId, playbackStats.totalPlayTimeMs)
-                try {
-                    insert(
-                        Event(
-                            songId = mediaItem.mediaId,
-                            timestamp = LocalDateTime.now(),
-                            playTime = playbackStats.totalPlayTimeMs,
-                        ),
-                    )
-                } catch (_: SQLException) {
+                if (liveRecorded != null) {
+                    val extraMs = playbackStats.totalPlayTimeMs - liveRecorded.second
+                    if (extraMs > 0) {
+                        incrementTotalPlayTime(mediaItem.mediaId, extraMs)
+                        updateEventPlayTime(mediaItem.mediaId, liveRecorded.first, playbackStats.totalPlayTimeMs)
+                    }
+                } else {
+                    incrementTotalPlayTime(mediaItem.mediaId, playbackStats.totalPlayTimeMs)
+                    try {
+                        insert(
+                            Event(
+                                songId = mediaItem.mediaId,
+                                timestamp = LocalDateTime.now(),
+                                playTime = playbackStats.totalPlayTimeMs,
+                            ),
+                        )
+                    } catch (_: SQLException) {
+                    }
                 }
             }
         }
