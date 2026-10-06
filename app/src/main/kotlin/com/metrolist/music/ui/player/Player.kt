@@ -1775,7 +1775,7 @@ fun BottomSheetPlayer(
                                     modifier = Modifier.size(72.dp),
                                 ) {
                                     Icon(
-                                        painter = painterResource(R.drawable.skip_previous),
+                                        painter = painterResource(R.drawable.nm_skip_previous),
                                         contentDescription = null,
                                         tint = shapeTint,
                                         modifier = Modifier.size(44.dp),
@@ -1786,7 +1786,14 @@ fun BottomSheetPlayer(
                                     modifier = Modifier.size(96.dp).focusRequester(focusRequester),
                                 ) {
                                     Icon(
-                                        painter = painterResource(playIconRes),
+                                        painter =
+                                            painterResource(
+                                                when (playIconRes) {
+                                                    R.drawable.pause -> R.drawable.nm_pause
+                                                    R.drawable.play -> R.drawable.nm_play_arrow
+                                                    else -> playIconRes
+                                                },
+                                            ),
                                         contentDescription = null,
                                         tint = shapeTint,
                                         modifier = Modifier.size(64.dp),
@@ -1798,7 +1805,7 @@ fun BottomSheetPlayer(
                                     modifier = Modifier.size(72.dp),
                                 ) {
                                     Icon(
-                                        painter = painterResource(R.drawable.skip_next),
+                                        painter = painterResource(R.drawable.nm_skip_next),
                                         contentDescription = null,
                                         tint = shapeTint,
                                         modifier = Modifier.size(44.dp),
@@ -1894,7 +1901,7 @@ fun BottomSheetPlayer(
 
                             Box(modifier = Modifier.weight(1f)) {
                                 ResizableIconButton(
-                                    icon = R.drawable.skip_previous,
+                                    icon = if (isAppleShape) R.drawable.nm_skip_previous else R.drawable.skip_previous,
                                     enabled = canSkipPrevious && !isListenTogetherGuest,
                                     color = if (isAppleShape) appleTint else TextBackgroundColor,
                                     modifier =
@@ -1944,9 +1951,9 @@ fun BottomSheetPlayer(
                                             ) {
                                                 R.drawable.replay
                                             } else if (effectiveIsPlaying) {
-                                                R.drawable.pause
+                                                if (isAppleShape) R.drawable.nm_pause else R.drawable.pause
                                             } else {
-                                                R.drawable.play
+                                                if (isAppleShape) R.drawable.nm_play_arrow else R.drawable.play
                                             },
                                         ),
                                     contentDescription = null,
@@ -1962,7 +1969,7 @@ fun BottomSheetPlayer(
 
                             Box(modifier = Modifier.weight(1f)) {
                                 ResizableIconButton(
-                                    icon = R.drawable.skip_next,
+                                    icon = if (isAppleShape) R.drawable.nm_skip_next else R.drawable.skip_next,
                                     enabled = canSkipNext && !isListenTogetherGuest,
                                     color = if (isAppleShape) appleTint else TextBackgroundColor,
                                     modifier =
