@@ -37,7 +37,7 @@ object Updater {
 
     private const val CHECK_INTERVAL_MILLIS = 2 * 60 * 60 * 1000L // 2 hours
     private const val VERSION_URL =
-        "https://raw.githubusercontent.com/naklirajveerfr/Interlude-Music/refs/heads/main/vrsn.txt"
+        "https://www.interludemusic.online/vrsn.txt"
     const val DOWNLOAD_URL = "https://github.com/naklirajveerfr/Interlude-Music/releases/"
 
     private val versionRegex = Regex("""v?\d+(\.\d+)*""")
@@ -77,7 +77,7 @@ object Updater {
         text.trim().takeIf { versionRegex.matches(it) }?.removePrefix("v")
 
     /**
-     * Fetch the latest version from vrsn.txt in the Interlude Music repo
+     * Fetch the latest version from vrsn.txt on interludemusic.online
      */
     suspend fun getLatestRelease(forceRefresh: Boolean = false): Result<ReleaseInfo> =
         withContext(Dispatchers.IO) {
