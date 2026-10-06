@@ -786,6 +786,7 @@
     <string name="importing_playlist">Importing playlist…</string>
 
     <string name="recently_converted">Recently converted</string>
+    <string name="recently_played">Recently Played</string>
     <string name="column_label">Column %d</string>
 
     <string name="discord_connect_description">Sign in with Discord to share what you\'re listening to</string>
