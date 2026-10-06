@@ -752,7 +752,6 @@ private fun RecentlyPlayedCard(
         modifier =
             modifier
                 .width(150.dp)
-                .clip(RoundedCornerShape(24.dp))
                 .clickable(onClick = onClick),
     ) {
         AsyncImage(
