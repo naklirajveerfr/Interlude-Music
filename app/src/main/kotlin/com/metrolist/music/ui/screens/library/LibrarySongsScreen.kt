@@ -239,6 +239,10 @@ fun LibrarySongsScreen(
         }
 
     LaunchedEffect(Unit) {
+        if (filter == SongFilter.UPLOADED) filter = SongFilter.LIBRARY
+    }
+
+    LaunchedEffect(Unit) {
         if (ytmSync) {
             when (filter) {
                 SongFilter.LIKED -> viewModel.syncLikedSongs()
@@ -352,7 +356,6 @@ fun LibrarySongsScreen(
                             listOf(
                                 SongFilter.LIKED to stringResource(R.string.filter_liked),
                                 SongFilter.LIBRARY to stringResource(R.string.filter_library),
-                                SongFilter.UPLOADED to stringResource(R.string.filter_uploaded),
                                 SongFilter.DOWNLOADED to stringResource(R.string.filter_downloaded),
                             ),
                         currentValue = filter,
@@ -477,31 +480,17 @@ fun LibrarySongsScreen(
             }
         }
 
-        // Show upload FAB when on UPLOADED filter, shuffle FAB otherwise
         HideOnScrollFAB(
-            visible = if (filter == SongFilter.UPLOADED) true else filteredSongs.isNotEmpty(),
+            visible = filteredSongs.isNotEmpty(),
             lazyListState = lazyListState,
-            icon = if (filter == SongFilter.UPLOADED) R.drawable.upload else R.drawable.shuffle,
+            icon = R.drawable.shuffle,
             onClick = {
-                if (filter == SongFilter.UPLOADED) {
-                    filePickerLauncher.launch(
-                        arrayOf(
-                            "audio/mpeg",
-                            "audio/mp4",
-                            "audio/x-m4a",
-                            "audio/flac",
-                            "audio/ogg",
-                            "audio/x-ms-wma",
-                        ),
-                    )
-                } else {
-                    playerConnection.playQueue(
-                        ListQueue(
-                            title = queueAllSongsStr,
-                            items = filteredSongs.shuffled().map { it.toMediaItem() },
-                        ),
-                    )
-                }
+                playerConnection.playQueue(
+                    ListQueue(
+                        title = queueAllSongsStr,
+                        items = filteredSongs.shuffled().map { it.toMediaItem() },
+                    ),
+                )
             },
         )
     }
