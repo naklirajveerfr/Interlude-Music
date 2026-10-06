@@ -1859,6 +1859,8 @@ fun BottomSheetPlayer(
                         }
                     }
                     } else {
+                        val isAppleShape = playerButtonShape == PlayerButtonShape.APPLE
+                        val appleTint = if (playerButtonsStyle == PlayerButtonsStyle.DEFAULT) TextBackgroundColor else textButtonColor
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier =
@@ -1894,10 +1896,10 @@ fun BottomSheetPlayer(
                                 ResizableIconButton(
                                     icon = R.drawable.skip_previous,
                                     enabled = canSkipPrevious && !isListenTogetherGuest,
-                                    color = TextBackgroundColor,
+                                    color = if (isAppleShape) appleTint else TextBackgroundColor,
                                     modifier =
                                         Modifier
-                                            .size(32.dp)
+                                            .size(if (isAppleShape) 44.dp else 32.dp)
                                             .align(Alignment.Center)
                                             .alpha(if (isListenTogetherGuest) 0.5f else 1f),
                                     onClick = playerConnection::seekToPrevious,
@@ -1909,9 +1911,9 @@ fun BottomSheetPlayer(
                             Box(
                                 modifier =
                                     Modifier
-                                        .size(72.dp)
+                                        .size(if (isAppleShape) 96.dp else 72.dp)
                                         .clip(RoundedCornerShape(playPauseRoundness))
-                                        .background(textButtonColor)
+                                        .then(if (isAppleShape) Modifier else Modifier.background(textButtonColor))
                                         .clickable {
                                             if (isListenTogetherGuest) {
                                                 playerConnection.toggleMute()
@@ -1948,11 +1950,11 @@ fun BottomSheetPlayer(
                                             },
                                         ),
                                     contentDescription = null,
-                                    colorFilter = ColorFilter.tint(iconButtonColor),
+                                    colorFilter = ColorFilter.tint(if (isAppleShape) appleTint else iconButtonColor),
                                     modifier =
                                         Modifier
                                             .align(Alignment.Center)
-                                            .size(36.dp),
+                                            .size(if (isAppleShape) 64.dp else 36.dp),
                                 )
                             }
 
@@ -1962,10 +1964,10 @@ fun BottomSheetPlayer(
                                 ResizableIconButton(
                                     icon = R.drawable.skip_next,
                                     enabled = canSkipNext && !isListenTogetherGuest,
-                                    color = TextBackgroundColor,
+                                    color = if (isAppleShape) appleTint else TextBackgroundColor,
                                     modifier =
                                         Modifier
-                                            .size(32.dp)
+                                            .size(if (isAppleShape) 44.dp else 32.dp)
                                             .align(Alignment.Center)
                                             .alpha(if (isListenTogetherGuest) 0.5f else 1f),
                                     onClick = playerConnection::seekToNext,

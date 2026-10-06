@@ -881,7 +881,7 @@ fun AppearanceSettings(
                 when (it) {
                     PlayerButtonShape.ROUND -> "Round"
                     PlayerButtonShape.PILL -> "Pill"
-                    PlayerButtonShape.APPLE -> "Apple Music"
+                    PlayerButtonShape.APPLE -> "Soft"
                 }
             },
         )
@@ -1589,7 +1589,7 @@ fun AppearanceSettings(
                                 when (playerButtonShape) {
                                     PlayerButtonShape.ROUND -> "Round"
                                     PlayerButtonShape.PILL -> "Pill"
-                                    PlayerButtonShape.APPLE -> "Apple Music"
+                                    PlayerButtonShape.APPLE -> "Soft"
                                 },
                             )
                         },
