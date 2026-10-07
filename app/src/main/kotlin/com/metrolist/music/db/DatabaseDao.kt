@@ -31,6 +31,7 @@ import com.metrolist.music.db.entities.AlbumArtistMap
 import com.metrolist.music.db.entities.AlbumEntity
 import com.metrolist.music.db.entities.AlbumWithSongs
 import com.metrolist.music.db.entities.Artist
+import com.metrolist.music.db.entities.DailyListening
 import com.metrolist.music.db.entities.ArtistEntity
 import com.metrolist.music.db.entities.Event
 import com.metrolist.music.db.entities.EventWithSong
@@ -428,6 +429,20 @@ interface DatabaseDao {
         offset: Int = 0,
         toTimeStamp: LocalDateTime? = LocalDateTime.now(),
     ): Flow<List<SongWithStats>>
+
+    @Query(
+        """
+        SELECT strftime('%Y-%m-%d', timestamp / 1000, 'unixepoch') AS day, SUM(playTime) AS playTime
+        FROM event
+        WHERE timestamp > :fromTimeStamp AND timestamp <= :toTimeStamp
+        GROUP BY day
+        ORDER BY day
+        """,
+    )
+    fun dailyListeningTime(
+        fromTimeStamp: LocalDateTime,
+        toTimeStamp: LocalDateTime,
+    ): Flow<List<DailyListening>>
 
     // Time Transfer
     @Query("UPDATE event SET songId = :toSongId WHERE songId = :fromSongId")

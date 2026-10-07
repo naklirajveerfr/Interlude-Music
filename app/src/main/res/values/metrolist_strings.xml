@@ -22,6 +22,16 @@
     <string name="weekly_most_playlist_name">Weekly Most</string>
     <string name="monthly_most_playlist_name">Monthly Most</string>
     <string name="cached_playlist">Cached</string>
+    <string name="stats_total_time_listened">Total Time Listened</string>
+    <string name="stats_total_plays">Total Plays</string>
+    <string name="stats_unique_songs">Unique Songs</string>
+    <string name="stats_unique_artists">Unique Artists</string>
+    <string name="stats_daily_average">Daily average</string>
+    <string name="stats_monthly_average">Monthly average</string>
+    <string name="stats_minutes_short">%1$d min</string>
+    <string name="stats_breakdown">Breakdown</string>
+    <string name="stats_favorite_artist">Favorite artist</string>
+    <string name="stats_favorite_song">Favorite song</string>
     <string name="library_liked_songs">Liked Songs</string>
     <string name="library_downloads">Downloads</string>
     <string name="filter_uploaded">Uploaded</string>

@@ -70,6 +70,7 @@ import com.metrolist.music.R
 import com.metrolist.music.constants.CONTENT_TYPE_ARTIST
 import com.metrolist.music.constants.InnerTubeCookieKey
 import com.metrolist.music.constants.StatPeriod
+import com.metrolist.music.constants.statToPeriod
 import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.playback.queues.ListQueue
@@ -299,6 +300,23 @@ fun StatsScreen(
             emptyList()
         }
 
+    val dailyListening by viewModel.dailyListening.collectAsStateWithLifecycle()
+    val chartData =
+        remember(dailyListening, selectedOption, indexChips, firstEvent) {
+            val periodEnd =
+                if (selectedOption == OptionStats.CONTINUOUS || indexChips == 0) {
+                    LocalDateTime.now()
+                } else {
+                    statToPeriod(selectedOption, indexChips - 1)
+                }
+            buildChartData(
+                rows = dailyListening,
+                from = statToPeriod(selectedOption, indexChips),
+                to = periodEnd,
+                firstEvent = firstEvent?.event?.timestamp,
+            )
+        }
+
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
             state = lazyListState,
@@ -389,6 +407,56 @@ fun StatsScreen(
                     currentValue = indexChips,
                     onValueUpdate = { viewModel.indexChips.value = it },
                 )
+            }
+
+            if (!isSearching) {
+                item(key = "timeListenedCard") {
+                    TimeListenedCard(
+                        totalTimeMs = mostPlayedSongsStats.sumOf { it.timeListened ?: 0L },
+                        totalPlays = mostPlayedSongsStats.sumOf { it.songCountListened },
+                        uniqueSongs = mostPlayedSongsStats.size,
+                        uniqueArtists = mostPlayedArtists.size,
+                        modifier = Modifier.animateItem(),
+                    )
+                }
+
+                if (chartData != null && sArtists.isEmpty()) {
+                    item(key = "listeningGraphCard") {
+                        ListeningGraphCard(
+                            data = chartData,
+                            modifier = Modifier.animateItem(),
+                        )
+                    }
+                }
+
+                item(key = "breakdownSection") {
+                    val favoriteArtist = mostPlayedArtists.firstOrNull()
+                    val favoriteSong = mostPlayedSongsStats.firstOrNull()
+                    BreakdownSection(
+                        artist = favoriteArtist,
+                        song = favoriteSong,
+                        onArtistClick = {
+                            favoriteArtist?.let { navController.navigate("artist/${it.id}") }
+                        },
+                        onSongClick = {
+                            favoriteSong?.let { song ->
+                                if (song.id == mediaMetadata?.id) {
+                                    playerConnection.togglePlayPause()
+                                } else {
+                                    mostPlayedSongs.find { it.id == song.id }?.let { targetSong ->
+                                        playerConnection.playQueue(
+                                            YouTubeQueue(
+                                                endpoint = WatchEndpoint(song.id),
+                                                preloadItem = targetSong.toMediaMetadata(),
+                                            ),
+                                        )
+                                    }
+                                }
+                            }
+                        },
+                        modifier = Modifier.animateItem(),
+                    )
+                }
             }
 
             if (visibleStatsPlaylists.isNotEmpty() && !isSearching && sArtists.isEmpty()) {

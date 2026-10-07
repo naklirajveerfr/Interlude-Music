@@ -148,6 +148,23 @@ constructor(
                 )
             }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
+    val dailyListening =
+        combine(
+            selectedOption,
+            indexChips,
+        ) { first, second -> Pair(first, second) }
+            .flatMapLatest { (selection, t) ->
+                database.dailyListeningTime(
+                    fromTimeStamp = statToPeriod(selection, t),
+                    toTimeStamp =
+                    if (selection == OptionStats.CONTINUOUS || t == 0) {
+                        LocalDateTime.now()
+                    } else {
+                        statToPeriod(selection, t - 1)
+                    },
+                )
+            }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
     val firstEvent =
         database
             .firstEvent()
