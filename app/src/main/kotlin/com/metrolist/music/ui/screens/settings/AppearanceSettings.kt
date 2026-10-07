@@ -288,11 +288,6 @@ fun AppearanceSettings(
             defaultValue = true,
         )
 
-    LaunchedEffect(isFullArtStyle) {
-        if (isFullArtStyle && swipeThumbnail) {
-            onSwipeThumbnailChange(false)
-        }
-    }
     val (swipeSensitivity, onSwipeSensitivityChange) =
         rememberPreference(
             SwipeSensitivityKey,
@@ -1644,7 +1639,6 @@ fun AppearanceSettings(
                             Switch(
                                 checked = swipeThumbnail,
                                 onCheckedChange = onSwipeThumbnailChange,
-                                enabled = !isFullArtStyle,
                                 thumbContent = {
                                     Icon(
                                         painter =
@@ -1658,8 +1652,7 @@ fun AppearanceSettings(
                             )
                         },
                         onClick = { onSwipeThumbnailChange(!swipeThumbnail) },
-                    enabled = !isFullArtStyle,
-                ),
+                    ),
                 ) +
                     if (swipeThumbnail) {
                         listOf(
