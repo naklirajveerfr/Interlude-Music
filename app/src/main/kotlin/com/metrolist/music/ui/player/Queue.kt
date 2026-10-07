@@ -1053,7 +1053,9 @@ fun Queue(
                         interactionSource = remember { MutableInteractionSource() },
                     ) { }
                     .background(
-                        if (pureBlack) {
+                        if (blurArtworkUrl != null) {
+                            Color.Transparent
+                        } else if (pureBlack) {
                             Color.Black
                         } else {
                             MaterialTheme.colorScheme
@@ -1199,7 +1201,9 @@ fun Queue(
             modifier =
                 Modifier
                     .background(
-                        if (pureBlack) {
+                        if (blurArtworkUrl != null) {
+                            Color.Transparent
+                        } else if (pureBlack) {
                             Color.Black
                         } else {
                             MaterialTheme.colorScheme
