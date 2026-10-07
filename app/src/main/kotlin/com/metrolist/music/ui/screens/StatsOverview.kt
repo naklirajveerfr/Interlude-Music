@@ -51,10 +51,12 @@ import java.time.YearMonth
 import java.time.format.TextStyle
 import java.time.temporal.ChronoUnit
 import java.util.Locale
+import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.roundToInt
 
 private const val MAX_DAILY_BARS = 62
+private val MAX_BAR_WIDTH = 20.dp
 
 data class ChartBucket(
     val label: String,
@@ -250,6 +252,8 @@ private fun ListeningBarChart(data: ChartData) {
         listOf(1f, 0.5f, 0f).forEach { fraction ->
             val y = chartHeight * (1f - fraction)
             drawLine(gridColor, Offset(0f, y), Offset(chartWidth, y), strokeWidth = 1.dp.toPx())
+            // Skip the middle label when it would sit on top of the average label.
+            if (fraction == 0.5f && abs(data.average / maxValue - 0.5f) < 0.08f) return@forEach
             val layout = textMeasurer.measure(formatCompact(maxValue * fraction), labelStyle)
             drawText(
                 layout,
@@ -263,7 +267,7 @@ private fun ListeningBarChart(data: ChartData) {
 
         val count = data.buckets.size
         val slot = chartWidth / count
-        val barWidth = slot * 0.5f
+        val barWidth = minOf(slot * 0.5f, MAX_BAR_WIDTH.toPx())
         data.buckets.forEachIndexed { index, bucket ->
             val barHeight = chartHeight * (bucket.minutes / maxValue)
             if (barHeight > 0f) {
