@@ -45,7 +45,9 @@ import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.ui.screens.wrapped.WrappedAudioService
 import com.metrolist.music.ui.screens.wrapped.WrappedManager
 import com.metrolist.music.utils.NetworkConnectivityObserver
+import com.metrolist.music.utils.NotInterested
 import com.metrolist.music.utils.SyncUtils
+import com.metrolist.music.utils.TasteProfile
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.safeDataStoreEdit
 import com.metrolist.music.utils.get
@@ -274,10 +276,25 @@ class HomeViewModel @Inject constructor(
             }
         }
     }
+    /** Removes songs, albums and artists the user marked "not interested" from everything already on the home screen. */
+    private suspend fun applyBlocked(blocked: NotInterested.Blocked? = null) {
+        val b = blocked ?: NotInterested.current(context)
+        if (b.songs.isEmpty() && b.artists.isEmpty()) return
+        quickPicks.value = quickPicks.value?.filterNot { b.blocks(it) }
+        forgottenFavorites.value = forgottenFavorites.value?.filterNot { b.blocks(it) }
+        keepListening.value = keepListening.value?.filterNot { b.blocks(it) }
+        dailyDiscover.value = dailyDiscover.value?.filterNot { b.blocks(it.seed) || b.blocks(it.recommendation) }
+        similarRecommendations.value =
+            similarRecommendations.value
+                ?.filterNot { b.blocks(it.title) }
+                ?.map { rec -> rec.copy(items = rec.items.filterNot { b.blocks(it) }) }
+                ?.filter { it.items.isNotEmpty() }
+    }
+
     private suspend fun getDailyDiscover() {
         val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
         val likedSongs = database.likedSongsByCreateDateAsc().first()
-            .ifEmpty { getFollowedArtistSongs(hideVideoSongs) }
+            .ifEmpty { getFollowedArtistSongs(hideVideoSongs, TasteProfile.artistScores(database)) }
         if (likedSongs.isEmpty()) return
 
         val seeds = likedSongs.shuffled().distinctBy { it.id }.take(5)
@@ -321,13 +338,18 @@ class HomeViewModel @Inject constructor(
         
         // Final deduplication just in case multiple seeds recommended the same song
         dailyDiscover.value = items.toList().distinctBy { it.recommendation.id }.shuffled()
+        applyBlocked()
     }
 
-    /** Top songs of a few random followed artists, so quick picks reflect them even with no listening history. */
-    private suspend fun getFollowedArtistSongs(hideVideoSongs: Boolean): List<Song> {
-        val seeds = database.bookmarkedArtistEntitiesByNameAsc()
-            .filter { it.isYouTubeArtist }
-            .shuffled().take(3)
+    /** Top songs of a few followed artists (favouring the ones listened to most), so quick picks reflect them even with no listening history. */
+    private suspend fun getFollowedArtistSongs(
+        hideVideoSongs: Boolean,
+        artistScores: Map<String, Double>,
+    ): List<Song> {
+        val seeds = TasteProfile.pickWeighted(
+            database.bookmarkedArtistEntitiesByNameAsc().filter { it.isYouTubeArtist },
+            3,
+        ) { artistScores[it.id] ?: 0.0 }
 
         return coroutineScope {
             seeds.map { seed ->
@@ -373,12 +395,13 @@ class HomeViewModel @Inject constructor(
                     }
                 }
 
-                val followedSongs = getFollowedArtistSongs(hideVideoSongs)
+                val artistScores = TasteProfile.artistScores(database, NotInterested.current(context).artists)
+                val followedSongs = getFollowedArtistSongs(hideVideoSongs, artistScores)
 
-                // Combine all sources and remove duplicates
-                val combined = (followedSongs + relatedSongs + forgotten + ytSimilarSongs)
-                    .distinctBy { it.id }
-                    .shuffled()
+                // Combine all sources and remove duplicates, favouring artists the user likes
+                val combined = TasteProfile.weightedOrder(
+                    (followedSongs + relatedSongs + forgotten + ytSimilarSongs).distinctBy { it.id },
+                ) { song -> 1.0 + (song.artists.maxOfOrNull { artistScores[it.id] ?: 0.0 } ?: 0.0) }
                     .take(20)
 
                 quickPicks.value = combined.ifEmpty { relatedSongs.shuffled().take(20) }
@@ -394,15 +417,14 @@ class HomeViewModel @Inject constructor(
 
     private suspend fun getCommunityPlaylists() {
         val fromTimeStamp = LocalDateTime.now().minusWeeks(4)
-        val followedSeeds = database.artistsBookmarkedByNameAsc().first()
-            .filter { it.artist.isYouTubeArtist }
-            .shuffled().take(2)
-        val artistSeeds = (
-            followedSeeds +
-                database.mostPlayedArtists(fromTimeStamp, limit = 10).first()
-                    .filter { it.artist.isYouTubeArtist }
-                    .shuffled().take(3)
-            ).distinctBy { it.id }
+        val artistScores = TasteProfile.artistScores(database, NotInterested.current(context).artists)
+        val artistSeeds = TasteProfile.pickWeighted(
+            (
+                database.artistsBookmarkedByNameAsc().first() +
+                    database.mostPlayedArtists(fromTimeStamp, limit = 10).first()
+                ).filter { it.artist.isYouTubeArtist }.distinctBy { it.id },
+            5,
+        ) { artistScores[it.id] ?: 0.0 }
         val songSeeds = database.mostPlayedSongs(fromTimeStamp = fromTimeStamp, limit = 5, offset = 0, toTimeStamp = LocalDateTime.now()).first()
             .shuffled().take(2)
 
@@ -487,6 +509,7 @@ class HomeViewModel @Inject constructor(
         val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
         val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)
         val fromTimeStamp = LocalDateTime.now().minusWeeks(2)
+        val blocked = NotInterested.current(context)
 
         // Phase 1: Load essential sections in parallel — local DB (fast) + YouTube home page.
         // isLoading is set to false as soon as all Phase 1 tasks complete so the UI appears quickly.
@@ -517,6 +540,7 @@ class HomeViewModel @Inject constructor(
                                 .filterExplicit(hideExplicit)
                                 .filterVideoSongs(hideVideoSongs)
                                 .filterYoutubeShorts(hideYoutubeShorts)
+                                .filterNot { blocked.blocks(it) }
                             if (filtered.isEmpty()) null else section.copy(items = filtered)
                         }
                     )
@@ -529,6 +553,7 @@ class HomeViewModel @Inject constructor(
             }
         }
 
+        applyBlocked(blocked)
         allLocalItems.value = (quickPicks.value.orEmpty() + forgottenFavorites.value.orEmpty() + keepListening.value.orEmpty())
             .filter { it is Song || it is Album }
         isLoading.value = false
@@ -548,15 +573,14 @@ class HomeViewModel @Inject constructor(
         }
 
         viewModelScope.launch(Dispatchers.IO) {
-            val followedArtistSeeds = database.artistsBookmarkedByNameAsc().first()
-                .filter { it.artist.isYouTubeArtist }
-                .shuffled().take(3)
-            val artistRecommendations = (
-                followedArtistSeeds +
-                    database.mostPlayedArtists(fromTimeStamp, limit = 15).first()
-                        .filter { it.artist.isYouTubeArtist }
-                        .shuffled().take(4)
-                ).distinctBy { it.id }
+            val artistScores = TasteProfile.artistScores(database, NotInterested.current(context).artists)
+            val artistRecommendations = TasteProfile.pickWeighted(
+                (
+                    database.artistsBookmarkedByNameAsc().first() +
+                        database.mostPlayedArtists(fromTimeStamp, limit = 15).first()
+                    ).filter { it.artist.isYouTubeArtist }.distinctBy { it.id },
+                6,
+            ) { artistScores[it.id] ?: 0.0 }
                 .mapNotNull {
                     val items = mutableListOf<YTItem>()
                     YouTube.artist(it.id).onSuccess { page ->
@@ -618,7 +642,12 @@ class HomeViewModel @Inject constructor(
                     )
                 }
 
-            similarRecommendations.value = (artistRecommendations + songRecommendations + albumRecommendations).shuffled()
+            // Sections seeded by what the user likes most come first, with some randomness so the home screen stays fresh
+            similarRecommendations.value =
+                TasteProfile.weightedOrder(artistRecommendations + songRecommendations + albumRecommendations) {
+                    1.0 + TasteProfile.seedScore(it.title, artistScores)
+                }
+            applyBlocked()
             allYtItems.value = similarRecommendations.value?.flatMap { it.items }.orEmpty() +
                     homePage.value?.sections?.flatMap { it.items }.orEmpty()
         }
@@ -767,6 +796,10 @@ class HomeViewModel @Inject constructor(
     }
 
     init {
+        // Hide things right away when the user taps "not interested" in a menu
+        viewModelScope.launch(Dispatchers.IO) {
+            NotInterested.flow(context).collect { applyBlocked(it) }
+        }
         viewModelScope.launch {
             kotlinx.coroutines.delay(20_000)
             isLoading.value = false

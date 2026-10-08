@@ -1017,4 +1017,11 @@
     <string name="onboarding_follow">Follow</string>
     <string name="onboarding_following">Following</string>
     <string name="onboarding_matching_taste">Matching your taste</string>
+    <string name="because_you_like">Because you like</string>
+    <string name="because_you_listened_to">Because you listened to</string>
+    <string name="not_interested_song">Not interested</string>
+    <string name="not_interested_song_desc">Stop recommending this song</string>
+    <string name="not_interested_artist">Don\'t recommend this artist</string>
+    <string name="not_interested_artist_desc">Hide this artist from recommendations</string>
+    <string name="not_interested_done">Got it, we\'ll show less like this</string>
 </resources>
