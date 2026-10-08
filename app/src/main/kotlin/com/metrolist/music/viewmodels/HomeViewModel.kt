@@ -278,7 +278,7 @@ class HomeViewModel @Inject constructor(
     private suspend fun getDailyDiscover() {
         val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
         val likedSongs = database.likedSongsByCreateDateAsc().first()
-            .ifEmpty { getFollowedArtistSongs(hideVideoSongs) }
+            .ifEmpty { getFollowedArtistSongs(hideVideoSongs, TasteProfile.artistScores(database)) }
         if (likedSongs.isEmpty()) return
 
         val seeds = likedSongs.shuffled().distinctBy { it.id }.take(5)
