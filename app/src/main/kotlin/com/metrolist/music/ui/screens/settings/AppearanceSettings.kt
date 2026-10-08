@@ -103,7 +103,6 @@ import com.metrolist.music.constants.ShowCachedPlaylistKey
 import com.metrolist.music.constants.ShowDownloadedPlaylistKey
 import com.metrolist.music.constants.ShowLikedPlaylistKey
 import com.metrolist.music.constants.ShowTopPlaylistKey
-import com.metrolist.music.constants.ShowUploadedPlaylistKey
 import com.metrolist.music.constants.SliderStyle
 import com.metrolist.music.constants.SliderStyleKey
 import com.metrolist.music.constants.SlimNavBarKey
@@ -349,11 +348,6 @@ fun AppearanceSettings(
     val (showCachedPlaylist, onShowCachedPlaylistChange) =
         rememberPreference(
             ShowCachedPlaylistKey,
-            defaultValue = true,
-        )
-    val (showUploadedPlaylist, onShowUploadedPlaylistChange) =
-        rememberPreference(
-            ShowUploadedPlaylistKey,
             defaultValue = true,
         )
 
@@ -876,7 +870,7 @@ fun AppearanceSettings(
                 when (it) {
                     PlayerButtonShape.ROUND -> "Round"
                     PlayerButtonShape.PILL -> "Pill"
-                    PlayerButtonShape.APPLE -> "Apple Music"
+                    PlayerButtonShape.APPLE -> "Soft"
                 }
             },
         )
@@ -1584,7 +1578,7 @@ fun AppearanceSettings(
                                 when (playerButtonShape) {
                                     PlayerButtonShape.ROUND -> "Round"
                                     PlayerButtonShape.PILL -> "Pill"
-                                    PlayerButtonShape.APPLE -> "Apple Music"
+                                    PlayerButtonShape.APPLE -> "Soft"
                                 },
                             )
                         },
@@ -2176,27 +2170,6 @@ fun AppearanceSettings(
                             )
                         },
                         onClick = { onShowCachedPlaylistChange(!showCachedPlaylist) },
-                    ),
-                    Material3SettingsItem(
-                        icon = painterResource(R.drawable.backup),
-                        title = { Text(stringResource(R.string.show_uploaded_playlist)) },
-                        trailingContent = {
-                            Switch(
-                                checked = showUploadedPlaylist,
-                                onCheckedChange = onShowUploadedPlaylistChange,
-                                thumbContent = {
-                                    Icon(
-                                        painter =
-                                            painterResource(
-                                                id = if (showUploadedPlaylist) R.drawable.check else R.drawable.close,
-                                            ),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(SwitchDefaults.IconSize),
-                                    )
-                                },
-                            )
-                        },
-                        onClick = { onShowUploadedPlaylistChange(!showUploadedPlaylist) },
                     ),
                 ),
         )

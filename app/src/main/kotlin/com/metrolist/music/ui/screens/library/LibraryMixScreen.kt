@@ -42,6 +42,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import com.metrolist.music.LocalDownloadUtil
+import com.metrolist.music.LocalDatabase
+import androidx.media3.exoplayer.offline.Download
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -73,7 +77,6 @@ import com.metrolist.music.constants.ShowCachedPlaylistKey
 import com.metrolist.music.constants.ShowDownloadedPlaylistKey
 import com.metrolist.music.constants.ShowLikedPlaylistKey
 import com.metrolist.music.constants.ShowTopPlaylistKey
-import com.metrolist.music.constants.ShowUploadedPlaylistKey
 import com.metrolist.music.constants.YtmSyncKey
 import com.metrolist.music.db.entities.Album
 import com.metrolist.music.db.entities.Artist
@@ -206,31 +209,55 @@ fun LibraryMixScreen(
             songThumbnails = emptyList(),
         )
 
-    val uploadedPlaylist =
-        Playlist(
-            playlist =
-                PlaylistEntity(
-                    id = UUID.randomUUID().toString(),
-                    name = stringResource(R.string.uploaded_playlist),
-                ),
-            songCount = 0,
-            songThumbnails = emptyList(),
-        )
-
     val (showLiked) = rememberPreference(ShowLikedPlaylistKey, true)
     val (showDownloaded) = rememberPreference(ShowDownloadedPlaylistKey, true)
     val (showTop) = rememberPreference(ShowTopPlaylistKey, true)
     val (showCached) = rememberPreference(ShowCachedPlaylistKey, true)
-    val (showUploaded) = rememberPreference(ShowUploadedPlaylistKey, true)
     
     val showLikedPlaylist = showLiked && matchesNormalizedQuery(normalizedQuery, likedPlaylist.playlist.name)
     val showDownloadedPlaylist =
         showDownloaded && matchesNormalizedQuery(normalizedQuery, downloadPlaylist.playlist.name)
     val showTopPlaylists = showTop && matchesNormalizedQuery(normalizedQuery, topPlaylist.playlist.name)
-    val showUploadedPlaylists =
-        showUploaded && matchesNormalizedQuery(normalizedQuery, uploadedPlaylist.playlist.name)
     val showCachedPlaylists = showCached && matchesNormalizedQuery(normalizedQuery, cachedPlaylist.playlist.name)
 
+
+    val database = LocalDatabase.current
+    val likedCount by remember { database.likedSongsCount() }.collectAsStateWithLifecycle(initialValue = 0)
+    val downloadUtil = LocalDownloadUtil.current
+    val downloads by downloadUtil.downloads.collectAsStateWithLifecycle()
+    val downloadedCount = remember(downloads) { downloads.values.count { it.state == Download.STATE_COMPLETED } }
+    val topCount = topSize.toString().toIntOrNull() ?: 50
+    val likedCardTitle = stringResource(R.string.library_liked_songs)
+    val downloadsCardTitle = stringResource(R.string.library_downloads)
+    val cachedCardTitle = stringResource(R.string.cached_playlist)
+    val topCardTitle = stringResource(R.string.my_top) + " $topSize"
+    val likedSubtitle = pluralStringResource(R.plurals.n_song, likedCount, likedCount)
+    val downloadsSubtitle = pluralStringResource(R.plurals.n_song, downloadedCount, downloadedCount)
+    val topSubtitle = pluralStringResource(R.plurals.n_song, topCount, topCount)
+
+    val quickCards =
+        buildList {
+            if (showLikedPlaylist) {
+                add(LibraryQuickCard("liked", likedCardTitle, likedSubtitle, R.drawable.favorite_border) {
+                    navController.navigate("auto_playlist/liked")
+                })
+            }
+            if (showDownloadedPlaylist) {
+                add(LibraryQuickCard("downloaded", downloadsCardTitle, downloadsSubtitle, R.drawable.download) {
+                    navController.navigate("auto_playlist/downloaded")
+                })
+            }
+            if (showCachedPlaylists) {
+                add(LibraryQuickCard("cached", cachedCardTitle, null, R.drawable.cached) {
+                    navController.navigate("cache_playlist/cached")
+                })
+            }
+            if (showTopPlaylists) {
+                add(LibraryQuickCard("top", topCardTitle, topSubtitle, R.drawable.trending_up) {
+                    navController.navigate("top_playlist/$topSize")
+                })
+            }
+        }
 
     val albums = viewModel.albums.collectAsStateWithLifecycle()
     val artist = viewModel.artists.collectAsStateWithLifecycle()
@@ -469,95 +496,12 @@ fun LibraryMixScreen(
                         headerContent()
                     }
 
-                    if (showLikedPlaylist) {
+                    if (quickCards.isNotEmpty()) {
                         item(
-                            key = "likedPlaylist",
-                            contentType = { CONTENT_TYPE_PLAYLIST },
+                            key = "quickCards",
+                            contentType = CONTENT_TYPE_HEADER,
                         ) {
-                            PlaylistListItem(
-                                playlist = likedPlaylist,
-                                autoPlaylist = true,
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .clickable {
-                                            navController.navigate("auto_playlist/liked")
-                                        }.animateItem(),
-                            )
-                        }
-                    }
-
-                    if (showDownloadedPlaylist) {
-                        item(
-                            key = "downloadedPlaylist",
-                            contentType = { CONTENT_TYPE_PLAYLIST },
-                        ) {
-                            PlaylistListItem(
-                                playlist = downloadPlaylist,
-                                autoPlaylist = true,
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .clickable {
-                                            navController.navigate("auto_playlist/downloaded")
-                                        }
-                                        .animateItem(),
-                            )
-                        }
-                    }
-
-                    if (showCachedPlaylists) {
-                        item(
-                            key = "cachedPlaylist",
-                            contentType = { CONTENT_TYPE_PLAYLIST },
-                        ) {
-                            PlaylistListItem(
-                                playlist = cachedPlaylist,
-                                autoPlaylist = true,
-                                modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        navController.navigate("cache_playlist/cached")
-                                    }
-                                    .animateItem(),
-                            )
-                        }
-                    }
-
-                    if (showTopPlaylists) {
-                        item(
-                            key = "TopPlaylist",
-                            contentType = { CONTENT_TYPE_PLAYLIST },
-                        ) {
-                            PlaylistListItem(
-                                playlist = topPlaylist,
-                                autoPlaylist = true,
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .clickable {
-                                            navController.navigate("top_playlist/$topSize")
-                                        }.animateItem(),
-                            )
-                        }
-                    }
-
-                    if (showUploadedPlaylists) {
-                        item(
-                            key = "uploadedPlaylist",
-                            contentType = { CONTENT_TYPE_PLAYLIST },
-                        ) {
-                            PlaylistListItem(
-                                playlist = uploadedPlaylist,
-                                autoPlaylist = true,
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .clickable {
-                                            navController.navigate("auto_playlist/uploaded")
-                                        }.animateItem(),
-                            )
+                            LibraryQuickCards(cards = quickCards, modifier = Modifier.animateItem())
                         }
                     }
 
@@ -762,7 +706,6 @@ fun LibraryMixScreen(
                         !showDownloadedPlaylist &&
                         !showCachedPlaylists &&
                         !showTopPlaylists &&
-                        !showUploadedPlaylists &&
                         searchQuery.isNotBlank()
                     ) {
                         item(key = "empty_search_result") {
@@ -797,108 +740,13 @@ fun LibraryMixScreen(
                         headerContent()
                     }
 
-                    if (showLikedPlaylist) {
+                    if (quickCards.isNotEmpty()) {
                         item(
-                            key = "likedPlaylist",
-                            contentType = { CONTENT_TYPE_PLAYLIST },
+                            key = "quickCards",
+                            span = { GridItemSpan(maxLineSpan) },
+                            contentType = CONTENT_TYPE_HEADER,
                         ) {
-                            PlaylistGridItem(
-                                playlist = likedPlaylist,
-                                fillMaxWidth = true,
-                                autoPlaylist = true,
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .combinedClickable(
-                                            onClick = {
-                                                navController.navigate("auto_playlist/liked")
-                                            },
-                                        ).animateItem(),
-                            )
-                        }
-                    }
-
-                    if (showDownloadedPlaylist) {
-                        item(
-                            key = "downloadedPlaylist",
-                            contentType = { CONTENT_TYPE_PLAYLIST },
-                        ) {
-                            PlaylistGridItem(
-                                playlist = downloadPlaylist,
-                                fillMaxWidth = true,
-                                autoPlaylist = true,
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .combinedClickable(
-                                            onClick = {
-                                                navController.navigate("auto_playlist/downloaded")
-                                            },
-                                        )
-                                        .animateItem(),
-                            )
-                        }
-                    }
-
-                    if (showCachedPlaylists) {
-                        item(
-                            key = "cachedPlaylist",
-                            contentType = { CONTENT_TYPE_PLAYLIST },
-                        ) {
-                            PlaylistGridItem(
-                                playlist = cachedPlaylist,
-                                fillMaxWidth = true,
-                                autoPlaylist = true,
-                                modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .combinedClickable(
-                                        onClick = {
-                                            navController.navigate("cache_playlist/cached")
-                                        },
-                                    )
-                                    .animateItem(),
-                            )
-                        }
-                    }
-
-                    if (showTopPlaylists) {
-                        item(
-                            key = "TopPlaylist",
-                            contentType = { CONTENT_TYPE_PLAYLIST },
-                        ) {
-                            PlaylistGridItem(
-                                playlist = topPlaylist,
-                                fillMaxWidth = true,
-                                autoPlaylist = true,
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .combinedClickable(
-                                            onClick = {
-                                                navController.navigate("top_playlist/$topSize")
-                                            },
-                                        ).animateItem(),
-                            )
-                        }
-                    }
-
-                    if (showUploadedPlaylists) {
-                        item(
-                            key = "uploadedPlaylist",
-                            contentType = { CONTENT_TYPE_PLAYLIST },
-                        ) {
-                            PlaylistGridItem(
-                                playlist = uploadedPlaylist,
-                                fillMaxWidth = true,
-                                autoPlaylist = true,
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .clickable {
-                                            navController.navigate("auto_playlist/uploaded")
-                                        }.animateItem(),
-                            )
+                            LibraryQuickCards(cards = quickCards, modifier = Modifier.animateItem())
                         }
                     }
 
@@ -1038,7 +886,6 @@ fun LibraryMixScreen(
                         !showDownloadedPlaylist &&
                         !showCachedPlaylists &&
                         !showTopPlaylists &&
-                        !showUploadedPlaylists &&
                         searchQuery.isNotBlank()
                     ) {
                         item(

@@ -22,8 +22,21 @@
     <string name="weekly_most_playlist_name">Weekly Most</string>
     <string name="monthly_most_playlist_name">Monthly Most</string>
     <string name="cached_playlist">Cached</string>
-    <string name="uploaded_playlist">Uploaded</string>
+    <string name="stats_total_time_listened">Total Time Listened</string>
+    <string name="stats_total_plays">Total Plays</string>
+    <string name="stats_unique_songs">Unique Songs</string>
+    <string name="stats_unique_artists">Unique Artists</string>
+    <string name="stats_daily_average">Daily average</string>
+    <string name="stats_monthly_average">Monthly average</string>
+    <string name="stats_minutes_short">%1$d min</string>
+    <string name="stats_breakdown">Breakdown</string>
+    <string name="stats_favorite_artist">Favorite artist</string>
+    <string name="stats_favorite_song">Favorite song</string>
+    <string name="library_liked_songs">Liked Songs</string>
+    <string name="library_downloads">Downloads</string>
     <string name="filter_uploaded">Uploaded</string>
+    <string name="show_uploaded_playlist">Show Uploaded playlist</string>
+    <string name="uploaded_playlist">Uploaded</string>
     <string name="sync_playlist">Sync playlist</string>
     <string name="sync_disabled">Sync disabled</string>
     <string name="allows_for_sync_witch_youtube">NOTE: This option enables syncing with YouTube Music and CANNOT be changed later</string>
@@ -154,7 +167,6 @@
     <string name="show_cached_playlist">Show Cached playlist</string>
     <string name="enable_song_cache">Enable song cache</string>
     <string name="enable_song_cache_desc">Automatically cache songs for faster future playback</string>
-    <string name="show_uploaded_playlist">Show Uploaded playlist</string>
     <string name="show_most_stats_playlists">Show Weekly and Monthly Most playlists</string>
     <string name="show_most_stats_playlists_desc">Create and show stats-based Most playlists in Stats and Library</string>
     <string name="shuffle_playlist_first">Shuffle playlist or album first</string>
@@ -786,6 +798,7 @@
     <string name="importing_playlist">Importing playlist…</string>
 
     <string name="recently_converted">Recently converted</string>
+    <string name="recently_played">Recently Played</string>
     <string name="column_label">Column %d</string>
 
     <string name="discord_connect_description">Sign in with Discord to share what you\'re listening to</string>

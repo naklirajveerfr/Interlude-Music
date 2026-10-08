@@ -31,6 +31,7 @@ import com.metrolist.music.db.entities.AlbumArtistMap
 import com.metrolist.music.db.entities.AlbumEntity
 import com.metrolist.music.db.entities.AlbumWithSongs
 import com.metrolist.music.db.entities.Artist
+import com.metrolist.music.db.entities.DailyListening
 import com.metrolist.music.db.entities.ArtistEntity
 import com.metrolist.music.db.entities.Event
 import com.metrolist.music.db.entities.EventWithSong
@@ -429,6 +430,20 @@ interface DatabaseDao {
         toTimeStamp: LocalDateTime? = LocalDateTime.now(),
     ): Flow<List<SongWithStats>>
 
+    @Query(
+        """
+        SELECT strftime('%Y-%m-%d', timestamp / 1000, 'unixepoch') AS day, SUM(playTime) AS playTime
+        FROM event
+        WHERE timestamp > :fromTimeStamp AND timestamp <= :toTimeStamp
+        GROUP BY day
+        ORDER BY day
+        """,
+    )
+    fun dailyListeningTime(
+        fromTimeStamp: LocalDateTime,
+        toTimeStamp: LocalDateTime,
+    ): Flow<List<DailyListening>>
+
     // Time Transfer
     @Query("UPDATE event SET songId = :toSongId WHERE songId = :fromSongId")
     suspend fun transferEvents(fromSongId: String, toSongId: String): Int
@@ -519,6 +534,22 @@ interface DatabaseDao {
         offset: Int = 0,
         toTimeStamp: LocalDateTime? = LocalDateTime.now(),
     ): Flow<List<Song>>
+
+    @Transaction
+    @Query(
+        """
+        SELECT song.*
+        FROM song
+        JOIN (SELECT songId, MAX(timestamp) AS lastPlayed
+              FROM event
+              GROUP BY songId
+              ORDER BY lastPlayed DESC
+              LIMIT :limit) AS recent
+        ON song.id = recent.songId
+        ORDER BY recent.lastPlayed DESC
+        """,
+    )
+    fun recentlyPlayedSongs(limit: Int = 10): Flow<List<Song>>
 
     @Transaction
     @SuppressWarnings(RoomWarnings.QUERY_MISMATCH)
@@ -1683,6 +1714,9 @@ interface DatabaseDao {
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     fun insert(event: Event)
+
+    @Query("UPDATE event SET playTime = :playTime WHERE songId = :songId AND timestamp = :timestamp")
+    fun updateEventPlayTime(songId: String, timestamp: LocalDateTime, playTime: Long)
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     fun insert(map: RelatedSongMap)

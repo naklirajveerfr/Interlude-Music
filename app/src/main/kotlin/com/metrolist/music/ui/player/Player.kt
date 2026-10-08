@@ -1775,7 +1775,7 @@ fun BottomSheetPlayer(
                                     modifier = Modifier.size(72.dp),
                                 ) {
                                     Icon(
-                                        painter = painterResource(R.drawable.skip_previous),
+                                        painter = painterResource(R.drawable.nm_skip_previous),
                                         contentDescription = null,
                                         tint = shapeTint,
                                         modifier = Modifier.size(44.dp),
@@ -1786,7 +1786,14 @@ fun BottomSheetPlayer(
                                     modifier = Modifier.size(96.dp).focusRequester(focusRequester),
                                 ) {
                                     Icon(
-                                        painter = painterResource(playIconRes),
+                                        painter =
+                                            painterResource(
+                                                when (playIconRes) {
+                                                    R.drawable.pause -> R.drawable.nm_pause
+                                                    R.drawable.play -> R.drawable.nm_play_arrow
+                                                    else -> playIconRes
+                                                },
+                                            ),
                                         contentDescription = null,
                                         tint = shapeTint,
                                         modifier = Modifier.size(64.dp),
@@ -1798,7 +1805,7 @@ fun BottomSheetPlayer(
                                     modifier = Modifier.size(72.dp),
                                 ) {
                                     Icon(
-                                        painter = painterResource(R.drawable.skip_next),
+                                        painter = painterResource(R.drawable.nm_skip_next),
                                         contentDescription = null,
                                         tint = shapeTint,
                                         modifier = Modifier.size(44.dp),
@@ -1859,6 +1866,8 @@ fun BottomSheetPlayer(
                         }
                     }
                     } else {
+                        val isAppleShape = playerButtonShape == PlayerButtonShape.APPLE
+                        val appleTint = if (playerButtonsStyle == PlayerButtonsStyle.DEFAULT) TextBackgroundColor else textButtonColor
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier =
@@ -1892,12 +1901,12 @@ fun BottomSheetPlayer(
 
                             Box(modifier = Modifier.weight(1f)) {
                                 ResizableIconButton(
-                                    icon = R.drawable.skip_previous,
+                                    icon = if (isAppleShape) R.drawable.nm_skip_previous else R.drawable.skip_previous,
                                     enabled = canSkipPrevious && !isListenTogetherGuest,
-                                    color = TextBackgroundColor,
+                                    color = if (isAppleShape) appleTint else TextBackgroundColor,
                                     modifier =
                                         Modifier
-                                            .size(32.dp)
+                                            .size(if (isAppleShape) 44.dp else 32.dp)
                                             .align(Alignment.Center)
                                             .alpha(if (isListenTogetherGuest) 0.5f else 1f),
                                     onClick = playerConnection::seekToPrevious,
@@ -1909,9 +1918,9 @@ fun BottomSheetPlayer(
                             Box(
                                 modifier =
                                     Modifier
-                                        .size(72.dp)
+                                        .size(if (isAppleShape) 96.dp else 72.dp)
                                         .clip(RoundedCornerShape(playPauseRoundness))
-                                        .background(textButtonColor)
+                                        .then(if (isAppleShape) Modifier else Modifier.background(textButtonColor))
                                         .clickable {
                                             if (isListenTogetherGuest) {
                                                 playerConnection.toggleMute()
@@ -1942,17 +1951,17 @@ fun BottomSheetPlayer(
                                             ) {
                                                 R.drawable.replay
                                             } else if (effectiveIsPlaying) {
-                                                R.drawable.pause
+                                                if (isAppleShape) R.drawable.nm_pause else R.drawable.pause
                                             } else {
-                                                R.drawable.play
+                                                if (isAppleShape) R.drawable.nm_play_arrow else R.drawable.play
                                             },
                                         ),
                                     contentDescription = null,
-                                    colorFilter = ColorFilter.tint(iconButtonColor),
+                                    colorFilter = ColorFilter.tint(if (isAppleShape) appleTint else iconButtonColor),
                                     modifier =
                                         Modifier
                                             .align(Alignment.Center)
-                                            .size(36.dp),
+                                            .size(if (isAppleShape) 64.dp else 36.dp),
                                 )
                             }
 
@@ -1960,12 +1969,12 @@ fun BottomSheetPlayer(
 
                             Box(modifier = Modifier.weight(1f)) {
                                 ResizableIconButton(
-                                    icon = R.drawable.skip_next,
+                                    icon = if (isAppleShape) R.drawable.nm_skip_next else R.drawable.skip_next,
                                     enabled = canSkipNext && !isListenTogetherGuest,
-                                    color = TextBackgroundColor,
+                                    color = if (isAppleShape) appleTint else TextBackgroundColor,
                                     modifier =
                                         Modifier
-                                            .size(32.dp)
+                                            .size(if (isAppleShape) 44.dp else 32.dp)
                                             .align(Alignment.Center)
                                             .alpha(if (isListenTogetherGuest) 0.5f else 1f),
                                     onClick = playerConnection::seekToNext,
