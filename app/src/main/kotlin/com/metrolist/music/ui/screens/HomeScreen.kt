@@ -199,6 +199,10 @@ sealed class HomeSection(
         val index: Int,
     ) : HomeSection("similar_recommendation_$index", 10)
 
+    data class GenreRecommendation(
+        val index: Int,
+    ) : HomeSection("genre_recommendation_$index", 10)
+
     data class HomePageSection(
         val index: Int,
     ) : HomeSection("home_page_section_$index", 10)
@@ -753,6 +757,7 @@ fun HomeScreen(
     val forgottenFavorites by viewModel.forgottenFavorites.collectAsStateWithLifecycle()
     val keepListening by viewModel.keepListening.collectAsStateWithLifecycle()
     val similarRecommendations by viewModel.similarRecommendations.collectAsStateWithLifecycle()
+    val genreRecommendations by viewModel.genreRecommendations.collectAsStateWithLifecycle()
     val accountPlaylists by viewModel.accountPlaylists.collectAsStateWithLifecycle()
     val homePage by viewModel.homePage.collectAsStateWithLifecycle()
     val explorePage by viewModel.explorePage.collectAsStateWithLifecycle()
@@ -1126,6 +1131,7 @@ fun HomeScreen(
             forgottenFavorites,
             communityPlaylists,
             similarRecommendations,
+            genreRecommendations,
             homePage?.sections,
             explorePage?.moodAndGenres,
         ) {
@@ -1141,6 +1147,9 @@ fun HomeScreen(
             if (!chipActive && forgottenFavorites?.isNotEmpty() == true) list.add(HomeSection.ForgottenFavorites)
 
             if (!chipActive) {
+                genreRecommendations?.indices?.forEach { i ->
+                    list.add(HomeSection.GenreRecommendation(i))
+                }
                 similarRecommendations?.indices?.forEach { i ->
                     list.add(HomeSection.SimilarRecommendation(i))
                 }
@@ -1219,6 +1228,7 @@ fun HomeScreen(
 
                 list.sortedByDescending { section ->
                     when (section) {
+                        is HomeSection.GenreRecommendation -> 35 - section.index
                         is HomeSection.SimilarRecommendation -> 30 - section.index
                         is HomeSection.HomePageSection -> 20 - section.index
                         else -> defaultOrder[section] ?: 0
@@ -2166,6 +2176,31 @@ fun HomeScreen(
                                                 .asPaddingValues(),
                                     ) {
                                         items(recommendation.items.distinctBy { it.id }, key = { "home_similar_${it.id}" }) { item ->
+                                            ytGridItem(item)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        is HomeSection.GenreRecommendation -> {
+                            val recommendation = genreRecommendations?.getOrNull(section.index)
+                            recommendation?.let {
+                                item(key = "genre_title_${section.index}") {
+                                    NavigationTitle(
+                                        label = stringResource(R.string.because_you_like),
+                                        title = recommendation.genre,
+                                    )
+                                }
+
+                                item(key = "genre_list_${section.index}") {
+                                    LazyRow(
+                                        contentPadding =
+                                            WindowInsets.systemBars
+                                                .only(WindowInsetsSides.Horizontal)
+                                                .asPaddingValues(),
+                                    ) {
+                                        items(recommendation.items.distinctBy { it.id }, key = { "home_genre_${section.index}_${it.id}" }) { item ->
                                             ytGridItem(item)
                                         }
                                     }

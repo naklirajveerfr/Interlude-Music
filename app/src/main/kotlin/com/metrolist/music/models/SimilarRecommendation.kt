@@ -12,3 +12,9 @@ data class SimilarRecommendation(
     val title: LocalItem,
     val items: List<YTItem>,
 )
+
+/** Songs from YouTube for a genre the user listens to a lot, e.g. "Hip-Hop". */
+data class GenreRecommendation(
+    val genre: String,
+    val items: List<YTItem>,
+)

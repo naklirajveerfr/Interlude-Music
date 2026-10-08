@@ -16,6 +16,7 @@ import java.time.ZoneOffset
 
 val NotInterestedSongsKey = stringSetPreferencesKey("notInterestedSongs")
 val NotInterestedArtistsKey = stringSetPreferencesKey("notInterestedArtists")
+val ArtistGenresKey = stringPreferencesKey("artistGenres")
 val EnableHighRefreshRateKey = booleanPreferencesKey("enableHighRefreshRate")
 val EnableLandscapeScalingKey = booleanPreferencesKey("enableLandscapeScaling")
 val DynamicThemeKey = booleanPreferencesKey("dynamicTheme")

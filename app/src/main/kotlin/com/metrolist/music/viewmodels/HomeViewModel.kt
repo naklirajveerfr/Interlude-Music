@@ -40,10 +40,12 @@ import com.metrolist.music.db.entities.Song
 import com.metrolist.music.db.entities.SpeedDialItem
 import com.metrolist.music.extensions.filterVideoSongs
 import com.metrolist.music.extensions.toEnum
+import com.metrolist.music.models.GenreRecommendation
 import com.metrolist.music.models.SimilarRecommendation
 import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.ui.screens.wrapped.WrappedAudioService
 import com.metrolist.music.ui.screens.wrapped.WrappedManager
+import com.metrolist.music.utils.GenreTaste
 import com.metrolist.music.utils.NetworkConnectivityObserver
 import com.metrolist.music.utils.NotInterested
 import com.metrolist.music.utils.SyncUtils
@@ -115,6 +117,7 @@ class HomeViewModel @Inject constructor(
     val forgottenFavorites = MutableStateFlow<List<Song>?>(null)
     val keepListening = MutableStateFlow<List<LocalItem>?>(null)
     val similarRecommendations = MutableStateFlow<List<SimilarRecommendation>?>(null)
+    val genreRecommendations = MutableStateFlow<List<GenreRecommendation>?>(null)
     val accountPlaylists = MutableStateFlow<List<PlaylistItem>?>(null)
     val homePage = MutableStateFlow<HomePage?>(null)
     val explorePage = MutableStateFlow<ExplorePage?>(null)
@@ -289,6 +292,10 @@ class HomeViewModel @Inject constructor(
                 ?.filterNot { b.blocks(it.title) }
                 ?.map { rec -> rec.copy(items = rec.items.filterNot { b.blocks(it) }) }
                 ?.filter { it.items.isNotEmpty() }
+        genreRecommendations.value =
+            genreRecommendations.value
+                ?.map { rec -> rec.copy(items = rec.items.filterNot { b.blocks(it) }) }
+                ?.filter { it.items.isNotEmpty() }
     }
 
     private suspend fun getDailyDiscover() {
@@ -412,6 +419,42 @@ class HomeViewModel @Inject constructor(
                     quickPicks.value = database.getRelatedSongs(song.id).first().filterVideoSongs(hideVideoSongs).shuffled().take(20)
                 }
             }
+        }
+    }
+
+    /** Songs for the one or two genres the user listens to most, found by searching YouTube for the genre. */
+    private suspend fun getGenreRecommendations() {
+        try {
+            val hideExplicit = context.dataStore.get(HideExplicitKey, false)
+            val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
+            val blocked = NotInterested.current(context)
+            val artistScores = TasteProfile.artistScores(database, blocked.artists)
+            if (artistScores.isEmpty()) return
+
+            val topArtistIds = artistScores.entries.sortedByDescending { it.value }.take(12).map { it.key }
+            val topGenres =
+                GenreTaste.genreScores(artistScores, GenreTaste.genresFor(context, topArtistIds))
+                    .take(2)
+                    .map { it.first }
+            if (topGenres.isEmpty()) return
+
+            val knownArtists = topArtistIds.toSet()
+            genreRecommendations.value =
+                topGenres.mapNotNull { genre ->
+                    val items =
+                        YouTube.search("$genre songs", YouTube.SearchFilter.FILTER_SONG).getOrNull()?.items
+                            .orEmpty()
+                            .filterExplicit(hideExplicit)
+                            .filterVideoSongs(hideVideoSongs)
+                            .filterNot { blocked.blocks(it) }
+                            .shuffled()
+                            // Songs by artists the user doesn't already listen to go first, so this section is for discovery
+                            .sortedBy { item -> if (item is SongItem && item.artists.all { artist -> artist.id?.let { it in knownArtists } == true }) 1 else 0 }
+                            .take(12)
+                    if (items.isEmpty()) null else GenreRecommendation(genre, items)
+                }
+        } catch (e: Exception) {
+            reportException(e)
         }
     }
 
@@ -562,6 +605,8 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) { getDailyDiscover() }
 
         viewModelScope.launch(Dispatchers.IO) { getCommunityPlaylists() }
+
+        viewModelScope.launch(Dispatchers.IO) { getGenreRecommendations() }
 
         viewModelScope.launch(Dispatchers.IO) {
             YouTube.explore().onSuccess { page ->
