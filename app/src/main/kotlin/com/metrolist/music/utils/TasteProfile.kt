@@ -6,6 +6,10 @@
 package com.metrolist.music.utils
 
 import com.metrolist.music.db.MusicDatabase
+import com.metrolist.music.db.entities.Album
+import com.metrolist.music.db.entities.Artist
+import com.metrolist.music.db.entities.LocalItem
+import com.metrolist.music.db.entities.Song
 import java.time.Duration
 import java.time.LocalDateTime
 import kotlin.math.pow
@@ -26,8 +30,11 @@ object TasteProfile {
     private const val COMPLETE_FRACTION = 0.8
     private const val UNKNOWN_DURATION_MS = 180_000L
 
-    /** Artist id to score. Only artists with a positive score are returned. */
-    suspend fun artistScores(database: MusicDatabase): Map<String, Double> {
+    /** Artist id to score. Only artists with a positive score are returned; [excludedArtists] never are. */
+    suspend fun artistScores(
+        database: MusicDatabase,
+        excludedArtists: Set<String> = emptySet(),
+    ): Map<String, Double> {
         val now = LocalDateTime.now()
         val scores = HashMap<String, Double>()
 
@@ -53,8 +60,20 @@ object TasteProfile {
             scores.merge(artist.id, FOLLOW_BONUS, Double::plus)
         }
 
-        return scores.filterValues { it > 0.0 }
+        return scores.filter { (artistId, score) -> score > 0.0 && artistId !in excludedArtists }
     }
+
+    /** Taste score of a recommendation seed (an artist, song or album), used to order home sections. */
+    fun seedScore(
+        seed: LocalItem,
+        artistScores: Map<String, Double>,
+    ): Double =
+        when (seed) {
+            is Artist -> artistScores[seed.id] ?: 0.0
+            is Song -> seed.artists.maxOfOrNull { artistScores[it.id] ?: 0.0 } ?: 0.0
+            is Album -> seed.artists.maxOfOrNull { artistScores[it.id] ?: 0.0 } ?: 0.0
+            else -> 0.0
+        }
 
     /** Random order where items with a higher weight tend to come first. Non-positive weights come last. */
     fun <T> weightedOrder(

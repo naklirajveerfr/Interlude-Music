@@ -2112,7 +2112,10 @@ fun HomeScreen(
                             recommendation?.let {
                                 item(key = "similar_to_title_${section.index}") {
                                     NavigationTitle(
-                                        label = stringResource(R.string.similar_to),
+                                        label =
+                                            stringResource(
+                                                if (recommendation.title is Artist) R.string.because_you_like else R.string.because_you_listened_to,
+                                            ),
                                         title = recommendation.title.title,
                                         thumbnail =
                                             recommendation.title.thumbnailUrl?.let { thumbnailUrl ->

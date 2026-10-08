@@ -10,9 +10,12 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 
+val NotInterestedSongsKey = stringSetPreferencesKey("notInterestedSongs")
+val NotInterestedArtistsKey = stringSetPreferencesKey("notInterestedArtists")
 val EnableHighRefreshRateKey = booleanPreferencesKey("enableHighRefreshRate")
 val EnableLandscapeScalingKey = booleanPreferencesKey("enableLandscapeScaling")
 val DynamicThemeKey = booleanPreferencesKey("dynamicTheme")

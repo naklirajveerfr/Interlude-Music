@@ -8,6 +8,7 @@ package com.metrolist.music.ui.menu
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.res.Configuration
+import android.widget.Toast
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -80,6 +81,7 @@ import com.metrolist.music.ui.component.ListDialog
 import com.metrolist.music.ui.component.LocalBottomSheetPageState
 import com.metrolist.music.ui.component.Material3MenuGroup
 import com.metrolist.music.ui.component.Material3MenuItemData
+import com.metrolist.music.utils.NotInterested
 import com.metrolist.music.ui.component.NewAction
 import com.metrolist.music.ui.component.NewActionGrid
 import com.metrolist.music.ui.utils.ShowMediaInfo
@@ -412,7 +414,41 @@ fun YouTubeSongMenu(
                                 onDismiss()
                             }
                         )
-                    } else null
+                    } else null,
+                    if (!isGuest) {
+                        Material3MenuItemData(
+                            title = { Text(text = stringResource(R.string.not_interested_song)) },
+                            description = { Text(text = stringResource(R.string.not_interested_song_desc)) },
+                            icon = {
+                                Icon(
+                                    painter = painterResource(R.drawable.close),
+                                    contentDescription = null,
+                                )
+                            },
+                            onClick = {
+                                NotInterested.blockSong(context, song.id)
+                                Toast.makeText(context, R.string.not_interested_done, Toast.LENGTH_SHORT).show()
+                                onDismiss()
+                            }
+                        )
+                    } else null,
+                    song.artists.firstOrNull()?.id?.takeIf { !isGuest }?.let { artistId ->
+                        Material3MenuItemData(
+                            title = { Text(text = stringResource(R.string.not_interested_artist)) },
+                            description = { Text(text = stringResource(R.string.not_interested_artist_desc)) },
+                            icon = {
+                                Icon(
+                                    painter = painterResource(R.drawable.close),
+                                    contentDescription = null,
+                                )
+                            },
+                            onClick = {
+                                NotInterested.blockArtist(context, artistId)
+                                Toast.makeText(context, R.string.not_interested_done, Toast.LENGTH_SHORT).show()
+                                onDismiss()
+                            }
+                        )
+                    }
                 )
             )
         }

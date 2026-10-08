@@ -89,6 +89,7 @@ import com.metrolist.music.ui.component.ListDialog
 import com.metrolist.music.ui.component.LocalBottomSheetPageState
 import com.metrolist.music.ui.component.Material3MenuGroup
 import com.metrolist.music.ui.component.Material3MenuItemData
+import com.metrolist.music.utils.NotInterested
 import com.metrolist.music.ui.component.NewAction
 import com.metrolist.music.ui.component.NewActionGrid
 import com.metrolist.music.ui.component.SongListItem
@@ -649,6 +650,42 @@ fun SongMenu(
                             )
                         } else {
                             null
+                        },
+                        if (!isGuest) {
+                            Material3MenuItemData(
+                                title = { Text(text = stringResource(R.string.not_interested_song)) },
+                                description = { Text(text = stringResource(R.string.not_interested_song_desc)) },
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.close),
+                                        contentDescription = null,
+                                    )
+                                },
+                                onClick = {
+                                    NotInterested.blockSong(context, song.id)
+                                    Toast.makeText(context, R.string.not_interested_done, Toast.LENGTH_SHORT).show()
+                                    onDismiss()
+                                },
+                            )
+                        } else {
+                            null
+                        },
+                        song.orderedArtists.firstOrNull()?.takeIf { !isGuest }?.let { artist ->
+                            Material3MenuItemData(
+                                title = { Text(text = stringResource(R.string.not_interested_artist)) },
+                                description = { Text(text = stringResource(R.string.not_interested_artist_desc)) },
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.close),
+                                        contentDescription = null,
+                                    )
+                                },
+                                onClick = {
+                                    NotInterested.blockArtist(context, artist.id)
+                                    Toast.makeText(context, R.string.not_interested_done, Toast.LENGTH_SHORT).show()
+                                    onDismiss()
+                                },
+                            )
                         },
                     ),
             )
