@@ -32,6 +32,8 @@ import com.metrolist.music.db.entities.AlbumEntity
 import com.metrolist.music.db.entities.AlbumWithSongs
 import com.metrolist.music.db.entities.Artist
 import com.metrolist.music.db.entities.ArtistEntity
+import com.metrolist.music.db.entities.ArtistLikeCount
+import com.metrolist.music.db.entities.ArtistListenEvent
 import com.metrolist.music.db.entities.Event
 import com.metrolist.music.db.entities.EventWithSong
 import com.metrolist.music.db.entities.FormatEntity
@@ -598,6 +600,28 @@ interface DatabaseDao {
         offset: Int = 0,
         toTimeStamp: LocalDateTime? = LocalDateTime.now(),
     ): Flow<List<Album>>
+
+    @Query(
+        """
+        SELECT sam.artistId AS artistId, e.timestamp AS timestamp, e.playTime AS playTime, s.duration AS duration
+        FROM event e
+                 JOIN song s ON s.id = e.songId
+                 JOIN song_artist_map sam ON sam.songId = e.songId
+        WHERE e.timestamp > :fromTimeStamp
+    """,
+    )
+    suspend fun artistListenEvents(fromTimeStamp: LocalDateTime): List<ArtistListenEvent>
+
+    @Query(
+        """
+        SELECT sam.artistId AS artistId, COUNT(1) AS likedCount
+        FROM song_artist_map sam
+                 JOIN song s ON s.id = sam.songId
+        WHERE s.liked = 1
+        GROUP BY sam.artistId
+    """,
+    )
+    suspend fun likedSongArtistCounts(): List<ArtistLikeCount>
 
     @Query("SELECT SUM(playTime) FROM event WHERE timestamp >= :fromTimeStamp AND timestamp <= :toTimeStamp")
     fun getTotalPlayTimeInRange(fromTimeStamp: LocalDateTime, toTimeStamp: LocalDateTime): Flow<Long?>

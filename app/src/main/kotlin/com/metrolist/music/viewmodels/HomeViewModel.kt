@@ -46,6 +46,7 @@ import com.metrolist.music.ui.screens.wrapped.WrappedAudioService
 import com.metrolist.music.ui.screens.wrapped.WrappedManager
 import com.metrolist.music.utils.NetworkConnectivityObserver
 import com.metrolist.music.utils.SyncUtils
+import com.metrolist.music.utils.TasteProfile
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.safeDataStoreEdit
 import com.metrolist.music.utils.get
@@ -323,11 +324,15 @@ class HomeViewModel @Inject constructor(
         dailyDiscover.value = items.toList().distinctBy { it.recommendation.id }.shuffled()
     }
 
-    /** Top songs of a few random followed artists, so quick picks reflect them even with no listening history. */
-    private suspend fun getFollowedArtistSongs(hideVideoSongs: Boolean): List<Song> {
-        val seeds = database.bookmarkedArtistEntitiesByNameAsc()
-            .filter { it.isYouTubeArtist }
-            .shuffled().take(3)
+    /** Top songs of a few followed artists (favouring the ones listened to most), so quick picks reflect them even with no listening history. */
+    private suspend fun getFollowedArtistSongs(
+        hideVideoSongs: Boolean,
+        artistScores: Map<String, Double>,
+    ): List<Song> {
+        val seeds = TasteProfile.pickWeighted(
+            database.bookmarkedArtistEntitiesByNameAsc().filter { it.isYouTubeArtist },
+            3,
+        ) { artistScores[it.id] ?: 0.0 }
 
         return coroutineScope {
             seeds.map { seed ->
@@ -373,12 +378,13 @@ class HomeViewModel @Inject constructor(
                     }
                 }
 
-                val followedSongs = getFollowedArtistSongs(hideVideoSongs)
+                val artistScores = TasteProfile.artistScores(database)
+                val followedSongs = getFollowedArtistSongs(hideVideoSongs, artistScores)
 
-                // Combine all sources and remove duplicates
-                val combined = (followedSongs + relatedSongs + forgotten + ytSimilarSongs)
-                    .distinctBy { it.id }
-                    .shuffled()
+                // Combine all sources and remove duplicates, favouring artists the user likes
+                val combined = TasteProfile.weightedOrder(
+                    (followedSongs + relatedSongs + forgotten + ytSimilarSongs).distinctBy { it.id },
+                ) { song -> 1.0 + (song.artists.maxOfOrNull { artistScores[it.id] ?: 0.0 } ?: 0.0) }
                     .take(20)
 
                 quickPicks.value = combined.ifEmpty { relatedSongs.shuffled().take(20) }
@@ -394,15 +400,14 @@ class HomeViewModel @Inject constructor(
 
     private suspend fun getCommunityPlaylists() {
         val fromTimeStamp = LocalDateTime.now().minusWeeks(4)
-        val followedSeeds = database.artistsBookmarkedByNameAsc().first()
-            .filter { it.artist.isYouTubeArtist }
-            .shuffled().take(2)
-        val artistSeeds = (
-            followedSeeds +
-                database.mostPlayedArtists(fromTimeStamp, limit = 10).first()
-                    .filter { it.artist.isYouTubeArtist }
-                    .shuffled().take(3)
-            ).distinctBy { it.id }
+        val artistScores = TasteProfile.artistScores(database)
+        val artistSeeds = TasteProfile.pickWeighted(
+            (
+                database.artistsBookmarkedByNameAsc().first() +
+                    database.mostPlayedArtists(fromTimeStamp, limit = 10).first()
+                ).filter { it.artist.isYouTubeArtist }.distinctBy { it.id },
+            5,
+        ) { artistScores[it.id] ?: 0.0 }
         val songSeeds = database.mostPlayedSongs(fromTimeStamp = fromTimeStamp, limit = 5, offset = 0, toTimeStamp = LocalDateTime.now()).first()
             .shuffled().take(2)
 
@@ -548,15 +553,14 @@ class HomeViewModel @Inject constructor(
         }
 
         viewModelScope.launch(Dispatchers.IO) {
-            val followedArtistSeeds = database.artistsBookmarkedByNameAsc().first()
-                .filter { it.artist.isYouTubeArtist }
-                .shuffled().take(3)
-            val artistRecommendations = (
-                followedArtistSeeds +
-                    database.mostPlayedArtists(fromTimeStamp, limit = 15).first()
-                        .filter { it.artist.isYouTubeArtist }
-                        .shuffled().take(4)
-                ).distinctBy { it.id }
+            val artistScores = TasteProfile.artistScores(database)
+            val artistRecommendations = TasteProfile.pickWeighted(
+                (
+                    database.artistsBookmarkedByNameAsc().first() +
+                        database.mostPlayedArtists(fromTimeStamp, limit = 15).first()
+                    ).filter { it.artist.isYouTubeArtist }.distinctBy { it.id },
+                6,
+            ) { artistScores[it.id] ?: 0.0 }
                 .mapNotNull {
                     val items = mutableListOf<YTItem>()
                     YouTube.artist(it.id).onSuccess { page ->
