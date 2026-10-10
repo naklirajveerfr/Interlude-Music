@@ -1024,4 +1024,5 @@
     <string name="not_interested_artist">Don\'t recommend this artist</string>
     <string name="not_interested_artist_desc">Hide this artist from recommendations</string>
     <string name="not_interested_done">Got it, we\'ll show less like this</string>
+    <string name="save_queue_as_playlist">Save queue as playlist</string>
 </resources>
