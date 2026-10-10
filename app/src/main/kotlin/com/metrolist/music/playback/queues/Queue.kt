@@ -12,6 +12,9 @@ import com.metrolist.music.models.MediaMetadata
 interface Queue {
     val preloadItem: MediaMetadata?
 
+    /** True for open-ended recommendation queues, whose order can be personalized. */
+    val isRadio: Boolean get() = false
+
     suspend fun getInitialStatus(): Status
 
     fun hasNextPage(): Boolean

@@ -208,8 +208,10 @@ import com.metrolist.music.constants.LoudnessLevel
 import com.metrolist.music.constants.LoudnessLevelKey
 import com.metrolist.music.utils.CoilBitmapLoader
 import com.metrolist.music.utils.NetworkConnectivityObserver
+import com.metrolist.music.utils.NotInterested
 import com.metrolist.music.utils.ScrobbleManager
 import com.metrolist.music.utils.SyncUtils
+import com.metrolist.music.utils.TasteProfile
 import com.metrolist.music.utils.getArtistSeparator
 import com.metrolist.music.utils.joinToArtistString
 import com.metrolist.music.utils.InnerTubeXPlayer
@@ -1754,6 +1756,26 @@ class MusicService :
         }
     }
 
+    /** Drops not-interested songs/artists and favours artists the user likes. The first [keep] items stay in place. */
+    private suspend fun personalizeRadio(
+        items: List<MediaItem>,
+        keep: Int = 0,
+    ): List<MediaItem> =
+        withContext(Dispatchers.IO) {
+            val blocked = NotInterested.current(this@MusicService)
+            val scores = TasteProfile.artistScores(database, blocked.artists)
+            val tail =
+                items.drop(keep).filterNot { item ->
+                    item.metadata?.let { m ->
+                        m.id in blocked.songs || m.artists.any { it.id != null && it.id in blocked.artists }
+                    } == true
+                }
+            items.take(keep) +
+                TasteProfile.weightedOrder(tail) { item ->
+                    1.0 + (item.metadata?.artists?.maxOfOrNull { a -> a.id?.let { scores[it] } ?: 0.0 } ?: 0.0)
+                }
+        }
+
     fun playQueue(
         queue: Queue,
         playWhenReady: Boolean = true,
@@ -1787,6 +1809,13 @@ class MusicService :
                         .getInitialStatus()
                         .filterExplicit(dataStore.get(HideExplicitKey, false))
                         .filterVideoSongs(dataStore.get(HideVideoSongsKey, false))
+                        .let { status ->
+                            if (queue.isRadio) {
+                                status.copy(items = personalizeRadio(status.items, status.mediaItemIndex + 1))
+                            } else {
+                                status
+                            }
+                        }
                 }
             if (queue.preloadItem != null && player.playbackState == STATE_IDLE) return@launch
             if (initialStatus.title != null) {
@@ -1870,9 +1899,11 @@ class MusicService :
                 }
 
                 val radioItems =
-                    initialStatus.items.filter { item ->
-                        item.mediaId != currentMediaId
-                    }
+                    personalizeRadio(
+                        initialStatus.items.filter { item ->
+                            item.mediaId != currentMediaId
+                        },
+                    )
 
                 if (radioItems.isNotEmpty()) {
                     val itemCount = player.mediaItemCount
@@ -1902,11 +1933,13 @@ class MusicService :
                             }
                         relatedPage?.songs?.let { songs ->
                             val radioItems =
-                                songs
-                                    .filter { it.id != currentMediaId }
-                                    .map { it.toMediaItem() }
-                                    .filterExplicit(cachedHideExplicit)
-                                    .filterVideoSongs(cachedHideVideoSongs)
+                                personalizeRadio(
+                                    songs
+                                        .filter { it.id != currentMediaId }
+                                        .map { it.toMediaItem() }
+                                        .filterExplicit(cachedHideExplicit)
+                                        .filterVideoSongs(cachedHideVideoSongs),
+                                )
 
                             if (radioItems.isNotEmpty()) {
                                 val itemCount = player.mediaItemCount
@@ -1943,15 +1976,19 @@ class MusicService :
                                 .next(WatchEndpoint(playlistId = firstResult.endpoint.playlistId))
                                 .onSuccess { secondResult ->
                                     automixItems.value =
-                                        secondResult.items.map { song ->
-                                            song.toMediaItem()
-                                        }
+                                        personalizeRadio(
+                                            secondResult.items.map { song ->
+                                                song.toMediaItem()
+                                            },
+                                        )
                                 }.onFailure {
                                     if (firstResult.items.isNotEmpty()) {
                                         automixItems.value =
-                                            firstResult.items.map { song ->
-                                                song.toMediaItem()
-                                            }
+                                            personalizeRadio(
+                                                firstResult.items.map { song ->
+                                                    song.toMediaItem()
+                                                },
+                                            )
                                     }
                                 }
                         }.onFailure {
@@ -1965,9 +2002,11 @@ class MusicService :
                                         ),
                                     ).onSuccess { radioResult ->
                                         val filteredItems =
-                                            radioResult.items
-                                                .filter { it.id != currentSong.id }
-                                                .map { it.toMediaItem() }
+                                            personalizeRadio(
+                                                radioResult.items
+                                                    .filter { it.id != currentSong.id }
+                                                    .map { it.toMediaItem() },
+                                            )
                                         if (filteredItems.isNotEmpty()) {
                                             automixItems.value = filteredItems
                                         }
@@ -1979,9 +2018,11 @@ class MusicService :
                                             ?.let { relatedEndpoint ->
                                                 YouTube.related(relatedEndpoint).onSuccess { relatedPage ->
                                                     val relatedItems =
-                                                        relatedPage.songs
-                                                            .filter { it.id != currentSong.id }
-                                                            .map { it.toMediaItem() }
+                                                        personalizeRadio(
+                                                            relatedPage.songs
+                                                                .filter { it.id != currentSong.id }
+                                                                .map { it.toMediaItem() },
+                                                        )
                                                     if (relatedItems.isNotEmpty()) {
                                                         automixItems.value = relatedItems
                                                     }
@@ -2657,6 +2698,7 @@ class MusicService :
                             .nextPage()
                             .filterExplicit(cachedHideExplicit)
                             .filterVideoSongs(cachedHideVideoSongs)
+                            .let { page -> if (currentQueue.isRadio) personalizeRadio(page) else page }
                     }
                 if (player.playbackState != STATE_IDLE && mediaItems.isNotEmpty()) {
                     player.addMediaItems(mediaItems)

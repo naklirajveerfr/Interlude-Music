@@ -21,6 +21,10 @@ class YouTubeQueue(
     private var retryCount = 0
     private val maxRetries = 3
 
+    override val isRadio: Boolean =
+        endpoint.playlistId?.startsWith("RD") == true ||
+            (endpoint.videoId != null && endpoint.playlistId == null)
+
     private class EmptyRadioQueueException : IllegalStateException()
 
     override suspend fun getInitialStatus(): Queue.Status {
