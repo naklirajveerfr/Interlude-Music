@@ -108,6 +108,8 @@ import com.metrolist.music.constants.ListItemHeight
 import com.metrolist.music.constants.PlayerBackgroundStyle
 import com.metrolist.music.constants.QueueEditLockKey
 import com.metrolist.music.constants.UseNewPlayerDesignKey
+import com.metrolist.music.LocalDatabase
+import com.metrolist.music.LocalSyncUtils
 import com.metrolist.music.extensions.metadata
 import com.metrolist.music.extensions.move
 import com.metrolist.music.extensions.toggleRepeatMode
@@ -116,6 +118,7 @@ import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.ui.component.ActionPromptDialog
 import com.metrolist.music.ui.component.BottomSheet
 import com.metrolist.music.ui.component.BottomSheetState
+import com.metrolist.music.ui.component.CreatePlaylistDialog
 import com.metrolist.music.ui.component.LocalBottomSheetPageState
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.MediaMetadataListItem
@@ -127,9 +130,11 @@ import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.makeTimeString
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.utils.safeDataStoreEdit
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
@@ -684,6 +689,25 @@ fun Queue(
 
         val coroutineScope = rememberCoroutineScope()
 
+        val database = LocalDatabase.current
+        val syncUtils = LocalSyncUtils.current
+        var showSaveQueueDialog by remember { mutableStateOf(false) }
+        if (showSaveQueueDialog) {
+            CreatePlaylistDialog(
+                onDismiss = { showSaveQueueDialog = false },
+                onPlaylistCreated = { playlistId ->
+                    val songs = queueWindows.mapNotNull { it.mediaItem.metadata }.distinctBy { it.id }
+                    coroutineScope.launch(Dispatchers.IO) {
+                        songs.forEach { database.insert(it) }
+                        val playlist = database.playlist(playlistId).first() ?: return@launch
+                        val ids = songs.map { it.id }
+                        database.addSongsToPlaylist(playlist, ids.map { it to null })
+                        playlist.playlist.browseId?.let { syncUtils.scheduleAddToPlaylist(it, playlistId, ids) }
+                    }
+                },
+            )
+        }
+
         val headerItems = 1
         val lazyListState = rememberLazyListState()
         var dragInfo by remember { mutableStateOf<Pair<Int, Int>?>(null) }
@@ -1096,6 +1120,15 @@ fun Queue(
                             Icon(
                                 painter = painterResource(if (locked) R.drawable.lock else R.drawable.lock_open),
                                 contentDescription = null,
+                            )
+                        }
+                        IconButton(
+                            enabled = queueWindows.isNotEmpty(),
+                            onClick = { showSaveQueueDialog = true },
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.playlist_add),
+                                contentDescription = stringResource(R.string.save_queue_as_playlist),
                             )
                         }
                     }
