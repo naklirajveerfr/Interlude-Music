@@ -2512,6 +2512,7 @@ fun HomeScreen(
                     navController.navigate("recognition")
                 },
                 onLongPress = { viewModel.refreshWithoutCurrentPicks() },
+                onDoubleTap = { viewModel.restoreHiddenPicks() },
             )
         }
         // homeLoadingOverlay

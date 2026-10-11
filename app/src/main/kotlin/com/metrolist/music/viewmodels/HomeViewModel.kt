@@ -886,6 +886,15 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    /** Brings back everything hidden by [refreshWithoutCurrentPicks] and reloads the home screen. */
+    fun restoreHiddenPicks() {
+        if (isRefreshing.value) return
+        viewModelScope.launch(Dispatchers.IO) {
+            context.safeDataStoreEdit { it.remove(HomeExcludedItemsKey) }
+            refresh()
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
         wrappedManager.dispose()

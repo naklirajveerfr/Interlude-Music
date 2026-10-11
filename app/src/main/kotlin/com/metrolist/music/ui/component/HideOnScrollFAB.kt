@@ -27,11 +27,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventTimeoutCancellationException
+import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
@@ -49,9 +52,13 @@ fun BoxScope.HideOnScrollFAB(
     onClick: () -> Unit,
     onRecognitionClick: (() -> Unit)? = null,
     onLongPress: (() -> Unit)? = null,
+    onDoubleTap: (() -> Unit)? = null,
     longPressTimeoutMillis: Long = 2500L,
 ) {
     val haptics = LocalHapticFeedback.current
+    val currentOnClick by rememberUpdatedState(onClick)
+    val currentOnLongPress by rememberUpdatedState(onLongPress)
+    val currentOnDoubleTap by rememberUpdatedState(onDoubleTap)
     AnimatedVisibility(
         visible = visible && lazyListState.isScrollingUp(),
         enter = slideInVertically { it },
@@ -86,25 +93,48 @@ fun BoxScope.HideOnScrollFAB(
             FloatingActionButton(
                 onClick = onClick,
                 modifier =
-                    if (onLongPress == null) {
+                    if (onLongPress == null && onDoubleTap == null) {
                         Modifier
                     } else {
-                        Modifier.pointerInput(onLongPress, longPressTimeoutMillis) {
+                        Modifier.pointerInput(onLongPress == null, onDoubleTap == null, longPressTimeoutMillis) {
                             awaitEachGesture {
                                 awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-                                val released =
-                                    try {
-                                        withTimeout(longPressTimeoutMillis) {
-                                            waitForUpOrCancellation(PointerEventPass.Initial)
+                                var firstUp: PointerInputChange? = null
+                                val heldLong =
+                                    onLongPress != null &&
+                                        try {
+                                            withTimeout(longPressTimeoutMillis) {
+                                                firstUp = waitForUpOrCancellation(PointerEventPass.Initial)
+                                            }
+                                            false
+                                        } catch (_: PointerEventTimeoutCancellationException) {
+                                            true
                                         }
-                                        true
-                                    } catch (_: PointerEventTimeoutCancellationException) {
-                                        false
-                                    }
-                                if (!released) {
+                                if (heldLong) {
                                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    onLongPress()
+                                    currentOnLongPress?.invoke()
                                     // Consume the release so the FAB's own click doesn't also fire
+                                    waitForUpOrCancellation(PointerEventPass.Initial)?.consume()
+                                    return@awaitEachGesture
+                                }
+                                if (onLongPress == null) {
+                                    firstUp = waitForUpOrCancellation(PointerEventPass.Initial)
+                                }
+                                val tapUp = firstUp ?: return@awaitEachGesture
+                                if (onDoubleTap == null) return@awaitEachGesture
+
+                                // Hold back the single tap until we know a second tap isn't coming
+                                tapUp.consume()
+                                val secondDown =
+                                    withTimeoutOrNull(viewConfiguration.doubleTapTimeoutMillis) {
+                                        awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                                    }
+                                if (secondDown == null) {
+                                    currentOnClick()
+                                } else {
+                                    secondDown.consume()
+                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    currentOnDoubleTap?.invoke()
                                     waitForUpOrCancellation(PointerEventPass.Initial)?.consume()
                                 }
                             }
