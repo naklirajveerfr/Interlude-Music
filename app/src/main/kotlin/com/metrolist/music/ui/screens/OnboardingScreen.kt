@@ -108,6 +108,7 @@ private const val STAGE_LOADING = 0
 private const val STAGE_WELCOME = 1
 private const val STAGE_FOLLOW = 2
 private const val STAGE_FINISH = 3
+private const val STAGE_CUSTOMISE = 4
 
 private val BUTTON_SPACING = 12.dp
 private val LATER_SLOT_HEIGHT = 40.dp
@@ -214,8 +215,10 @@ fun OnboardingOverlay(
                     STAGE_FINISH ->
                         FinishStage(
                             onFollowsSaved = onFollowsSaved,
-                            onFinished = { done = true },
+                            onFinished = { stage = STAGE_CUSTOMISE },
                         )
+
+                    STAGE_CUSTOMISE -> CustomiseStage(onFollowsSaved = onFollowsSaved, onFinished = { done = true })
 
                     else -> CenteredLoading()
                 }
