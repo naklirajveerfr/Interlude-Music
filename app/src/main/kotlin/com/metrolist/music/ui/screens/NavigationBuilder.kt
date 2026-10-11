@@ -14,6 +14,8 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SnackbarHostState
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.ViewModelStoreOwner
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -74,7 +76,11 @@ fun NavGraphBuilder.navigationBuilder(
     snackbarHostState: SnackbarHostState,
 ) {
     composable(Screens.Home.route) {
-        HomeScreen(snackbarHostState = snackbarHostState)
+        // Use the activity's HomeViewModel so refreshes started from MainActivity (e.g. after onboarding) reach this screen
+        HomeScreen(
+            snackbarHostState = snackbarHostState,
+            viewModel = hiltViewModel(activity as ViewModelStoreOwner),
+        )
     }
 
     composable(Screens.Search.route) { backStackEntry ->
