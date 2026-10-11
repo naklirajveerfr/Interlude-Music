@@ -47,6 +47,7 @@ import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -177,12 +178,13 @@ private fun WrappedShareCard(
             .background(Color.Black, RoundedCornerShape(16.dp))
             .padding(20.dp),
     ) {
-        Text(
+        AutoResizingText(
             text = stringResource(R.string.wrapped_intro_title),
-            fontFamily = bbh_bartle,
-            fontSize = 28.sp,
-            lineHeight = 32.sp,
-            color = Color.White,
+            style = TextStyle(
+                fontFamily = bbh_bartle,
+                fontSize = 28.sp,
+                color = Color.White,
+            ),
         )
         Text(
             text = stringResource(R.string.wrapped_share_card_title, WrappedConstants.YEAR),
