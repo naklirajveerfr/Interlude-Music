@@ -50,6 +50,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.metrolist.music.R
+import com.metrolist.music.ui.screens.wrapped.WrappedConstants
 import com.metrolist.music.ui.screens.wrapped.components.AutoResizingText
 import com.metrolist.music.ui.theme.bbhBartle
 import kotlinx.coroutines.delay
@@ -96,7 +97,7 @@ fun WrappedIntro(onNext: () -> Unit) {
             label = "intro rotation"
         )
 
-        // Background "2025" text
+        // Background year text
         Box(
             modifier = Modifier
                 .align(Alignment.CenterStart)
@@ -108,7 +109,7 @@ fun WrappedIntro(onNext: () -> Unit) {
         ) {
             BoxWithConstraints {
                 AutoResizingText(
-                    text = stringResource(id = R.string.wrapped_year),
+                    text = WrappedConstants.YEAR.toString(),
                     style = TextStyle.Default.copy(
                         fontFamily = bbhBartle,
                         fontSize = 800.sp, // Increased size

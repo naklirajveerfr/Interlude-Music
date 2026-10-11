@@ -32,7 +32,7 @@ import com.metrolist.music.constants.InnerTubeCookieKey
 import com.metrolist.music.constants.QuickPicks
 import com.metrolist.music.constants.QuickPicksKey
 import com.metrolist.music.constants.ShowWrappedCardKey
-import com.metrolist.music.constants.WrappedSeenKey
+import com.metrolist.music.constants.WrappedSeenYearKey
 import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.db.entities.Album
 import com.metrolist.music.db.entities.LocalItem
@@ -43,6 +43,7 @@ import com.metrolist.music.extensions.toEnum
 import com.metrolist.music.models.SimilarRecommendation
 import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.ui.screens.wrapped.WrappedAudioService
+import com.metrolist.music.ui.screens.wrapped.WrappedConstants
 import com.metrolist.music.ui.screens.wrapped.WrappedManager
 import com.metrolist.music.utils.NetworkConnectivityObserver
 import com.metrolist.music.utils.NotInterested
@@ -257,22 +258,21 @@ class HomeViewModel @Inject constructor(
     val accountName = MutableStateFlow("Guest")
     val accountImageUrl = MutableStateFlow<String?>(null)
 
-	val showWrappedCard: StateFlow<Boolean> = context.dataStore.data.map { prefs ->
-        val showWrappedPref = prefs[ShowWrappedCardKey] ?: false
-        val seen = prefs[WrappedSeenKey] ?: false
-        val isBeforeDate = LocalDate.now().isBefore(LocalDate.of(2026, 2, 1))
+    val showWrappedCard: StateFlow<Boolean> = context.dataStore.data.map { prefs ->
+        val forceShow = prefs[ShowWrappedCardKey] ?: false
+        val seen = prefs[WrappedSeenYearKey] == WrappedConstants.YEAR
 
-        isBeforeDate && (!seen || showWrappedPref)
+        forceShow || (WrappedConstants.isSeason(LocalDate.now()) && !seen)
     }.stateIn(viewModelScope, SharingStarted.Lazily, false)
 
     val wrappedSeen: StateFlow<Boolean> = context.dataStore.data.map { prefs ->
-        prefs[WrappedSeenKey] ?: false
+        prefs[WrappedSeenYearKey] == WrappedConstants.YEAR
     }.stateIn(viewModelScope, SharingStarted.Lazily, false)
 
     fun markWrappedAsSeen() {
         viewModelScope.launch(Dispatchers.IO) {
             context.safeDataStoreEdit {
-                it[WrappedSeenKey] = true
+                it[WrappedSeenYearKey] = WrappedConstants.YEAR
             }
         }
     }
