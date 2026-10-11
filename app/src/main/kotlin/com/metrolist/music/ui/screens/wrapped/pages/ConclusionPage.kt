@@ -50,14 +50,6 @@ fun ConclusionPage(onClose: () -> Unit) {
                     color = Color.White
                 )
             )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = stringResource(R.string.wrapped_special_thanks),
-                style = TextStyle(
-                    fontSize = 16.sp,
-                    color = Color.Gray
-                )
-            )
             Spacer(modifier = Modifier.height(48.dp))
             Button(
                 onClick = onClose,
