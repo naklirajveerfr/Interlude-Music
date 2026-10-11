@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="fastlane/metadata/android/en-US/images/icon.png" alt="Interlude app icon" width="200" />
+<img src="assets/logo.png" alt="Interlude app icon" width="200" />
 
 # Interlude
 
