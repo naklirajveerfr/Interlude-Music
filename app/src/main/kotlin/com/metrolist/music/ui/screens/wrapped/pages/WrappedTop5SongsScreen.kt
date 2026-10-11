@@ -73,6 +73,7 @@ fun WrappedTop5SongsScreen(topSongs: List<SongWithStats>, isVisible: Boolean) {
                 Text(
                     text = stringResource(id = R.string.wrapped_top_5_songs_title),
                     fontSize = 48.sp,
+                    lineHeight = 54.sp,
                     color = Color.White,
                     textAlign = TextAlign.Center
                 )
