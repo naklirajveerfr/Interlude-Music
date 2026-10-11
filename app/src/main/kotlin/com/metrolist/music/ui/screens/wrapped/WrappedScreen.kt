@@ -310,7 +310,11 @@ fun WrappedScreenContent() {
                 }
 
                 is WrappedScreenType.Conclusion -> {
-                    ConclusionPage(onClose = onClose)
+                    ConclusionPage(
+                        topSongs = state.topSongs,
+                        topArtists = state.topArtists,
+                        onClose = onClose,
+                    )
                 }
             }
         }

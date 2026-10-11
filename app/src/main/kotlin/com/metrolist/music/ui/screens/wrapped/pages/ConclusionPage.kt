@@ -13,6 +13,15 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import com.metrolist.music.db.entities.Artist
+import com.metrolist.music.db.entities.SongWithStats
+import com.metrolist.music.ui.screens.wrapped.components.WrappedShareDialog
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -27,7 +36,20 @@ import com.metrolist.music.ui.screens.wrapped.components.AnimatedBackground
 import com.metrolist.music.ui.screens.wrapped.components.ShapeType
 
 @Composable
-fun ConclusionPage(onClose: () -> Unit) {
+fun ConclusionPage(
+    topSongs: List<SongWithStats>,
+    topArtists: List<Artist>,
+    onClose: () -> Unit,
+) {
+    var showShareDialog by rememberSaveable { mutableStateOf(false) }
+    if (showShareDialog) {
+        WrappedShareDialog(
+            topSongs = topSongs,
+            topArtists = topArtists,
+            onDismiss = { showShareDialog = false },
+        )
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         AnimatedBackground(elementCount = 30, shapeTypes = listOf(ShapeType.Circle, ShapeType.Line))
         Column(
@@ -51,6 +73,15 @@ fun ConclusionPage(onClose: () -> Unit) {
                 )
             )
             Spacer(modifier = Modifier.height(48.dp))
+            OutlinedButton(
+                onClick = { showShareDialog = true },
+                shape = CircleShape,
+                border = BorderStroke(1.dp, Color.White),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+            ) {
+                Text(text = stringResource(R.string.wrapped_share))
+            }
+            Spacer(modifier = Modifier.height(12.dp))
             Button(
                 onClick = onClose,
                 shape = CircleShape,
