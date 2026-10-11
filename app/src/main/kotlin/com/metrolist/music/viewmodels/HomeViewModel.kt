@@ -24,6 +24,7 @@ import com.metrolist.innertube.models.filterYoutubeShorts
 import com.metrolist.innertube.pages.ExplorePage
 import com.metrolist.innertube.pages.HomePage
 import com.metrolist.innertube.utils.completed
+import com.metrolist.innertube.utils.parseCookieString
 import com.metrolist.music.constants.AccountNameKey
 import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.HideVideoSongsKey
@@ -61,6 +62,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -73,6 +75,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
 import timber.log.Timber
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -91,6 +94,7 @@ data class CommunityPlaylistItem(
 )
 
 private const val EXCLUSION_DURATION_MS = 2 * 60 * 60 * 1000L
+private const val ONBOARDING_SYNC_WAIT_MS = 60_000L
 
 /** Parses "id|expiryMillis,id|expiryMillis" into the entries that haven't expired yet. */
 private fun parseExcluded(raw: String?, now: Long): Map<String, Long> =
@@ -883,6 +887,33 @@ class HomeViewModel @Inject constructor(
                 prefs[HomeExcludedItemsKey] = active.entries.joinToString(",") { "${it.key}|${it.value}" }
             }
             refresh()
+        }
+    }
+
+    private var onboardingReloadJob: Job? = null
+
+    /**
+     * Reloads home when onboarding saves the user's choices. Unlike [refresh] it waits for a running
+     * refresh instead of being dropped, and for signed-in users it reloads once more after the
+     * library sync it kicks off has finished, so home is complete without a manual pull-to-refresh.
+     */
+    fun refreshAfterOnboarding() {
+        onboardingReloadJob?.cancel()
+        onboardingReloadJob = viewModelScope.launch(Dispatchers.IO) {
+            isRefreshing.first { !it }
+            isRefreshing.value = true
+            try {
+                syncUtils.tryAutoSync()
+                load()
+            } finally {
+                isRefreshing.value = false
+            }
+
+            val cookie = context.dataStore.get(InnerTubeCookieKey, "")
+            if ("SAPISID" in parseCookieString(cookie)) {
+                withTimeoutOrNull(ONBOARDING_SYNC_WAIT_MS) { syncUtils.awaitIdle() }
+                load()
+            }
         }
     }
 

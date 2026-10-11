@@ -1437,7 +1437,7 @@ class MainActivity : FragmentActivity() {
 
                     OnboardingOverlay(
                         navController = navController,
-                        onFollowsSaved = { homeViewModel.refresh() },
+                        onFollowsSaved = { homeViewModel.refreshAfterOnboarding() },
                     )
 
                     if (showAccountDialog) {

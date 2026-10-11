@@ -319,6 +319,11 @@ class SyncUtils @Inject constructor(
         syncExecutionMutex.withLock { executeFullSync() }
     }
 
+    /** Suspends until the sync operation that is currently running, if any, has finished. */
+    suspend fun awaitIdle() {
+        syncExecutionMutex.withLock { }
+    }
+
     fun tryAutoSync() {
         syncScope.launch {
             if (!isLoggedIn()) {
