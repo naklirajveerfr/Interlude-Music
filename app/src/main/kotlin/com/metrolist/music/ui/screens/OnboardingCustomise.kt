@@ -100,7 +100,10 @@ private const val PLAYER_STYLE_DEFAULT_IMAGE = "onboarding_player_default"
 private const val PLAYER_STYLE_FULLART_IMAGE = "onboarding_player_fullart"
 
 @Composable
-fun CustomiseStage(onFinished: () -> Unit) {
+fun CustomiseStage(
+    onFollowsSaved: () -> Unit,
+    onFinished: () -> Unit,
+) {
     var intro by rememberSaveable { mutableStateOf(true) }
     var step by rememberSaveable { mutableIntStateOf(0) }
     var finishing by rememberSaveable { mutableStateOf(false) }
@@ -113,6 +116,8 @@ fun CustomiseStage(onFinished: () -> Unit) {
     }
     LaunchedEffect(finishing) {
         if (finishing) {
+            // Reload Home now that every choice is saved, so it is fresh when this screen fades out.
+            onFollowsSaved()
             delay(LOADING_MS)
             onFinished()
         }

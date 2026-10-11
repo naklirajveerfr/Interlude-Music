@@ -218,7 +218,7 @@ fun OnboardingOverlay(
                             onFinished = { stage = STAGE_CUSTOMISE },
                         )
 
-                    STAGE_CUSTOMISE -> CustomiseStage(onFinished = { done = true })
+                    STAGE_CUSTOMISE -> CustomiseStage(onFollowsSaved = onFollowsSaved, onFinished = { done = true })
 
                     else -> CenteredLoading()
                 }

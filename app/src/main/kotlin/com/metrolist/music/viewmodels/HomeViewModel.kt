@@ -66,6 +66,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import timber.log.Timber
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -495,11 +497,16 @@ class HomeViewModel @Inject constructor(
         communityPlaylists.value = playlists.shuffled()
     }
 
+    // Serialised so a reload started after onboarding can't be overwritten by the slower first load.
+    private val loadMutex = Mutex()
+
     private suspend fun load() {
-        try {
-            loadInner()
-        } finally {
-            isLoading.value = false
+        loadMutex.withLock {
+            try {
+                loadInner()
+            } finally {
+                isLoading.value = false
+            }
         }
     }
 
