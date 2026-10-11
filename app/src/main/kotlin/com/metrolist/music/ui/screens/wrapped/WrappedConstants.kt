@@ -5,8 +5,15 @@
 
 package com.metrolist.music.ui.screens.wrapped
 
+import java.time.LocalDate
+import java.time.Month
+
 object WrappedConstants {
-    // This is intentionally hardcoded to 2025 and should not be changed.
-    const val YEAR = 2025
-    const val PLAYLIST_NAME = "Metrolist 2025"
+    /** Wrapped is shown in December and January, so January still refers to the year that just ended. */
+    val YEAR: Int get() = seasonYear(LocalDate.now())
+    val PLAYLIST_NAME: String get() = "Interlude $YEAR"
+
+    fun seasonYear(today: LocalDate): Int = if (today.month == Month.JANUARY) today.year - 1 else today.year
+
+    fun isSeason(today: LocalDate): Boolean = today.month == Month.DECEMBER || today.month == Month.JANUARY
 }

@@ -488,7 +488,7 @@
     <string name="wrapped_ready_title">YOUR WRAPPED IS READY!</string>
     <string name="wrapped_ready_subtitle">Time to see what you loved all this year…</string>
     <string name="wrapped_thank_you">Thank you for listening!</string>
-    <string name="wrapped_special_thanks">Special thanks to MO Agamy for creating Metrolist</string>
+    <string name="wrapped_special_thanks">Interlude is made by Rajveer, built on Metrolist by Mo Agamy</string>
     <string name="wrapped_close">Close Wrapped</string>
     <string name="wrapped_playlist_title">Your %s Wrapped</string>
     <string name="wrapped_create_playlist">Create playlist</string>
@@ -1025,4 +1025,10 @@
     <string name="not_interested_artist_desc">Hide this artist from recommendations</string>
     <string name="not_interested_done">Got it, we\'ll show less like this</string>
     <string name="save_queue_as_playlist">Save queue as playlist</string>
+    <string name="wrapped_share">Share your Wrapped</string>
+    <string name="wrapped_share_both">Both</string>
+    <string name="wrapped_share_songs">Top songs</string>
+    <string name="wrapped_share_artists">Top artists</string>
+    <string name="wrapped_share_card_title">%1$d Wrapped</string>
+    <string name="wrapped_share_failed">Couldn\'t share your Wrapped</string>
 </resources>
