@@ -260,7 +260,7 @@ private fun PlayerStyleCard(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .aspectRatio(9f / 16f)
+                    .aspectRatio(9f / 20f)
                     .clip(RoundedCornerShape(12.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant),
         ) {
