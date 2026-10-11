@@ -2511,6 +2511,7 @@ fun HomeScreen(
                 onRecognitionClick = {
                     navController.navigate("recognition")
                 },
+                onLongPress = { viewModel.refreshWithoutCurrentPicks() },
             )
         }
         // homeLoadingOverlay

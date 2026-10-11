@@ -9,6 +9,9 @@ import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -26,6 +29,11 @@ import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventTimeoutCancellationException
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -40,7 +48,10 @@ fun BoxScope.HideOnScrollFAB(
     @DrawableRes icon: Int,
     onClick: () -> Unit,
     onRecognitionClick: (() -> Unit)? = null,
+    onLongPress: (() -> Unit)? = null,
+    longPressTimeoutMillis: Long = 2500L,
 ) {
+    val haptics = LocalHapticFeedback.current
     AnimatedVisibility(
         visible = visible && lazyListState.isScrollingUp(),
         enter = slideInVertically { it },
@@ -74,6 +85,31 @@ fun BoxScope.HideOnScrollFAB(
             }
             FloatingActionButton(
                 onClick = onClick,
+                modifier =
+                    if (onLongPress == null) {
+                        Modifier
+                    } else {
+                        Modifier.pointerInput(onLongPress, longPressTimeoutMillis) {
+                            awaitEachGesture {
+                                awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                                val released =
+                                    try {
+                                        withTimeout(longPressTimeoutMillis) {
+                                            waitForUpOrCancellation(PointerEventPass.Initial)
+                                        }
+                                        true
+                                    } catch (_: PointerEventTimeoutCancellationException) {
+                                        false
+                                    }
+                                if (!released) {
+                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    onLongPress()
+                                    // Consume the release so the FAB's own click doesn't also fire
+                                    waitForUpOrCancellation(PointerEventPass.Initial)?.consume()
+                                }
+                            }
+                        }
+                    },
             ) {
                 Icon(
                     painter = painterResource(icon),

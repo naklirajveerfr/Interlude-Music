@@ -28,6 +28,7 @@ import com.metrolist.music.constants.AccountNameKey
 import com.metrolist.music.constants.HideExplicitKey
 import com.metrolist.music.constants.HideVideoSongsKey
 import com.metrolist.music.constants.HideYoutubeShortsKey
+import com.metrolist.music.constants.HomeExcludedItemsKey
 import com.metrolist.music.constants.InnerTubeCookieKey
 import com.metrolist.music.constants.QuickPicks
 import com.metrolist.music.constants.QuickPicksKey
@@ -61,6 +62,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -87,6 +89,16 @@ data class CommunityPlaylistItem(
     val playlist: PlaylistItem,
     val songs: List<SongItem>
 )
+
+private const val EXCLUSION_DURATION_MS = 2 * 60 * 60 * 1000L
+
+/** Parses "id|expiryMillis,id|expiryMillis" into the entries that haven't expired yet. */
+private fun parseExcluded(raw: String?, now: Long): Map<String, Long> =
+    raw.orEmpty().split(",").mapNotNull { entry ->
+        val parts = entry.split("|")
+        if (parts.size != 2) return@mapNotNull null
+        parts[1].toLongOrNull()?.takeIf { it > now }?.let { parts[0] to it }
+    }.toMap()
 
 internal fun buildSpeedDialItems(
     pinned: List<YTItem>,
@@ -139,13 +151,20 @@ class HomeViewModel @Inject constructor(
         database.speedDialDao.getAll()
             .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
+    /** Ids hidden from quick picks and speed dial after a long-press refresh; entries expire after 2 hours. */
+    private val excludedIds: Flow<Set<String>> =
+        context.dataStore.data
+            .map { parseExcluded(it[HomeExcludedItemsKey], System.currentTimeMillis()).keys }
+            .distinctUntilChanged()
+
     val speedDialItems: StateFlow<List<YTItem>> =
         combine(
             database.speedDialDao.getAll(),
             keepListening,
             quickPicks,
             homePage,
-        ) { pinned, keepListening, quick, home ->
+            excludedIds,
+        ) { pinned, keepListening, quick, home, excluded ->
             buildSpeedDialItems(
                 pinned = pinned.map { it.toYTItem() },
                 keepListening =
@@ -180,7 +199,7 @@ class HomeViewModel @Inject constructor(
 
                             else -> null
                         }
-                    },
+                    }.filterNot { it.id in excluded },
                 quickPicks =
                     quick.orEmpty().map { song ->
                         SongItem(
@@ -189,8 +208,8 @@ class HomeViewModel @Inject constructor(
                             artists = song.artists.map { Artist(name = it.name, id = it.id) },
                             thumbnail = song.thumbnailUrl ?: "",
                         )
-                    },
-                home = home?.sections.orEmpty().flatMap { it.items },
+                    }.filterNot { it.id in excluded },
+                home = home?.sections.orEmpty().flatMap { it.items }.filterNot { it.id in excluded },
             )
         }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
@@ -379,6 +398,7 @@ class HomeViewModel @Inject constructor(
 
     private suspend fun getQuickPicks() {
         val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
+        val excluded = excludedIds.first()
         when (quickPicksEnum.first()) {
             QuickPicks.QUICK_PICKS -> {
                 val relatedSongs = database.quickPicks().first().filterVideoSongs(hideVideoSongs)
@@ -409,16 +429,19 @@ class HomeViewModel @Inject constructor(
 
                 // Combine all sources and remove duplicates, favouring artists the user likes
                 val combined = TasteProfile.weightedOrder(
-                    (followedSongs + relatedSongs + forgotten + ytSimilarSongs).distinctBy { it.id },
+                    (followedSongs + relatedSongs + forgotten + ytSimilarSongs)
+                        .filterNot { it.id in excluded }
+                        .distinctBy { it.id },
                 ) { song -> 1.0 + (song.artists.maxOfOrNull { artistScores[it.id] ?: 0.0 } ?: 0.0) }
                     .take(20)
 
-                quickPicks.value = combined.ifEmpty { relatedSongs.shuffled().take(20) }
+                quickPicks.value = combined.ifEmpty { relatedSongs.filterNot { it.id in excluded }.shuffled().take(20) }
             }
             QuickPicks.LAST_LISTEN -> {
                 val song = database.latestEvent().first()?.song
                 if (song != null && database.hasRelatedSongs(song.id)) {
-                    quickPicks.value = database.getRelatedSongs(song.id).first().filterVideoSongs(hideVideoSongs).shuffled().take(20)
+                    quickPicks.value = database.getRelatedSongs(song.id).first().filterVideoSongs(hideVideoSongs)
+                        .filterNot { it.id in excluded }.shuffled().take(20)
                 }
             }
         }
@@ -839,6 +862,27 @@ class HomeViewModel @Inject constructor(
         // Run sync when user manually refreshes
         viewModelScope.launch(Dispatchers.IO) {
             syncUtils.tryAutoSync()
+        }
+    }
+
+    /**
+     * Hides everything currently in quick picks and speed dial (except pinned speed dial items)
+     * for 2 hours and reloads the home screen so other songs take their place.
+     */
+    fun refreshWithoutCurrentPicks() {
+        if (isRefreshing.value) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val pinnedIds = database.speedDialDao.getAll().first().map { it.id }.toSet()
+            val shownIds =
+                quickPicks.value.orEmpty().map { it.id } +
+                    speedDialItems.value.map { it.id }.filterNot { it in pinnedIds }
+            val now = System.currentTimeMillis()
+            context.safeDataStoreEdit { prefs ->
+                val active = parseExcluded(prefs[HomeExcludedItemsKey], now).toMutableMap()
+                shownIds.forEach { active[it] = now + EXCLUSION_DURATION_MS }
+                prefs[HomeExcludedItemsKey] = active.entries.joinToString(",") { "${it.key}|${it.value}" }
+            }
+            refresh()
         }
     }
 
