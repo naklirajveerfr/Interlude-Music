@@ -1025,4 +1025,13 @@
     <string name="not_interested_artist_desc">Hide this artist from recommendations</string>
     <string name="not_interested_done">Got it, we\'ll show less like this</string>
     <string name="save_queue_as_playlist">Save queue as playlist</string>
+    <string name="onboarding_customise_title">Customise it to your liking</string>
+    <string name="onboarding_player_style_title">Choose your player style</string>
+    <string name="onboarding_player_style_default">Default</string>
+    <string name="onboarding_player_style_fullart">Full art</string>
+    <string name="onboarding_button_shape_title">Choose your button shape</string>
+    <string name="onboarding_shape_round">Round</string>
+    <string name="onboarding_shape_pill">Pill</string>
+    <string name="onboarding_shape_soft">Soft</string>
+    <string name="onboarding_slider_title">Choose your slider style</string>
 </resources>
