@@ -68,6 +68,7 @@ import com.metrolist.music.ui.component.InfoLabel
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.component.TextFieldDialog
+import com.metrolist.music.ui.menu.SpotifyImportDialog
 import com.metrolist.music.utils.Updater
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.AccountSettingsViewModel
@@ -104,6 +105,7 @@ fun AccountSettings(
     var showToken by remember { mutableStateOf(false) }
     var showTokenEditor by remember { mutableStateOf(false) }
     var showLogoutDialog by remember { mutableStateOf(false) }
+    var showSpotifyImport by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     Column(
@@ -401,6 +403,13 @@ fun AccountSettings(
                 )
                 add(
                     Material3SettingsItem(
+                        title = { Text(stringResource(R.string.import_label)) },
+                        icon = painterResource(R.drawable.download),
+                        onClick = { showSpotifyImport = true }
+                    )
+                )
+                add(
+                    Material3SettingsItem(
                         title = { Text(stringResource(R.string.settings)) },
                         icon = painterResource(R.drawable.settings),
                         showBadge = BuildConfig.UPDATER_AVAILABLE &&
@@ -430,5 +439,9 @@ fun AccountSettings(
             },
             useLowContrast = true
         )
+    }
+
+    if (showSpotifyImport) {
+        SpotifyImportDialog(onDismiss = { showSpotifyImport = false })
     }
 }

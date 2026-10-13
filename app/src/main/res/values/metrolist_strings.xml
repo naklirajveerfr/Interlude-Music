@@ -417,6 +417,13 @@
     <string name="lyrics_romanize_as_main">Show romanized lyrics as main</string>
 
     <string name="integrations">Integrations</string>
+    <string name="import_label">Import</string>
+    <string name="spotify_import_title">Import Spotify playlist</string>
+    <string name="spotify_playlist_url">Spotify playlist URL</string>
+    <string name="spotify_import_invalid_url">Enter a valid Spotify playlist link</string>
+    <string name="spotify_import_failed">Could not import playlist. Make sure it is public</string>
+    <string name="spotify_import_progress">Matching songs… %1$d%%</string>
+    <string name="spotify_import_done">Imported %1$d of %2$d songs</string>
     <string name="username">Username</string>
     <string name="password">Password</string>
 
