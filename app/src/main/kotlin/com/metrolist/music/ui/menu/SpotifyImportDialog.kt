@@ -43,6 +43,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import java.time.LocalDateTime
 import java.util.concurrent.atomic.AtomicInteger
 
 @Composable
@@ -107,7 +108,7 @@ fun SpotifyImportDialog(onDismiss: () -> Unit) {
 
             val songIds = resolvedIds.filterNotNull().distinct()
             try {
-                val newPlaylist = PlaylistEntity(name = spotifyPlaylist.name)
+                val newPlaylist = PlaylistEntity(name = spotifyPlaylist.name, bookmarkedAt = LocalDateTime.now(), isEditable = true)
                 database.insert(newPlaylist)
                 val playlist = database.playlist(newPlaylist.id).firstOrNull()
                     ?: error("Playlist was not created")
