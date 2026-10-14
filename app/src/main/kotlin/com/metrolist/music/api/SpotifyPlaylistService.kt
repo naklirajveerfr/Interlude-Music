@@ -9,6 +9,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
@@ -30,6 +31,22 @@ object SpotifyPlaylistService {
     private val nextDataRegex =
         Regex("""<script id="__NEXT_DATA__" type="application/json">(.*?)</script>""", RegexOption.DOT_MATCHES_ALL)
 
+    // The embed page's JSON layout changes between releases, so locate the track list by key instead of a fixed path.
+    private fun findObjectWithKey(node: Any?, key: String): JSONObject? {
+        when (node) {
+            is JSONObject -> {
+                if (node.has(key)) return node
+                for (name in node.keys()) {
+                    findObjectWithKey(node.opt(name), key)?.let { return it }
+                }
+            }
+            is JSONArray -> for (i in 0 until node.length()) {
+                findObjectWithKey(node.opt(i), key)?.let { return it }
+            }
+        }
+        return null
+    }
+
     fun parsePlaylistId(input: String): String? = playlistIdRegex.find(input.trim())?.groupValues?.get(1)
 
     suspend fun fetchPlaylist(playlistId: String): Result<SpotifyPlaylist> = withContext(Dispatchers.IO) {
@@ -46,14 +63,9 @@ object SpotifyPlaylistService {
 
             val json = nextDataRegex.find(html)?.groupValues?.get(1)
                 ?: error("Could not read playlist. Make sure it is public.")
-            val entity = JSONObject(json)
-                .getJSONObject("props")
-                .getJSONObject("pageProps")
-                .getJSONObject("state")
-                .getJSONObject("data")
-                .getJSONObject("entity")
-
-            val trackList = entity.optJSONArray("trackList") ?: error("No tracks found in playlist")
+            val entity = findObjectWithKey(JSONObject(json), "trackList")
+                ?: error("No tracks found in playlist")
+            val trackList = entity.getJSONArray("trackList")
             val tracks = buildList {
                 for (i in 0 until trackList.length()) {
                     val item = trackList.getJSONObject(i)

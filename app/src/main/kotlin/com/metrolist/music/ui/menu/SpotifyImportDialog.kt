@@ -106,10 +106,19 @@ fun SpotifyImportDialog(onDismiss: () -> Unit) {
             }.forEach { it.join() }
 
             val songIds = resolvedIds.filterNotNull().distinct()
-            val newPlaylist = PlaylistEntity(name = spotifyPlaylist.name)
-            database.query { insert(newPlaylist) }
-            database.playlist(newPlaylist.id).firstOrNull()?.let { playlist ->
+            try {
+                val newPlaylist = PlaylistEntity(name = spotifyPlaylist.name)
+                database.insert(newPlaylist)
+                val playlist = database.playlist(newPlaylist.id).firstOrNull()
+                    ?: error("Playlist was not created")
                 database.addSongsToPlaylist(playlist, songIds.map { it to null })
+            } catch (e: Exception) {
+                reportException(e)
+                withContext(Dispatchers.Main) {
+                    error = e.message ?: failedMessage
+                    isImporting = false
+                }
+                return@launch
             }
 
             withContext(Dispatchers.Main) {
