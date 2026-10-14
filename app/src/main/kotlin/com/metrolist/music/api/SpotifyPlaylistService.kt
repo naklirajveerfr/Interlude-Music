@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit
 
 data class SpotifyTrack(val title: String, val artists: List<String>)
 
-data class SpotifyPlaylist(val name: String, val tracks: List<SpotifyTrack>)
+data class SpotifyPlaylist(val name: String, val tracks: List<SpotifyTrack>, val coverUrl: String? = null)
 
 /**
  * Reads a public Spotify playlist from its embed page, so no API key or login is needed.
@@ -47,6 +47,26 @@ object SpotifyPlaylistService {
         return null
     }
 
+    private fun extractCoverUrl(root: JSONObject, entity: JSONObject): String? {
+        val sources = (findObjectWithKey(entity, "coverArt") ?: findObjectWithKey(root, "coverArt"))
+            ?.optJSONObject("coverArt")?.optJSONArray("sources")
+            ?: (findObjectWithKey(entity, "visualIdentity") ?: findObjectWithKey(root, "visualIdentity"))
+                ?.optJSONObject("visualIdentity")?.optJSONArray("image")
+            ?: return null
+        var best: String? = null
+        var bestSize = -1
+        for (i in 0 until sources.length()) {
+            val item = sources.optJSONObject(i) ?: continue
+            val url = item.optString("url").takeIf { it.startsWith("http") } ?: continue
+            val size = maxOf(item.optInt("width"), item.optInt("maxWidth"))
+            if (size > bestSize) {
+                best = url
+                bestSize = size
+            }
+        }
+        return best
+    }
+
     fun parsePlaylistId(input: String): String? = playlistIdRegex.find(input.trim())?.groupValues?.get(1)
 
     suspend fun fetchPlaylist(playlistId: String): Result<SpotifyPlaylist> = withContext(Dispatchers.IO) {
@@ -63,7 +83,8 @@ object SpotifyPlaylistService {
 
             val json = nextDataRegex.find(html)?.groupValues?.get(1)
                 ?: error("Could not read playlist. Make sure it is public.")
-            val entity = findObjectWithKey(JSONObject(json), "trackList")
+            val root = JSONObject(json)
+            val entity = findObjectWithKey(root, "trackList")
                 ?: error("No tracks found in playlist")
             val trackList = entity.getJSONArray("trackList")
             val tracks = buildList {
@@ -81,7 +102,7 @@ object SpotifyPlaylistService {
             if (tracks.isEmpty()) error("No tracks found in playlist")
 
             val name = entity.optString("name").ifEmpty { entity.optString("title") }.ifEmpty { "Spotify playlist" }
-            SpotifyPlaylist(name, tracks)
+            SpotifyPlaylist(name, tracks, extractCoverUrl(root, entity))
         }
     }
 }

@@ -442,6 +442,12 @@ fun AccountSettings(
     }
 
     if (showSpotifyImport) {
-        SpotifyImportDialog(onDismiss = { showSpotifyImport = false })
+        SpotifyImportDialog(
+            onDismiss = { showSpotifyImport = false },
+            onImported = { playlistId ->
+                onClose()
+                navController.navigate("local_playlist/$playlistId")
+            }
+        )
     }
 }

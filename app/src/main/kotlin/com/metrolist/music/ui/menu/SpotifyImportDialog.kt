@@ -47,7 +47,7 @@ import java.time.LocalDateTime
 import java.util.concurrent.atomic.AtomicInteger
 
 @Composable
-fun SpotifyImportDialog(onDismiss: () -> Unit) {
+fun SpotifyImportDialog(onDismiss: () -> Unit, onImported: (playlistId: String) -> Unit) {
     val context = LocalContext.current
     val database = LocalDatabase.current
     val scope = rememberCoroutineScope()
@@ -82,6 +82,7 @@ fun SpotifyImportDialog(onDismiss: () -> Unit) {
             val done = AtomicInteger(0)
             val semaphore = Semaphore(10)
             val resolvedIds = arrayOfNulls<String>(total)
+            val resolvedThumbnails = arrayOfNulls<String>(total)
 
             spotifyPlaylist.tracks.mapIndexed { index, track ->
                 launch {
@@ -94,6 +95,7 @@ fun SpotifyImportDialog(onDismiss: () -> Unit) {
                                     if (match != null) {
                                         database.insert(match.toMediaMetadata())
                                         resolvedIds[index] = match.id
+                                        resolvedThumbnails[index] = match.thumbnail
                                     }
                                 }
                                 .onFailure { reportException(it) }
@@ -107,8 +109,13 @@ fun SpotifyImportDialog(onDismiss: () -> Unit) {
             }.forEach { it.join() }
 
             val songIds = resolvedIds.filterNotNull().distinct()
+            val newPlaylist = PlaylistEntity(
+                name = spotifyPlaylist.name,
+                bookmarkedAt = LocalDateTime.now(),
+                isEditable = true,
+                thumbnailUrl = spotifyPlaylist.coverUrl ?: resolvedThumbnails.firstNotNullOfOrNull { it },
+            )
             try {
-                val newPlaylist = PlaylistEntity(name = spotifyPlaylist.name, bookmarkedAt = LocalDateTime.now(), isEditable = true)
                 database.insert(newPlaylist)
                 val playlist = database.playlist(newPlaylist.id).firstOrNull()
                     ?: error("Playlist was not created")
@@ -129,6 +136,7 @@ fun SpotifyImportDialog(onDismiss: () -> Unit) {
                     Toast.LENGTH_LONG,
                 ).show()
                 onDismiss()
+                onImported(newPlaylist.id)
             }
         }
     }
