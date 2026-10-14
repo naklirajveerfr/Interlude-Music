@@ -417,6 +417,7 @@
     <string name="lyrics_romanize_as_main">Show romanized lyrics as main</string>
 
     <string name="integrations">Integrations</string>
+    <string name="interlude_title">Interlude</string>
     <string name="import_label">Import</string>
     <string name="spotify_import_title">Import Spotify playlist</string>
     <string name="spotify_playlist_url">Spotify playlist URL</string>
