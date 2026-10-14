@@ -1080,7 +1080,7 @@ class MainActivity : FragmentActivity() {
                                             if (currentTitleRes == R.string.home) {
                                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                                     Icon(
-                                                        painter = painterResource(R.drawable.app_logo),
+                                                        painter = painterResource(R.drawable.home_logo),
                                                         contentDescription = null,
                                                         modifier = Modifier.size(24.dp),
                                                     )
