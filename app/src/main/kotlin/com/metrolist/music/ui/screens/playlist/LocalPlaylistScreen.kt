@@ -1060,9 +1060,9 @@ fun LocalPlaylistHeader(
                 modifier =
                     Modifier
                         .fillMaxWidth()
+                        .offset { IntOffset(x = 0, y = headerOffset) }
                         .aspectRatio(1f)
-                        .fadingEdge(bottom = 200.dp)
-                        .offset { IntOffset(x = 0, y = headerOffset) },
+                        .fadingEdge(bottom = 200.dp),
             )
         }
         Column(
