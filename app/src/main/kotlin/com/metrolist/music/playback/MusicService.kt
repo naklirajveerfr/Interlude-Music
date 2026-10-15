@@ -5115,7 +5115,6 @@ class MusicService :
         if (player.repeatMode == REPEAT_MODE_ONE || !player.hasNextMediaItem() || !player.isPlaying) return false
 
         val ratio = automixTargetRatio()
-        val outgoing = player
         crossfadeMessage?.cancel()
         crossfadeMessage = null
         cancelAutomixRamp(restoreSpeed = true)
@@ -5125,27 +5124,33 @@ class MusicService :
             mixFadeMs.value = 0L
             return false
         }
-        if (ratio != null) rampOutgoingSpeed(outgoing, ratio, crossfadeDuration.toLong())
+        if (ratio != null) easeIncomingTempo(player, ratio, AUTOMIX_SKIP_EASE_MS)
         return true
     }
 
-    private fun rampOutgoingSpeed(outgoing: Player, ratio: Float, durationMs: Long) {
-        val from = outgoing.playbackParameters.speed
-        val to = from * ratio
-        val steps = (durationMs / 250L).toInt().coerceIn(4, 60)
+    // The incoming song starts at the outgoing song's tempo and eases back to its own slowly,
+    // so neither song's tempo jumps.
+    private fun easeIncomingTempo(incoming: Player, ratio: Float, durationMs: Long) {
+        val base = incoming.playbackParameters.speed
+        val from = base / ratio
+        automixBaseSpeed = base
+        automixSpeedActive = true
+        incoming.setPlaybackSpeed(from)
+        val steps = (durationMs / 250L).toInt().coerceIn(8, 120)
         automixRampJob?.cancel()
         automixRampJob =
             scope.launch {
                 for (i in 1..steps) {
                     delay(durationMs / steps)
-                    if (!isActive || fadingPlayer !== outgoing) return@launch
+                    if (!isActive || incoming !== player) return@launch
                     val p = i / steps.toFloat()
                     try {
-                        outgoing.setPlaybackSpeed(from + (to - from) * (p * p * (3f - 2f * p)))
+                        incoming.setPlaybackSpeed(from + (base - from) * (p * p * (3f - 2f * p)))
                     } catch (_: Exception) {
                         return@launch
                     }
                 }
+                automixSpeedActive = false
             }
     }
 
@@ -5396,6 +5401,7 @@ class MusicService :
         const val NOTIFICATION_ID = 888
         const val ERROR_CODE_NO_STREAM = 1000001
         const val CHUNK_LENGTH = 512 * 1024L
+        const val AUTOMIX_SKIP_EASE_MS = 20_000L
         const val PERSISTENT_QUEUE_FILE = "persistent_queue.data"
         const val PERSISTENT_AUTOMIX_FILE = "persistent_automix.data"
         const val PERSISTENT_PLAYER_STATE_FILE = "persistent_player_state.data"
