@@ -5173,7 +5173,8 @@ class MusicService :
         
         val mediaCrossfadeDuration = crossfadeDuration.toLong()
 
-        if (!crossfadeEnabled || crossfadeDuration <= 0f || player.duration == C.TIME_UNSET || player.duration <= mediaCrossfadeDuration) return
+        // With smooth skip on, songs are only mixed when the next button is held, never at the end
+        if (!crossfadeEnabled || smoothSkipEnabled || crossfadeDuration <= 0f || player.duration == C.TIME_UNSET || player.duration <= mediaCrossfadeDuration) return
         if (crossfadeGapless && isNextItemGapless()) return
         if (!player.hasNextMediaItem() && player.repeatMode != REPEAT_MODE_ONE) return
 

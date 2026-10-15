@@ -326,7 +326,7 @@ fun PlayerSettings(
                     add(Material3SettingsItem(
                         icon = painterResource(R.drawable.gradient),
                         title = { Text("Smooth skip (beta)") },
-                        description = { Text("Hold the next button for 1.5 seconds to fade into the next song instead of cutting, matching their tempo") },
+                        description = { Text("Hold the next button for 1.5 seconds to fade into the next song instead of cutting, matching their tempo. Songs won't crossfade at the end while this is on") },
                         trailingContent = {
                             Switch(
                                 checked = automixEnabled,
@@ -362,7 +362,7 @@ fun PlayerSettings(
                         }
                     ))
                 }
-                if (crossfadeEnabled) {
+                if (crossfadeEnabled && !automixEnabled) {
                     add(Material3SettingsItem(
                         icon = painterResource(R.drawable.album),
                         title = { Text(stringResource(R.string.crossfade_gapless)) },
