@@ -1084,7 +1084,7 @@ class MainActivity : FragmentActivity() {
                                                         contentDescription = null,
                                                         modifier = Modifier.size(42.dp),
                                                     )
-                                                    Spacer(Modifier.width(4.dp))
+                                                    Spacer(Modifier.width(2.dp))
                                                     Text(
                                                         text = stringResource(R.string.interlude_title),
                                                         style = MaterialTheme.typography.titleLarge,
