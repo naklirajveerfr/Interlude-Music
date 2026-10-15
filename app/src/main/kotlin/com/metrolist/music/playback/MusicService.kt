@@ -5106,7 +5106,7 @@ class MusicService :
     }
 
     /**
-     * Skips to the next song by mixing it in from the current position when seamless transition
+     * Skips to the next song by mixing it in from the current position when smooth skip
      * is enabled. Returns false when the caller should do a normal skip instead.
      */
     fun skipWithSeamlessTransition(): Boolean {

@@ -137,7 +137,7 @@ fun FullArtPlayerContent(
     val favRes = if (isFavorite) R.drawable.favorite else R.drawable.favorite_border
     val playRes = if (isPlaying) R.drawable.nm_pause else R.drawable.nm_play_arrow
 
-    // Skip mixes (seamless transition) fade the old art into the new one. The old art is worked
+    // Skip mixes (smooth skip) fade the old art into the new one. The old art is worked
     // out during composition so it is on screen in the first frame of the new song.
     val playerConnection = LocalPlayerConnection.current
     val mixFadeFlow = remember(playerConnection) { playerConnection?.service?.mixFadeMs ?: MutableStateFlow(0L) }

@@ -325,8 +325,8 @@ fun PlayerSettings(
                 run {
                     add(Material3SettingsItem(
                         icon = painterResource(R.drawable.gradient),
-                        title = { Text("Seamless transition (beta)") },
-                        description = { Text("Matches the tempo of the ending and next song for a smoother mix, and also mixes when you skip a song") },
+                        title = { Text("Smooth skip (beta)") },
+                        description = { Text("Fades into the next song instead of cutting when you skip, and mixes songs together at the end, matching their tempo") },
                         trailingContent = {
                             Switch(
                                 checked = automixEnabled,

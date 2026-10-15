@@ -265,7 +265,7 @@ fun Thumbnail(
     val currentItem by remember { derivedStateOf { thumbnailLazyGridState.firstVisibleItemIndex } }
     val itemScrollOffset by remember { derivedStateOf { thumbnailLazyGridState.firstVisibleItemScrollOffset } }
 
-    // Skip mixes (seamless transition) fade the old cover into the new one instead of sliding.
+    // Skip mixes (smooth skip) fade the old cover into the new one instead of sliding.
     // The old cover is worked out during composition so it is already on screen in the first
     // frame of the new song, instead of the new cover flashing first.
     val mixFadeFlow = playerConnection.service.mixFadeMs

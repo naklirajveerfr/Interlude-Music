@@ -413,7 +413,7 @@ class PlayerConnection(
         }
     }
 
-    /** Skips to the next song, mixing it in when seamless transition is enabled. */
+    /** Skips to the next song, mixing it in when smooth skip is enabled. */
     fun seekToNextSeamless() {
         if (!service.skipWithSeamlessTransition()) player.seekToNext()
     }
