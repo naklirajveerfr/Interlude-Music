@@ -56,6 +56,7 @@ import androidx.media3.common.Timeline
 import androidx.media3.common.audio.SonicAudioProcessor
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
+import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.datasource.ResolvingDataSource
@@ -391,7 +392,7 @@ class MusicService :
     @Inject
     @PlayerCache
     lateinit var playerCache: Cache
-    private val automixAnalyzer by lazy { com.metrolist.music.automix.AutomixAnalyzer(java.io.File(cacheDir, "automix")) { listOf(playerCache, downloadCache) } }
+    private val automixAnalyzer by lazy { com.metrolist.music.automix.AutomixAnalyzer(java.io.File(cacheDir, "automix"), { listOf(playerCache, downloadCache) }, ::automixFetchHead) }
 
     @Inject
     @DownloadCache
@@ -3586,6 +3587,87 @@ class MusicService :
         }
     }
 
+    private fun createStreamHttpClient(): OkHttpClient =
+        OkHttpClient
+            .Builder()
+            .proxy(YouTube.proxy)
+            .proxyAuthenticator { _, response ->
+                YouTube.proxyAuth?.let { auth ->
+                    response.request
+                        .newBuilder()
+                        .header("Proxy-Authorization", auth)
+                        .build()
+                } ?: response.request
+            }.build()
+
+    // Downloads only the start of a song's stream (without touching the playback caches) so
+    // automix can analyse songs that have not been cached yet.
+    private suspend fun automixFetchHead(
+        mediaId: String,
+        out: java.io.File,
+        maxBytes: Long,
+    ): Boolean =
+        withContext(Dispatchers.IO) {
+            try {
+                val stream =
+                    songUrlCache[mediaId] ?: run {
+                        val song = database.songEntity(mediaId)
+                        val data =
+                            InnerTubeXPlayer
+                                .playerResponseForPlayback(
+                                    mediaId,
+                                    audioQuality = audioQuality,
+                                    connectivityManager = connectivityManager,
+                                    contentHints = ContentHints(isExplicit = song?.explicit, isUploaded = song?.isUploaded),
+                                ).getOrNull() ?: return@withContext false
+                        CachedStreamUrl(
+                            url = data.streamUrl,
+                            requestHeaders = data.streamHeaders,
+                            clientName = data.streamClient,
+                            requireBoundedRange = data.requireBoundedRange,
+                            rangeChunkSizeBytes = data.rangeChunkSizeBytes,
+                            useRangeChunks = data.useRangeChunks,
+                        )
+                    }
+                val factory = DefaultDataSource.Factory(this@MusicService, OkHttpDataSource.Factory(createStreamHttpClient()))
+                var position = 0L
+                out.outputStream().use { sink ->
+                    val buffer = ByteArray(64 * 1024)
+                    while (position < maxBytes) {
+                        val spec =
+                            DataSpec
+                                .Builder()
+                                .setUri(stream.url.toUri())
+                                .setPosition(position)
+                                .setLength(maxBytes - position)
+                                .build()
+                                .withResolvedStream(stream)
+                        val source = factory.createDataSource()
+                        var chunk = 0L
+                        try {
+                            source.open(spec)
+                            while (true) {
+                                val n = source.read(buffer, 0, buffer.size)
+                                if (n < 0) break
+                                sink.write(buffer, 0, n)
+                                chunk += n
+                            }
+                        } finally {
+                            source.close()
+                        }
+                        position += chunk
+                        if (chunk == 0L || !(stream.requireBoundedRange || stream.useRangeChunks)) break
+                    }
+                }
+                position > 0L
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.tag("AutomixDebug").w("head fetch failed for $mediaId: ${e.message}")
+                false
+            }
+        }
+
     private fun createCacheDataSource(): CacheDataSource.Factory =
         CacheDataSource
             .Factory()
@@ -3595,22 +3677,7 @@ class MusicService :
                     .Factory()
                     .setCache(playerCache)
                     .setUpstreamDataSourceFactory(
-                        DefaultDataSource.Factory(
-                            this,
-                            OkHttpDataSource.Factory(
-                                OkHttpClient
-                                    .Builder()
-                                    .proxy(YouTube.proxy)
-                                    .proxyAuthenticator { _, response ->
-                                        YouTube.proxyAuth?.let { auth ->
-                                            response.request
-                                                .newBuilder()
-                                                .header("Proxy-Authorization", auth)
-                                                .build()
-                                        } ?: response.request
-                                    }.build(),
-                            ),
-                        ),
+                        DefaultDataSource.Factory(this, OkHttpDataSource.Factory(createStreamHttpClient())),
                     ),
             ).setCacheWriteDataSinkFactory(null)
             .setFlags(FLAG_IGNORE_CACHE_ON_ERROR)

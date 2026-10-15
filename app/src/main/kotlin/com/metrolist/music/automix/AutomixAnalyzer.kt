@@ -163,6 +163,7 @@ private class FrameStream(
 class AutomixAnalyzer(
     private val tmpDir: File,
     private val caches: () -> List<Cache>,
+    private val fetchHead: (suspend (mediaId: String, out: File, maxBytes: Long) -> Boolean)? = null,
 ) {
     private val results = ConcurrentHashMap<String, TrackAnalysis>()
     private val mutex = Mutex()
@@ -171,6 +172,7 @@ class AutomixAnalyzer(
 
     private val failed = ConcurrentHashMap.newKeySet<String>()
     private val polling = ConcurrentHashMap.newKeySet<String>()
+    private val fetchAttempts = ConcurrentHashMap<String, Int>()
 
     /** Returns null if not enough of the song is cached yet (retry later) or if analysis failed. */
     suspend fun analyze(mediaId: String, needTail: Boolean = false): TrackAnalysis? {
@@ -182,7 +184,14 @@ class AutomixAnalyzer(
                 val file = File(tmpDir, mediaId.replace(Regex("[^A-Za-z0-9_-]"), "_") + ".tmp")
                 try {
                     tmpDir.mkdirs()
-                    val copied = copyFromCache(mediaId, file, needTail)
+                    var copied = copyFromCache(mediaId, file, needTail)
+                    if (copied < 0 && results[mediaId] == null) {
+                        // Not cached (yet): use whatever head is cached, else pull just the start of the stream.
+                        copied = copyFromCache(mediaId, file, false)
+                        if (copied < 0 && fetchHead != null && fetchAttempts.merge(mediaId, 1, Int::plus)!! <= MAX_FETCH_ATTEMPTS) {
+                            if (fetchHead.invoke(mediaId, file, HEAD_FETCH_BYTES) && file.length() > 0L) copied = 0
+                        }
+                    }
                     if (copied < 0) return@withContext null
                     val r = analyzeFile(file, copied == 1)
                     if (r == null) {
@@ -268,6 +277,11 @@ class AutomixAnalyzer(
             }
         }
         return -1
+    }
+
+    private companion object {
+        const val HEAD_FETCH_BYTES = 1_000_000L
+        const val MAX_FETCH_ATTEMPTS = 2
     }
 
     private fun probeDurationSec(path: String): Double {
