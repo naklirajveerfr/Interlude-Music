@@ -5032,11 +5032,10 @@ class MusicService :
             Timber.tag("AutomixDebug").d("ramp skipped: A=${a?.bpm}/${a?.confidence} B=${b?.bpm}/${b?.confidence}")
             return null
         }
-        val maxChange = dataStore.get(com.metrolist.music.constants.AutomixMaxTempoKey, 6f) / 100f
         val r = b.bpm!! / a.bpm!!
         val best = listOf(r, r * 2f, r / 2f).minByOrNull { kotlin.math.abs(it - 1f) } ?: return null
         val diff = kotlin.math.abs(best - 1f)
-        Timber.tag("AutomixDebug").d("ramp plan: bpmA=${a.bpm} bpmB=${b.bpm} ratio=$best maxChange=$maxChange")
+        Timber.tag("AutomixDebug").d("ramp plan: bpmA=${a.bpm} bpmB=${b.bpm} ratio=$best")
         if (diff < 0.004f) return null
         return best
     }

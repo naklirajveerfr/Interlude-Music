@@ -731,5 +731,4 @@ val AutomixEnabledKey = androidx.datastore.preferences.core.booleanPreferencesKe
 val AutomixProviderKey = androidx.datastore.preferences.core.stringPreferencesKey("automixProvider")
 val AutomixApiKeyKey = androidx.datastore.preferences.core.stringPreferencesKey("automixApiKey")
 val AutomixModelKey = androidx.datastore.preferences.core.stringPreferencesKey("automixModel")
-val AutomixMaxTempoKey = androidx.datastore.preferences.core.floatPreferencesKey("automixMaxTempo")
 val AutomixSendAudioKey = androidx.datastore.preferences.core.booleanPreferencesKey("automixSendAudio")
