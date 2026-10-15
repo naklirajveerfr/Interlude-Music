@@ -171,6 +171,7 @@ fun PlayerSettings(
         defaultValue = false
     )
     val (automixEnabled, onAutomixEnabledChange) = rememberPreference(com.metrolist.music.constants.AutomixEnabledKey, defaultValue = false)
+    val (smoothSkipDuration, onSmoothSkipDurationChange) = rememberPreference(com.metrolist.music.constants.SmoothSkipDurationKey, defaultValue = 5f)
     val (autoDownloadOnLike, onAutoDownloadOnLikeChange) = rememberPreference(
         AutoDownloadOnLikeKey,
         defaultValue = false
@@ -322,30 +323,7 @@ fun PlayerSettings(
                     },
                     onClick = { onCrossfadeEnabledChange(!crossfadeEnabled) }
                 ))
-                run {
-                    add(Material3SettingsItem(
-                        icon = painterResource(R.drawable.gradient),
-                        title = { Text("Smooth skip (beta)") },
-                        description = { Text("Hold the next button for 1.5 seconds to fade into the next song instead of cutting, matching their tempo") },
-                        trailingContent = {
-                            Switch(
-                                checked = automixEnabled,
-                                onCheckedChange = onAutomixEnabledChange,
-                                thumbContent = {
-                                    Icon(
-                                        painter = painterResource(
-                                            id = if (automixEnabled) R.drawable.check else R.drawable.close
-                                        ),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(SwitchDefaults.IconSize)
-                                    )
-                                }
-                            )
-                        },
-                        onClick = { onAutomixEnabledChange(!automixEnabled) }
-                    ))
-                }
-                if (crossfadeEnabled || automixEnabled) {
+                if (crossfadeEnabled) {
                     add(Material3SettingsItem(
                         icon = painterResource(R.drawable.timer),
                         title = { Text(stringResource(R.string.crossfade_duration)) },
@@ -383,6 +361,46 @@ fun PlayerSettings(
                             )
                         },
                         onClick = { onCrossfadeGaplessChange(!crossfadeGapless) }
+                    ))
+                }
+                run {
+                    add(Material3SettingsItem(
+                        icon = painterResource(R.drawable.gradient),
+                        title = { Text("Smooth skip (beta)") },
+                        description = { Text("Hold the next button for 1.5 seconds to fade into the next song instead of cutting, matching their tempo") },
+                        trailingContent = {
+                            Switch(
+                                checked = automixEnabled,
+                                onCheckedChange = onAutomixEnabledChange,
+                                thumbContent = {
+                                    Icon(
+                                        painter = painterResource(
+                                            id = if (automixEnabled) R.drawable.check else R.drawable.close
+                                        ),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(SwitchDefaults.IconSize)
+                                    )
+                                }
+                            )
+                        },
+                        onClick = { onAutomixEnabledChange(!automixEnabled) }
+                    ))
+                }
+                if (automixEnabled) {
+                    add(Material3SettingsItem(
+                        icon = painterResource(R.drawable.timer),
+                        title = { Text("Smooth skip duration") },
+                        description = {
+                            Column {
+                                Text(pluralStringResource(R.plurals.seconds, smoothSkipDuration.toInt(), smoothSkipDuration.toInt()))
+                                Slider(
+                                    value = smoothSkipDuration,
+                                    onValueChange = onSmoothSkipDurationChange,
+                                    valueRange = 1f..15f,
+                                    steps = 14
+                                )
+                            }
+                        }
                     ))
                 }
                 add(Material3SettingsItem(

@@ -308,6 +308,8 @@ class MusicService :
 
     private var crossfadeEnabled = false
     private var smoothSkipEnabled = false
+    private var smoothSkipDuration = 5000f
+    private var mixDurationMs = 5000f
     private var crossfadeDuration = 5000f
     private var crossfadeGapless = true
     private var crossfadeMessage: PlayerMessage? = null
@@ -1165,11 +1167,17 @@ class MusicService :
             }
 
         combine(
-            dataStore.data.map { it[com.metrolist.music.constants.AutomixEnabledKey] ?: false },
+            dataStore.data.map {
+                (it[com.metrolist.music.constants.AutomixEnabledKey] ?: false) to
+                    (it[com.metrolist.music.constants.SmoothSkipDurationKey] ?: 5f)
+            },
             listenTogetherManager.roomState,
-        ) { enabled, roomState -> enabled && roomState == null }
+        ) { (enabled, duration), roomState -> (enabled && roomState == null) to duration }
             .distinctUntilChanged()
-            .collect(scope) { smoothSkipEnabled = it }
+            .collect(scope) { (enabled, duration) ->
+                smoothSkipEnabled = enabled
+                smoothSkipDuration = duration * 1000f
+            }
 
         // Observe and cache common preferences to avoid runBlocking reads in playback callbacks
         scope.launch {
@@ -5069,7 +5077,7 @@ class MusicService :
         crossfadeMessage?.cancel()
         crossfadeMessage = null
         cancelAutomixRamp(restoreSpeed = true)
-        mixFadeMs.value = crossfadeDuration.toLong()
+        mixFadeMs.value = smoothSkipDuration.toLong()
         startCrossfade(smooth = true)
         if (!isCrossfading) {
             mixFadeMs.value = 0L
@@ -5146,6 +5154,7 @@ class MusicService :
 
     private fun startCrossfade(smooth: Boolean = false) {
         if (isCrossfading) return
+        mixDurationMs = if (smooth) smoothSkipDuration else crossfadeDuration
 
         val repeatMode = player.repeatMode
         val shuffleModeEnabled = player.shuffleModeEnabled
@@ -5263,7 +5272,7 @@ class MusicService :
         crossfadeJob =
             scope.launch {
                 val speed = fadingPlayer?.playbackParameters?.speed?.coerceAtLeast(0.01f) ?: 1f
-                val duration = (crossfadeDuration / speed).toLong()
+                val duration = (mixDurationMs / speed).toLong()
                 val steps = 20
                 val stepTime = duration / steps
                 val startVolume =

@@ -728,6 +728,7 @@ val CountryCodeToName =
     )
 
 val AutomixEnabledKey = androidx.datastore.preferences.core.booleanPreferencesKey("automixEnabled")
+val SmoothSkipDurationKey = androidx.datastore.preferences.core.floatPreferencesKey("smoothSkipDuration")
 val AutomixProviderKey = androidx.datastore.preferences.core.stringPreferencesKey("automixProvider")
 val AutomixApiKeyKey = androidx.datastore.preferences.core.stringPreferencesKey("automixApiKey")
 val AutomixModelKey = androidx.datastore.preferences.core.stringPreferencesKey("automixModel")
