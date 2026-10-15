@@ -19,7 +19,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import coil3.compose.AsyncImage
+import com.metrolist.music.LocalPlayerConnection
+import kotlinx.coroutines.flow.MutableStateFlow
 import com.metrolist.music.R
 import com.metrolist.music.constants.PlayerButtonShape
 import androidx.compose.ui.graphics.Color
@@ -69,6 +73,34 @@ private fun RoundFilled(res: Int, container: Color, content: Color, boxSize: Dp,
 }
 
 @Composable
+private fun BoxScope.FullArtBackdrop(artworkUrl: String?, fadeStyle: PlayerFadeStyle) {
+    if (fadeStyle == PlayerFadeStyle.TRANSLUCENT) {
+        AsyncImage(
+            model = artworkUrl, contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize().blur(60.dp),
+        )
+        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.35f)))
+    }
+    AsyncImage(
+        model = artworkUrl, contentDescription = null,
+        contentScale = ContentScale.Crop,
+        modifier = Modifier
+            .fillMaxWidth()
+            .fillMaxHeight(0.72f)
+            .align(Alignment.TopCenter)
+            .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+            .drawWithContent {
+                drawContent()
+                drawRect(
+                    brush = Brush.verticalGradient(0.55f to Color.Black, 1f to Color.Transparent),
+                    blendMode = BlendMode.DstIn,
+                )
+            },
+    )
+}
+
+@Composable
 fun FullArtPlayerContent(
     artworkUrl: String?,
     title: String,
@@ -105,32 +137,35 @@ fun FullArtPlayerContent(
     val favRes = if (isFavorite) R.drawable.favorite else R.drawable.favorite_border
     val playRes = if (isPlaying) R.drawable.nm_pause else R.drawable.nm_play_arrow
 
+    // Skip mixes (seamless transition) fade the old art into the new one
+    val playerConnection = LocalPlayerConnection.current
+    val mixFlow = remember(playerConnection) { playerConnection?.service?.mixFadeMs ?: MutableStateFlow(0L) }
+    val mixFadeMs by mixFlow.collectAsState()
+    val artFadeAlpha = remember { Animatable(0f) }
+    var fadeFromArt by remember { mutableStateOf<String?>(null) }
+    var lastArt by remember { mutableStateOf(artworkUrl) }
+    LaunchedEffect(artworkUrl) {
+        val oldArt = lastArt
+        lastArt = artworkUrl
+        if (mixFadeMs > 0L && oldArt != null && oldArt != artworkUrl) {
+            try {
+                fadeFromArt = oldArt
+                artFadeAlpha.snapTo(1f)
+                artFadeAlpha.animateTo(0f, tween(500))
+            } finally {
+                fadeFromArt = null
+            }
+        }
+    }
+
     Box(modifier.fillMaxSize()) {
         if (showArt) {
-            if (fadeStyle == PlayerFadeStyle.TRANSLUCENT) {
-                AsyncImage(
-                    model = artworkUrl, contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize().blur(60.dp),
-                )
-                Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.35f)))
+            FullArtBackdrop(artworkUrl, fadeStyle)
+            fadeFromArt?.let { oldArt ->
+                Box(Modifier.fillMaxSize().graphicsLayer { alpha = artFadeAlpha.value }) {
+                    FullArtBackdrop(oldArt, fadeStyle)
+                }
             }
-            AsyncImage(
-                model = artworkUrl, contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight(0.72f)
-                    .align(Alignment.TopCenter)
-                    .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-                    .drawWithContent {
-                        drawContent()
-                        drawRect(
-                            brush = Brush.verticalGradient(0.55f to Color.Black, 1f to Color.Transparent),
-                            blendMode = BlendMode.DstIn,
-                        )
-                    },
-            )
         }
 
         overlay()
