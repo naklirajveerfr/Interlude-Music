@@ -308,7 +308,7 @@ fun Thumbnail(
             try {
                 fadeFromCover = oldCover
                 coverFadeAlpha.snapTo(1f)
-                coverFadeAlpha.animateTo(0f, tween(mixFadeMs.toInt().coerceAtLeast(300)))
+                coverFadeAlpha.animateTo(0f, tween(500))
             } finally {
                 fadeFromCover = null
             }
