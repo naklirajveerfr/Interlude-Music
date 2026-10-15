@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/logo.png" alt="Interlude app icon" width="200" />
+<img src="assets/logo.jpeg" alt="Interlude app icon" width="200" />
 
 # Interlude
 
