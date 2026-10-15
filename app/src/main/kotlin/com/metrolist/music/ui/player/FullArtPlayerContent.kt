@@ -22,8 +22,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import coil3.compose.AsyncImage
-import com.metrolist.music.LocalPlayerConnection
-import kotlinx.coroutines.flow.MutableStateFlow
 import com.metrolist.music.R
 import com.metrolist.music.constants.PlayerButtonShape
 import androidx.compose.ui.graphics.Color
@@ -137,14 +135,12 @@ fun FullArtPlayerContent(
     val favRes = if (isFavorite) R.drawable.favorite else R.drawable.favorite_border
     val playRes = if (isPlaying) R.drawable.nm_pause else R.drawable.nm_play_arrow
 
-    // Skip mixes (smooth skip) fade the old art into the new one. The old art is worked
+    // Every song change fades the old art into the new one. The old art is worked
     // out during composition so it is on screen in the first frame of the new song.
-    val playerConnection = LocalPlayerConnection.current
-    val mixFadeFlow = remember(playerConnection) { playerConnection?.service?.mixFadeMs ?: MutableStateFlow(0L) }
     val artRef = remember { object { var last: String? = artworkUrl } }
     val fadeFromArt = remember(artworkUrl) {
         val oldArt = artRef.last
-        if (mixFadeFlow.value > 0L && oldArt != null && oldArt != artworkUrl) oldArt else null
+        if (oldArt != null && oldArt != artworkUrl) oldArt else null
     }
     val artFadeAlpha = remember(artworkUrl) { Animatable(if (fadeFromArt != null) 1f else 0f) }
     var artFadeDone by remember(artworkUrl) { mutableStateOf(false) }

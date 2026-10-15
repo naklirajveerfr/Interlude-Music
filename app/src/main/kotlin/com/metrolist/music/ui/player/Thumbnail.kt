@@ -265,15 +265,14 @@ fun Thumbnail(
     val currentItem by remember { derivedStateOf { thumbnailLazyGridState.firstVisibleItemIndex } }
     val itemScrollOffset by remember { derivedStateOf { thumbnailLazyGridState.firstVisibleItemScrollOffset } }
 
-    // Skip mixes (smooth skip) fade the old cover into the new one instead of sliding.
+    // Every song change fades the old cover into the new one instead of sliding.
     // The old cover is worked out during composition so it is already on screen in the first
     // frame of the new song, instead of the new cover flashing first.
-    val mixFadeFlow = playerConnection.service.mixFadeMs
     val coverId = mediaMetadata?.id
     val coverRef = remember { object { var last: String? = mediaMetadata?.thumbnailUrl } }
     val fadeFromCover = remember(coverId) {
         val oldCover = coverRef.last
-        if (mixFadeFlow.value > 0L && oldCover != null && oldCover != mediaMetadata?.thumbnailUrl) oldCover else null
+        if (oldCover != null && oldCover != mediaMetadata?.thumbnailUrl) oldCover else null
     }
     val coverFadeAlpha = remember(coverId) { Animatable(if (fadeFromCover != null) 1f else 0f) }
     var coverFadeDone by remember(coverId) { mutableStateOf(false) }
@@ -294,8 +293,7 @@ fun Thumbnail(
         val index = maxOf(0, currentMediaIndex)
         if (index >= 0 && index < mediaItems.size) {
             try {
-                if (mixFadeFlow.value > 0L) thumbnailLazyGridState.scrollToItem(index)
-                else thumbnailLazyGridState.animateScrollToItem(index)
+                thumbnailLazyGridState.scrollToItem(index)
             } catch (e: Exception) {
                 thumbnailLazyGridState.scrollToItem(index)
             }
