@@ -403,6 +403,9 @@ class MusicService :
     private var secondaryPlayer: ExoPlayer? = null
     private var fadingPlayer: ExoPlayer? = null
     private var isCrossfading = false
+
+    /** Length in ms of a skip mix in progress (0 when none), so the UI can fade the cover instead of sliding. */
+    val mixFadeMs = MutableStateFlow(0L)
     private var crossfadeJob: Job? = null
     private var isRunning = false
     private var mediaSession: MediaLibrarySession? = null
@@ -5116,8 +5119,12 @@ class MusicService :
         crossfadeMessage?.cancel()
         crossfadeMessage = null
         cancelAutomixRamp(restoreSpeed = true)
+        mixFadeMs.value = crossfadeDuration.toLong()
         startCrossfade()
-        if (!isCrossfading) return false
+        if (!isCrossfading) {
+            mixFadeMs.value = 0L
+            return false
+        }
         if (ratio != null) rampOutgoingSpeed(outgoing, ratio, crossfadeDuration.toLong())
         return true
     }
@@ -5352,6 +5359,7 @@ class MusicService :
         fadingPlayer = null
         crossfadeJob = null
         isCrossfading = false
+        mixFadeMs.value = 0L
         applyEffectiveVolume()
         sleepTimer?.notifySongTransition()
 
