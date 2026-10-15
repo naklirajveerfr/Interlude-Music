@@ -940,9 +940,10 @@ class MusicService :
         combine(
             dataStore.data.map { it[AudioOffload] ?: false },
             dataStore.data.map { it[CrossfadeEnabledKey] ?: false },
-        ) { offloadPref, crossfadeEnabled ->
-            // Force disable offload if crossfade is enabled to prevent volume ramp issues
-            if (crossfadeEnabled) false else offloadPref
+            dataStore.data.map { it[com.metrolist.music.constants.AutomixEnabledKey] ?: false },
+        ) { offloadPref, crossfadeEnabled, seamlessEnabled ->
+            // Force disable offload if crossfade or seamless transition is enabled to prevent volume ramp issues
+            if (crossfadeEnabled || seamlessEnabled) false else offloadPref
         }.distinctUntilChanged()
             .collectLatest(scope) { useOffload ->
                 player.setOffloadEnabled(useOffload)
@@ -1144,7 +1145,7 @@ class MusicService :
         combine(
             dataStore.data.map { prefs ->
                 Triple(
-                    prefs[CrossfadeEnabledKey] ?: false,
+                    (prefs[CrossfadeEnabledKey] ?: false) || (prefs[com.metrolist.music.constants.AutomixEnabledKey] ?: false),
                     prefs[CrossfadeDurationKey] ?: 5f,
                     prefs[CrossfadeGaplessKey] ?: true,
                 )
@@ -1346,14 +1347,14 @@ class MusicService :
 
         if (prefs != null) {
             val offload = prefs[AudioOffload] ?: false
-            val crossfade = prefs[CrossfadeEnabledKey] ?: false
+            val crossfade = (prefs[CrossfadeEnabledKey] ?: false) || (prefs[com.metrolist.music.constants.AutomixEnabledKey] ?: false)
             player.setOffloadEnabled(if (crossfade) false else offload)
             player.skipSilenceEnabled = prefs[SkipSilenceKey] ?: false
         } else {
             player.apply {
                 runBlocking {
                     val offload = dataStore.get(AudioOffload, false)
-                    val crossfade = dataStore.get(CrossfadeEnabledKey, false)
+                    val crossfade = dataStore.get(CrossfadeEnabledKey, false) || dataStore.get(com.metrolist.music.constants.AutomixEnabledKey, false)
                     setOffloadEnabled(if (crossfade) false else offload)
                     skipSilenceEnabled = dataStore.get(SkipSilenceKey, false)
                 }
@@ -4588,7 +4589,7 @@ class MusicService :
             }
 
             MusicWidgetReceiver.ACTION_NEXT -> {
-                player.seekToNext()
+                if (!skipWithSeamlessTransition()) player.seekToNext()
                 updateWidgetUI(player.isPlaying)
             }
 
@@ -4993,8 +4994,7 @@ class MusicService :
     private var automixBaseSpeed = 1f
 
     private fun automixOn(): Boolean =
-        dataStore.get(com.metrolist.music.constants.AutomixEnabledKey, false) &&
-            dataStore.get(com.metrolist.music.constants.CrossfadeEnabledKey, false)
+        dataStore.get(com.metrolist.music.constants.AutomixEnabledKey, false) && crossfadeEnabled
 
     private fun automixNextMediaId(): String? =
         when {
@@ -5100,6 +5100,46 @@ class MusicService :
         } else if (triggerTime - now > 2_500L) {
             begin()
         }
+    }
+
+    /**
+     * Skips to the next song by mixing it in from the current position when seamless transition
+     * is enabled. Returns false when the caller should do a normal skip instead.
+     */
+    fun skipWithSeamlessTransition(): Boolean {
+        if (!::player.isInitialized || isCrossfading || !automixOn()) return false
+        if (castConnectionHandler?.isCasting?.value == true) return false
+        if (player.repeatMode == REPEAT_MODE_ONE || !player.hasNextMediaItem() || !player.isPlaying) return false
+
+        val ratio = automixTargetRatio()
+        val outgoing = player
+        crossfadeMessage?.cancel()
+        crossfadeMessage = null
+        cancelAutomixRamp(restoreSpeed = true)
+        startCrossfade()
+        if (!isCrossfading) return false
+        if (ratio != null) rampOutgoingSpeed(outgoing, ratio, crossfadeDuration.toLong())
+        return true
+    }
+
+    private fun rampOutgoingSpeed(outgoing: Player, ratio: Float, durationMs: Long) {
+        val from = outgoing.playbackParameters.speed
+        val to = from * ratio
+        val steps = (durationMs / 250L).toInt().coerceIn(4, 60)
+        automixRampJob?.cancel()
+        automixRampJob =
+            scope.launch {
+                for (i in 1..steps) {
+                    delay(durationMs / steps)
+                    if (!isActive || fadingPlayer !== outgoing) return@launch
+                    val p = i / steps.toFloat()
+                    try {
+                        outgoing.setPlaybackSpeed(from + (to - from) * (p * p * (3f - 2f * p)))
+                    } catch (_: Exception) {
+                        return@launch
+                    }
+                }
+            }
     }
 
     private fun scheduleCrossfade() {

@@ -268,7 +268,7 @@ fun Thumbnail(
         if (!thumbnailLazyGridState.isScrollInProgress || !swipeThumbnail || itemScrollOffset != 0 || currentMediaIndex < 0) return@LaunchedEffect
 
         if (currentItem > currentMediaIndex && canSkipNext) {
-            playerConnection.player.seekToNext()
+            playerConnection.seekToNextSeamless()
         } else if (currentItem < currentMediaIndex && canSkipPrevious) {
             playerConnection.player.seekToPreviousMediaItem()
         }

@@ -358,7 +358,7 @@ private fun NewMiniPlayer(
                                         if (currentOffset > 0 && canSkipPrevious) {
                                             playerConnection.player.seekToPreviousMediaItem()
                                         } else if (currentOffset <= 0 && canSkipNext) {
-                                            playerConnection.player.seekToNext()
+                                            playerConnection.seekToNextSeamless()
                                         }
                                     }
                                     coroutineScope.launch {
@@ -805,7 +805,7 @@ private fun LegacyMiniPlayer(
                                         if (currentOffset > 0 && canSkipPrevious) {
                                             playerConnection.player.seekToPreviousMediaItem()
                                         } else if (currentOffset <= 0 && canSkipNext) {
-                                            playerConnection.player.seekToNext()
+                                            playerConnection.seekToNextSeamless()
                                         }
                                     }
                                     coroutineScope.launch { offsetXAnimatable.animateTo(0f, animationSpec) }

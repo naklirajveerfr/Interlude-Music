@@ -14,6 +14,7 @@ import androidx.core.net.toUri
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.Player
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.session.LibraryResult
 import androidx.media3.session.MediaLibraryService
@@ -106,6 +107,19 @@ constructor(
                 .build(),
             connectionResult.availablePlayerCommands,
         )
+    }
+
+    override fun onPlayerCommandRequest(
+        session: MediaSession,
+        controller: MediaSession.ControllerInfo,
+        playerCommand: Int,
+    ): Int {
+        if ((playerCommand == Player.COMMAND_SEEK_TO_NEXT || playerCommand == Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM) &&
+            service.skipWithSeamlessTransition()
+        ) {
+            return SessionResult.RESULT_INFO_SKIPPED
+        }
+        return super.onPlayerCommandRequest(session, controller, playerCommand)
     }
 
     override fun onCustomCommand(

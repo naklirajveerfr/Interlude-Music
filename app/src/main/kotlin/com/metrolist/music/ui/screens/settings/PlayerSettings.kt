@@ -322,11 +322,11 @@ fun PlayerSettings(
                     },
                     onClick = { onCrossfadeEnabledChange(!crossfadeEnabled) }
                 ))
-                if (crossfadeEnabled) {
+                run {
                     add(Material3SettingsItem(
                         icon = painterResource(R.drawable.gradient),
                         title = { Text("Seamless transition (beta)") },
-                        description = { Text("Matches the tempo of the ending and next song for a smoother mix") },
+                        description = { Text("Matches the tempo of the ending and next song for a smoother mix, and also mixes when you skip a song") },
                         trailingContent = {
                             Switch(
                                 checked = automixEnabled,
@@ -344,6 +344,8 @@ fun PlayerSettings(
                         },
                         onClick = { onAutomixEnabledChange(!automixEnabled) }
                     ))
+                }
+                if (crossfadeEnabled || automixEnabled) {
                     add(Material3SettingsItem(
                         icon = painterResource(R.drawable.timer),
                         title = { Text(stringResource(R.string.crossfade_duration)) },
@@ -473,19 +475,19 @@ fun PlayerSettings(
                     title = { Text(stringResource(R.string.audio_offload)) },
                     description = {
                         Text(
-                            if (crossfadeEnabled) stringResource(R.string.audio_offload_disabled_by_crossfade)
+                            if (crossfadeEnabled || automixEnabled) stringResource(R.string.audio_offload_disabled_by_crossfade)
                             else stringResource(R.string.audio_offload_description)
                         )
                     },
                     trailingContent = {
                         Switch(
-                            checked = if (crossfadeEnabled) false else audioOffload,
+                            checked = if (crossfadeEnabled || automixEnabled) false else audioOffload,
                             onCheckedChange = onAudioOffloadChange,
-                            enabled = !crossfadeEnabled,
+                            enabled = !(crossfadeEnabled || automixEnabled),
                             thumbContent = {
                                 Icon(
                                     painter = painterResource(
-                                        id = if (!crossfadeEnabled && audioOffload) R.drawable.check else R.drawable.close
+                                        id = if (!(crossfadeEnabled || automixEnabled) && audioOffload) R.drawable.check else R.drawable.close
                                     ),
                                     contentDescription = null,
                                     modifier = Modifier.size(SwitchDefaults.IconSize)
@@ -493,7 +495,7 @@ fun PlayerSettings(
                             }
                         )
                     },
-                    onClick = { if (!crossfadeEnabled) onAudioOffloadChange(!audioOffload) }
+                    onClick = { if (!(crossfadeEnabled || automixEnabled)) onAudioOffloadChange(!audioOffload) }
                 ))
                 add(Material3SettingsItem(
                     icon = painterResource(R.drawable.graphic_eq),

@@ -413,6 +413,11 @@ class PlayerConnection(
         }
     }
 
+    /** Skips to the next song, mixing it in when seamless transition is enabled. */
+    fun seekToNextSeamless() {
+        if (!service.skipWithSeamlessTransition()) player.seekToNext()
+    }
+
     fun seekToNext() {
         try {
             // When casting, use Cast skip instead of local player
@@ -421,7 +426,7 @@ class PlayerConnection(
                 castHandler.skipToNext()
                 return
             }
-            player.seekToNext()
+            seekToNextSeamless()
             if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) {
                 player.prepare()
             }
