@@ -307,6 +307,7 @@ class MusicService :
     private var isPausedByVolumeMute = false
 
     private var crossfadeEnabled = false
+    private var smoothSkipEnabled = false
     private var crossfadeDuration = 5000f
     private var crossfadeGapless = true
     private var crossfadeMessage: PlayerMessage? = null
@@ -1148,7 +1149,7 @@ class MusicService :
         combine(
             dataStore.data.map { prefs ->
                 Triple(
-                    (prefs[CrossfadeEnabledKey] ?: false) || (prefs[com.metrolist.music.constants.AutomixEnabledKey] ?: false),
+                    prefs[CrossfadeEnabledKey] ?: false,
                     prefs[CrossfadeDurationKey] ?: 5f,
                     prefs[CrossfadeGaplessKey] ?: true,
                 )
@@ -1162,6 +1163,13 @@ class MusicService :
                 crossfadeDuration = duration * 1000f // Convert to ms
                 crossfadeGapless = gapless
             }
+
+        combine(
+            dataStore.data.map { it[com.metrolist.music.constants.AutomixEnabledKey] ?: false },
+            listenTogetherManager.roomState,
+        ) { enabled, roomState -> enabled && roomState == null }
+            .distinctUntilChanged()
+            .collect(scope) { smoothSkipEnabled = it }
 
         // Observe and cache common preferences to avoid runBlocking reads in playback callbacks
         scope.launch {
@@ -4997,7 +5005,7 @@ class MusicService :
     private var automixBaseSpeed = 1f
 
     private fun automixOn(): Boolean =
-        dataStore.get(com.metrolist.music.constants.AutomixEnabledKey, false) && crossfadeEnabled
+        dataStore.get(com.metrolist.music.constants.AutomixEnabledKey, false) && smoothSkipEnabled
 
     private fun automixNextMediaId(): String? =
         when {
