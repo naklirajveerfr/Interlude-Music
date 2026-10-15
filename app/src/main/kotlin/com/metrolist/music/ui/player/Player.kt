@@ -17,6 +17,7 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -796,6 +797,18 @@ fun BottomSheetPlayer(
         }
     }
 
+    // The slider slides back to the start when the song changes instead of jumping.
+    val positionFraction = { if (duration > 0) (effectivePosition.toFloat() / duration).coerceIn(0f, 1f) else 0f }
+    val shownFraction = remember { Animatable(positionFraction()) }
+    LaunchedEffect(mediaMetadata?.id) {
+        val target = positionFraction()
+        if (target < shownFraction.value) shownFraction.animateTo(target, tween(400))
+    }
+    LaunchedEffect(effectivePosition, duration) {
+        if (!shownFraction.isRunning) shownFraction.snapTo(positionFraction())
+    }
+    val displayPosition = (shownFraction.value * duration).toLong()
+
     // Auto-switch from repeat one to repeat all when song ends naturally
     var previousMediaId by remember { mutableStateOf<String?>(null) }
 
@@ -1400,7 +1413,7 @@ fun BottomSheetPlayer(
             when (sliderStyle) {
                 SliderStyle.DEFAULT -> {
                     Slider(
-                        value = (sliderPosition ?: effectivePosition).toFloat(),
+                        value = (sliderPosition ?: displayPosition).toFloat(),
                         valueRange = 0f..(if (duration == C.TIME_UNSET) 0f else duration.toFloat()),
                         onValueChange = {
                             if (!isListenTogetherGuest) {
@@ -1430,7 +1443,7 @@ fun BottomSheetPlayer(
                 SliderStyle.WAVY -> {
                     if (squigglySlider) {
                         SquigglySlider(
-                            value = (sliderPosition ?: effectivePosition).toFloat(),
+                            value = (sliderPosition ?: displayPosition).toFloat(),
                             valueRange = 0f..(if (duration == C.TIME_UNSET) 0f else duration.toFloat()),
                             onValueChange = {
                                 sliderPosition = it.toLong()
@@ -1453,7 +1466,7 @@ fun BottomSheetPlayer(
                         )
                     } else {
                         WavySlider(
-                            value = (sliderPosition ?: effectivePosition).toFloat(),
+                            value = (sliderPosition ?: displayPosition).toFloat(),
                             valueRange = 0f..(if (duration == C.TIME_UNSET) 0f else duration.toFloat()),
                             onValueChange = {
                                 sliderPosition = it.toLong()
@@ -1478,7 +1491,7 @@ fun BottomSheetPlayer(
                 }
 
                 SliderStyle.SLIM -> {
-                    val sliderValue = (sliderPosition ?: effectivePosition).toFloat()
+                    val sliderValue = (sliderPosition ?: displayPosition).toFloat()
                     val sliderRange = 0f..(if (duration == C.TIME_UNSET) 0f else duration.toFloat())
                     val sliderState = remember(sliderRange) {
                         SliderState(value = sliderValue, trackRange = sliderRange)
@@ -1529,7 +1542,7 @@ fun BottomSheetPlayer(
                         .padding(horizontal = PlayerHorizontalPadding + 4.dp),
             ) {
                 Text(
-                    text = makeTimeString(sliderPosition ?: effectivePosition),
+                    text = makeTimeString(sliderPosition ?: displayPosition),
                     style = MaterialTheme.typography.labelMedium,
                     color = TextBackgroundColor,
                     maxLines = 1,
@@ -2089,7 +2102,7 @@ fun BottomSheetPlayer(
                         artist = mediaMetadata?.artists?.joinToString { it.name } ?: "",
                         isPlaying = effectiveIsPlaying,
                         isFavorite = currentSong?.song?.liked == true,
-                        position = sliderPosition ?: effectivePosition,
+                        position = sliderPosition ?: displayPosition,
                         duration = duration,
                                          onPlayPause = {
                             if (isListenTogetherGuest) {
@@ -2200,7 +2213,7 @@ fun BottomSheetPlayer(
 when (sliderStyle) {
                 SliderStyle.DEFAULT -> {
                     Slider(
-                        value = (sliderPosition ?: effectivePosition).toFloat(),
+                        value = (sliderPosition ?: displayPosition).toFloat(),
                         valueRange = 0f..(if (duration == C.TIME_UNSET) 0f else duration.toFloat()),
                         onValueChange = {
                             if (!isListenTogetherGuest) {
@@ -2230,7 +2243,7 @@ when (sliderStyle) {
                 SliderStyle.WAVY -> {
                     if (squigglySlider) {
                         SquigglySlider(
-                            value = (sliderPosition ?: effectivePosition).toFloat(),
+                            value = (sliderPosition ?: displayPosition).toFloat(),
                             valueRange = 0f..(if (duration == C.TIME_UNSET) 0f else duration.toFloat()),
                             onValueChange = {
                                 sliderPosition = it.toLong()
@@ -2253,7 +2266,7 @@ when (sliderStyle) {
                         )
                     } else {
                         WavySlider(
-                            value = (sliderPosition ?: effectivePosition).toFloat(),
+                            value = (sliderPosition ?: displayPosition).toFloat(),
                             valueRange = 0f..(if (duration == C.TIME_UNSET) 0f else duration.toFloat()),
                             onValueChange = {
                                 sliderPosition = it.toLong()
@@ -2278,7 +2291,7 @@ when (sliderStyle) {
                 }
 
                 SliderStyle.SLIM -> {
-                    val sliderValue = (sliderPosition ?: effectivePosition).toFloat()
+                    val sliderValue = (sliderPosition ?: displayPosition).toFloat()
                     val sliderRange = 0f..(if (duration == C.TIME_UNSET) 0f else duration.toFloat())
                     val sliderState = remember(sliderRange) {
                         SliderState(value = sliderValue, trackRange = sliderRange)
