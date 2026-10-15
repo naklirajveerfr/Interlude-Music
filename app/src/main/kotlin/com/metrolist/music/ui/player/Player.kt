@@ -1727,7 +1727,8 @@ fun BottomSheetPlayer(
                                 modifier =
                                     Modifier
                                         .height(68.dp)
-                                        .weight(nextButtonWeight),
+                                        .weight(nextButtonWeight)
+                                        .smoothSkipOnHold(),
                             ) {
                                 Icon(
                                     painter = painterResource(R.drawable.skip_next),
@@ -1802,7 +1803,7 @@ fun BottomSheetPlayer(
                                 androidx.compose.material3.IconButton(
                                     onClick = playerConnection::seekToNext,
                                     enabled = canSkipNext && !isListenTogetherGuest,
-                                    modifier = Modifier.size(72.dp),
+                                    modifier = Modifier.size(72.dp).smoothSkipOnHold(),
                                 ) {
                                     Icon(
                                         painter = painterResource(R.drawable.nm_skip_next),
@@ -1854,7 +1855,7 @@ fun BottomSheetPlayer(
                                             containerColor = sideButtonContainerColor,
                                             contentColor = sideButtonContentColor,
                                         ),
-                                    modifier = Modifier.size(68.dp),
+                                    modifier = Modifier.size(68.dp).smoothSkipOnHold(),
                                 ) {
                                     Icon(
                                         painter = painterResource(R.drawable.skip_next),
@@ -1976,7 +1977,8 @@ fun BottomSheetPlayer(
                                         Modifier
                                             .size(if (isAppleShape) 44.dp else 32.dp)
                                             .align(Alignment.Center)
-                                            .alpha(if (isListenTogetherGuest) 0.5f else 1f),
+                                            .alpha(if (isListenTogetherGuest) 0.5f else 1f)
+                                            .smoothSkipOnHold(),
                                     onClick = playerConnection::seekToNext,
                                 )
                             }

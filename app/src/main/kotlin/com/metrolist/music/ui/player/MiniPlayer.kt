@@ -358,7 +358,7 @@ private fun NewMiniPlayer(
                                         if (currentOffset > 0 && canSkipPrevious) {
                                             playerConnection.player.seekToPreviousMediaItem()
                                         } else if (currentOffset <= 0 && canSkipNext) {
-                                            playerConnection.seekToNextSeamless()
+                                            playerConnection.player.seekToNext()
                                         }
                                     }
                                     coroutineScope.launch {
@@ -805,7 +805,7 @@ private fun LegacyMiniPlayer(
                                         if (currentOffset > 0 && canSkipPrevious) {
                                             playerConnection.player.seekToPreviousMediaItem()
                                         } else if (currentOffset <= 0 && canSkipNext) {
-                                            playerConnection.seekToNextSeamless()
+                                            playerConnection.player.seekToNext()
                                         }
                                     }
                                     coroutineScope.launch { offsetXAnimatable.animateTo(0f, animationSpec) }
@@ -860,6 +860,7 @@ private fun LegacyMiniPlayer(
             IconButton(
                 enabled = canSkipNext && !isListenTogetherGuest,
                 onClick = if (isListenTogetherGuest) ({}) else ({ playerConnection.seekToNext() }),
+                modifier = Modifier.smoothSkipOnHold(),
             ) {
                 Icon(painter = painterResource(R.drawable.skip_next), contentDescription = null)
             }

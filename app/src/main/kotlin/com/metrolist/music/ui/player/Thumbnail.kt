@@ -269,12 +269,11 @@ fun Thumbnail(
     // The old cover is worked out during composition so it is already on screen in the first
     // frame of the new song, instead of the new cover flashing first.
     val mixFadeFlow = playerConnection.service.mixFadeMs
-    var swipedSkip by remember { mutableStateOf(false) }
     val coverId = mediaMetadata?.id
     val coverRef = remember { object { var last: String? = mediaMetadata?.thumbnailUrl } }
     val fadeFromCover = remember(coverId) {
         val oldCover = coverRef.last
-        if (mixFadeFlow.value > 0L && !swipedSkip && oldCover != null && oldCover != mediaMetadata?.thumbnailUrl) oldCover else null
+        if (mixFadeFlow.value > 0L && oldCover != null && oldCover != mediaMetadata?.thumbnailUrl) oldCover else null
     }
     val coverFadeAlpha = remember(coverId) { Animatable(if (fadeFromCover != null) 1f else 0f) }
     var coverFadeDone by remember(coverId) { mutableStateOf(false) }
@@ -284,8 +283,7 @@ fun Thumbnail(
         if (!thumbnailLazyGridState.isScrollInProgress || !swipeThumbnail || itemScrollOffset != 0 || currentMediaIndex < 0) return@LaunchedEffect
 
         if (currentItem > currentMediaIndex && canSkipNext) {
-            swipedSkip = true
-            playerConnection.seekToNextSeamless()
+            playerConnection.player.seekToNext()
         } else if (currentItem < currentMediaIndex && canSkipPrevious) {
             playerConnection.player.seekToPreviousMediaItem()
         }
@@ -296,7 +294,7 @@ fun Thumbnail(
         val index = maxOf(0, currentMediaIndex)
         if (index >= 0 && index < mediaItems.size) {
             try {
-                if (mixFadeFlow.value > 0L && !swipedSkip) thumbnailLazyGridState.scrollToItem(index)
+                if (mixFadeFlow.value > 0L) thumbnailLazyGridState.scrollToItem(index)
                 else thumbnailLazyGridState.animateScrollToItem(index)
             } catch (e: Exception) {
                 thumbnailLazyGridState.scrollToItem(index)
@@ -304,10 +302,8 @@ fun Thumbnail(
         }
     }
 
-    // Declared after the scroll effect so that one still sees the swipe flag
     LaunchedEffect(coverId) {
         coverRef.last = mediaMetadata?.thumbnailUrl
-        swipedSkip = false
         if (fadeFromCover != null) {
             coverFadeAlpha.animateTo(0f, tween(500))
             coverFadeDone = true

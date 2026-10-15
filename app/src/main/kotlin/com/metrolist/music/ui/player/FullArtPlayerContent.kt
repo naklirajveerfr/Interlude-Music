@@ -54,19 +54,19 @@ private fun FilledSmall(res: Int, container: Color, content: Color, onClick: () 
 }
 
 @Composable
-private fun BareButton(res: Int, tint: Color, iconSize: Dp, boxSize: Dp, onClick: () -> Unit) {
-    IconButton(onClick = onClick, modifier = Modifier.size(boxSize)) {
+private fun BareButton(res: Int, tint: Color, iconSize: Dp, boxSize: Dp, onClick: () -> Unit, holdToSmoothSkip: Boolean = false) {
+    IconButton(onClick = onClick, modifier = Modifier.size(boxSize).then(if (holdToSmoothSkip) Modifier.smoothSkipOnHold() else Modifier)) {
         Icon(painterResource(res), null, tint = tint, modifier = Modifier.size(iconSize))
     }
 }
 
 @Composable
-private fun RoundFilled(res: Int, container: Color, content: Color, boxSize: Dp, iconSize: Dp, onClick: () -> Unit) {
+private fun RoundFilled(res: Int, container: Color, content: Color, boxSize: Dp, iconSize: Dp, onClick: () -> Unit, holdToSmoothSkip: Boolean = false) {
     FilledIconButton(
         onClick = onClick,
         shape = CircleShape,
         colors = IconButtonDefaults.filledIconButtonColors(containerColor = container, contentColor = content),
-        modifier = Modifier.size(boxSize),
+        modifier = Modifier.size(boxSize).then(if (holdToSmoothSkip) Modifier.smoothSkipOnHold() else Modifier),
     ) {
         Icon(painterResource(res), null, modifier = Modifier.size(iconSize))
     }
@@ -231,7 +231,7 @@ fun FullArtPlayerContent(
                         onClick = onNext,
                         shape = RoundedCornerShape(50),
                         colors = IconButtonDefaults.filledIconButtonColors(containerColor = sideButtonColor, contentColor = sideIconColor),
-                        modifier = Modifier.height(68.dp).weight(0.45f),
+                        modifier = Modifier.height(68.dp).weight(0.45f).smoothSkipOnHold(),
                     ) { Icon(painterResource(R.drawable.nm_skip_next), null, modifier = Modifier.size(32.dp)) }
                 }
 
@@ -242,7 +242,7 @@ fun FullArtPlayerContent(
                 ) {
                     RoundFilled(R.drawable.nm_skip_previous, sideButtonColor, sideIconColor, 68.dp, 32.dp, onPrevious)
                     RoundFilled(playRes, buttonColor, iconColor, 88.dp, 40.dp, onPlayPause)
-                    RoundFilled(R.drawable.nm_skip_next, sideButtonColor, sideIconColor, 68.dp, 32.dp, onNext)
+                    RoundFilled(R.drawable.nm_skip_next, sideButtonColor, sideIconColor, 68.dp, 32.dp, onNext, holdToSmoothSkip = true)
                 }
 
                 PlayerButtonShape.APPLE -> Row(
@@ -252,7 +252,7 @@ fun FullArtPlayerContent(
                 ) {
                     BareButton(R.drawable.nm_skip_previous, appleTint(textColor, appleButtonColor), 44.dp, 72.dp, onPrevious)
                     BareButton(playRes, appleTint(textColor, appleButtonColor), 64.dp, 96.dp, onPlayPause)
-                    BareButton(R.drawable.nm_skip_next, appleTint(textColor, appleButtonColor), 44.dp, 72.dp, onNext)
+                    BareButton(R.drawable.nm_skip_next, appleTint(textColor, appleButtonColor), 44.dp, 72.dp, onNext, holdToSmoothSkip = true)
                 }
             }
 

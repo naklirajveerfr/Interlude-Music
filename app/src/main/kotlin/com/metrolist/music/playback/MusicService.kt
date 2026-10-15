@@ -4592,7 +4592,7 @@ class MusicService :
             }
 
             MusicWidgetReceiver.ACTION_NEXT -> {
-                if (!skipWithSeamlessTransition()) player.seekToNext()
+                player.seekToNext()
                 updateWidgetUI(player.isPlaying)
             }
 
@@ -5104,6 +5104,8 @@ class MusicService :
             begin()
         }
     }
+
+    fun isSmoothSkipEnabled(): Boolean = automixOn()
 
     /**
      * Skips to the next song by mixing it in from the current position when smooth skip

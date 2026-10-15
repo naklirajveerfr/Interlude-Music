@@ -413,12 +413,12 @@ class PlayerConnection(
         }
     }
 
-    /** Skips to the next song, mixing it in when smooth skip is enabled. */
-    fun seekToNextSeamless() {
-        if (!service.skipWithSeamlessTransition()) player.seekToNext()
-    }
+    fun seekToNext() = skipToNext(smooth = false)
 
-    fun seekToNext() {
+    /** Used when the next button is held: mixes into the next song when smooth skip is enabled. */
+    fun seekToNextSmooth() = skipToNext(smooth = true)
+
+    private fun skipToNext(smooth: Boolean) {
         try {
             // When casting, use Cast skip instead of local player
             val castHandler = service.castConnectionHandler
@@ -426,7 +426,7 @@ class PlayerConnection(
                 castHandler.skipToNext()
                 return
             }
-            seekToNextSeamless()
+            if (!smooth || !service.skipWithSeamlessTransition()) player.seekToNext()
             if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) {
                 player.prepare()
             }
