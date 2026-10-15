@@ -1082,9 +1082,9 @@ class MainActivity : FragmentActivity() {
                                                     Icon(
                                                         painter = painterResource(R.drawable.home_logo),
                                                         contentDescription = null,
-                                                        modifier = Modifier.size(24.dp),
+                                                        modifier = Modifier.size(42.dp),
                                                     )
-                                                    Spacer(Modifier.width(8.dp))
+                                                    Spacer(Modifier.width(4.dp))
                                                     Text(
                                                         text = stringResource(R.string.interlude_title),
                                                         style = MaterialTheme.typography.titleLarge,
