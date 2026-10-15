@@ -137,33 +137,31 @@ fun FullArtPlayerContent(
     val favRes = if (isFavorite) R.drawable.favorite else R.drawable.favorite_border
     val playRes = if (isPlaying) R.drawable.nm_pause else R.drawable.nm_play_arrow
 
-    // Skip mixes (seamless transition) fade the old art into the new one
+    // Skip mixes (seamless transition) fade the old art into the new one. The old art is worked
+    // out during composition so it is on screen in the first frame of the new song.
     val playerConnection = LocalPlayerConnection.current
-    val mixFlow = remember(playerConnection) { playerConnection?.service?.mixFadeMs ?: MutableStateFlow(0L) }
-    val mixFadeMs by mixFlow.collectAsState()
-    val artFadeAlpha = remember { Animatable(0f) }
-    var fadeFromArt by remember { mutableStateOf<String?>(null) }
-    var lastArt by remember { mutableStateOf(artworkUrl) }
+    val mixFadeFlow = remember(playerConnection) { playerConnection?.service?.mixFadeMs ?: MutableStateFlow(0L) }
+    val artRef = remember { object { var last: String? = artworkUrl } }
+    val fadeFromArt = remember(artworkUrl) {
+        val oldArt = artRef.last
+        if (mixFadeFlow.value > 0L && oldArt != null && oldArt != artworkUrl) oldArt else null
+    }
+    val artFadeAlpha = remember(artworkUrl) { Animatable(if (fadeFromArt != null) 1f else 0f) }
+    var artFadeDone by remember(artworkUrl) { mutableStateOf(false) }
     LaunchedEffect(artworkUrl) {
-        val oldArt = lastArt
-        lastArt = artworkUrl
-        if (mixFadeMs > 0L && oldArt != null && oldArt != artworkUrl) {
-            try {
-                fadeFromArt = oldArt
-                artFadeAlpha.snapTo(1f)
-                artFadeAlpha.animateTo(0f, tween(500))
-            } finally {
-                fadeFromArt = null
-            }
+        artRef.last = artworkUrl
+        if (fadeFromArt != null) {
+            artFadeAlpha.animateTo(0f, tween(500))
+            artFadeDone = true
         }
     }
 
     Box(modifier.fillMaxSize()) {
         if (showArt) {
             FullArtBackdrop(artworkUrl, fadeStyle)
-            fadeFromArt?.let { oldArt ->
+            if (fadeFromArt != null && !artFadeDone) {
                 Box(Modifier.fillMaxSize().graphicsLayer { alpha = artFadeAlpha.value }) {
-                    FullArtBackdrop(oldArt, fadeStyle)
+                    FullArtBackdrop(fadeFromArt, fadeStyle)
                 }
             }
         }

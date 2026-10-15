@@ -265,12 +265,19 @@ fun Thumbnail(
     val currentItem by remember { derivedStateOf { thumbnailLazyGridState.firstVisibleItemIndex } }
     val itemScrollOffset by remember { derivedStateOf { thumbnailLazyGridState.firstVisibleItemScrollOffset } }
 
-    // Skip mixes (seamless transition) fade the old cover into the new one instead of sliding
-    val mixFadeMs by playerConnection.service.mixFadeMs.collectAsState()
-    val coverFadeAlpha = remember { Animatable(0f) }
-    var fadeFromCover by remember { mutableStateOf<String?>(null) }
-    var lastCover by remember { mutableStateOf(mediaMetadata?.thumbnailUrl) }
+    // Skip mixes (seamless transition) fade the old cover into the new one instead of sliding.
+    // The old cover is worked out during composition so it is already on screen in the first
+    // frame of the new song, instead of the new cover flashing first.
+    val mixFadeFlow = playerConnection.service.mixFadeMs
     var swipedSkip by remember { mutableStateOf(false) }
+    val coverId = mediaMetadata?.id
+    val coverRef = remember { object { var last: String? = mediaMetadata?.thumbnailUrl } }
+    val fadeFromCover = remember(coverId) {
+        val oldCover = coverRef.last
+        if (mixFadeFlow.value > 0L && !swipedSkip && oldCover != null && oldCover != mediaMetadata?.thumbnailUrl) oldCover else null
+    }
+    val coverFadeAlpha = remember(coverId) { Animatable(if (fadeFromCover != null) 1f else 0f) }
+    var coverFadeDone by remember(coverId) { mutableStateOf(false) }
 
     // Handle swipe to change song
     LaunchedEffect(itemScrollOffset) {
@@ -289,7 +296,7 @@ fun Thumbnail(
         val index = maxOf(0, currentMediaIndex)
         if (index >= 0 && index < mediaItems.size) {
             try {
-                if (mixFadeMs > 0L && !swipedSkip) thumbnailLazyGridState.scrollToItem(index)
+                if (mixFadeFlow.value > 0L && !swipedSkip) thumbnailLazyGridState.scrollToItem(index)
                 else thumbnailLazyGridState.animateScrollToItem(index)
             } catch (e: Exception) {
                 thumbnailLazyGridState.scrollToItem(index)
@@ -298,20 +305,12 @@ fun Thumbnail(
     }
 
     // Declared after the scroll effect so that one still sees the swipe flag
-    LaunchedEffect(mediaMetadata?.id) {
-        val newCover = mediaMetadata?.thumbnailUrl
-        val oldCover = lastCover
-        lastCover = newCover
-        val fade = mixFadeMs > 0L && !swipedSkip && oldCover != null && oldCover != newCover
+    LaunchedEffect(coverId) {
+        coverRef.last = mediaMetadata?.thumbnailUrl
         swipedSkip = false
-        if (fade) {
-            try {
-                fadeFromCover = oldCover
-                coverFadeAlpha.snapTo(1f)
-                coverFadeAlpha.animateTo(0f, tween(500))
-            } finally {
-                fadeFromCover = null
-            }
+        if (fadeFromCover != null) {
+            coverFadeAlpha.animateTo(0f, tween(500))
+            coverFadeDone = true
         }
     }
 
@@ -442,7 +441,7 @@ fun Thumbnail(
                     }
 
                     fadeFromCover?.let { oldCover ->
-                        if (!hidePlayerThumbnail) {
+                        if (!hidePlayerThumbnail && !coverFadeDone) {
                             Box(
                                 modifier = Modifier
                                     .size(dimensions.thumbnailSize)
