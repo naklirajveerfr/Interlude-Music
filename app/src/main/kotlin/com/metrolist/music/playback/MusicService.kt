@@ -5008,9 +5008,9 @@ class MusicService :
     private var automixSpeedActive = false
     private var automixBaseSpeed = 1f
 
-    // True while a smooth skip eases the incoming song's tempo; playback events fired right after the
-    // player swap reschedule the crossfade and must not cancel that ease.
-    private var automixEasing = false
+    // Tempo ramp of the song fading out during a smooth skip. Kept apart from automixRampJob because
+    // playback events right after the player swap reschedule the crossfade and cancel that one.
+    private var automixFadeRampJob: Job? = null
 
     private fun automixOn(): Boolean =
         dataStore.get(com.metrolist.music.constants.AutomixEnabledKey, false) && smoothSkipEnabled
@@ -5064,7 +5064,6 @@ class MusicService :
             }
         }
         automixSpeedActive = false
-        automixEasing = false
     }
 
     fun isSmoothSkipEnabled(): Boolean = automixOn()
@@ -5088,40 +5087,35 @@ class MusicService :
             mixFadeMs.value = 0L
             return false
         }
-        if (ratio != null) easeIncomingTempo(player, ratio, AUTOMIX_SKIP_EASE_MS)
+        if (ratio != null) easeOutgoingTempo(fadingPlayer, ratio, mixDurationMs.toLong())
         return true
     }
 
-    // The incoming song starts at the outgoing song's tempo and eases back to its own slowly,
-    // so neither song's tempo jumps.
-    private fun easeIncomingTempo(incoming: Player, ratio: Float, durationMs: Long) {
-        val base = incoming.playbackParameters.speed
-        val from = base / ratio
-        automixBaseSpeed = base
-        automixSpeedActive = true
-        automixEasing = true
-        incoming.setPlaybackSpeed(from)
-        val steps = (durationMs / 250L).toInt().coerceIn(8, 120)
-        automixRampJob?.cancel()
-        automixRampJob =
+    // The song fading out gradually speeds up or slows down to the incoming song's tempo while the
+    // incoming song plays at its own, so both are at the same tempo when the incoming song takes over.
+    private fun easeOutgoingTempo(outgoing: Player?, ratio: Float, durationMs: Long) {
+        if (outgoing == null || durationMs <= 0L) return
+        val from = outgoing.playbackParameters.speed
+        val to = from * ratio
+        val steps = (durationMs / 100L).toInt().coerceIn(8, 120)
+        automixFadeRampJob?.cancel()
+        automixFadeRampJob =
             scope.launch {
                 for (i in 1..steps) {
                     delay(durationMs / steps)
-                    if (!isActive || incoming !== player) return@launch
+                    if (!isActive || outgoing !== fadingPlayer) return@launch
                     val p = i / steps.toFloat()
                     try {
-                        incoming.setPlaybackSpeed(from + (base - from) * (p * p * (3f - 2f * p)))
+                        outgoing.setPlaybackSpeed(from + (to - from) * (p * p * (3f - 2f * p)))
                     } catch (_: Exception) {
                         return@launch
                     }
                 }
-                automixSpeedActive = false
-                automixEasing = false
             }
     }
 
     private fun scheduleCrossfade() {
-        if (!automixEasing) cancelAutomixRamp(restoreSpeed = true)
+        cancelAutomixRamp(restoreSpeed = true)
         automixEnsureAnalysis()
         Timber.tag("AutomixDebug").d("scheduleCrossfade: enabled=$crossfadeEnabled dur=$crossfadeDuration gapless=$crossfadeGapless nextGapless=${isNextItemGapless()} hasNext=${player.hasNextMediaItem()} playerDur=${player.duration} pos=${player.currentPosition}")
         crossfadeMessage?.cancel()
@@ -5210,7 +5204,6 @@ class MusicService :
         automixRampJob?.cancel()
         automixRampJob = null
         automixSpeedActive = false
-        automixEasing = false
 
         if (shuffleModeEnabled) {
             val shufflePlaylistFirst = dataStore.get(ShufflePlaylistFirstKey, false)
@@ -5366,7 +5359,6 @@ class MusicService :
         const val NOTIFICATION_ID = 888
         const val ERROR_CODE_NO_STREAM = 1000001
         const val CHUNK_LENGTH = 512 * 1024L
-        const val AUTOMIX_SKIP_EASE_MS = 20_000L
         const val PERSISTENT_QUEUE_FILE = "persistent_queue.data"
         const val PERSISTENT_AUTOMIX_FILE = "persistent_automix.data"
         const val PERSISTENT_PLAYER_STATE_FILE = "persistent_player_state.data"
