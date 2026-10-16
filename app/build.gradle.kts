@@ -7,15 +7,9 @@ if (localPropertiesFile.exists()) {
     localProperties.load(localPropertiesFile.inputStream())
 }
 
-val baseApplicationId = "com.metrolist.music"
+val baseApplicationId = "com.interlude.music"
 val applicationIdOverride = System.getenv("METROLIST_APPLICATION_ID")?.takeIf { it.isNotBlank() }
 val appNameOverride = System.getenv("METROLIST_APP_NAME")?.takeIf { it.isNotBlank() }
-val buildCommit =
-    System.getenv("METROLIST_BUILD_COMMIT")
-        ?.trim()
-        ?.takeIf { it.matches(Regex("[0-9a-fA-F]{7,40}")) }
-        ?.take(7)
-        ?.lowercase()
 val debugKeystorePathOverride = System.getenv("METROLIST_DEBUG_KEYSTORE_PATH")?.takeIf { it.isNotBlank() }
 val debugKeystorePassword = System.getenv("METROLIST_DEBUG_KEYSTORE_PASSWORD")?.takeIf { it.isNotBlank() } ?: "android"
 val debugKeyAlias = System.getenv("METROLIST_DEBUG_KEY_ALIAS")?.takeIf { it.isNotBlank() } ?: "androiddebugkey"
@@ -40,11 +34,10 @@ android {
         applicationId = applicationIdOverride ?: baseApplicationId
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.2"
         val baseVersionName = requireNotNull(versionName)
         buildConfigField("String", "BASE_VERSION_NAME", "\"$baseVersionName\"")
-        buildCommit?.let { versionName = "$baseVersionName+$it" }
         resValue("string", "app_name", appNameOverride ?: "Interlude Music")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -124,7 +117,7 @@ android {
             isDebuggable = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro",
+                          "proguard-rules.pro",
             )
         }
         debug {
@@ -136,13 +129,13 @@ android {
                 resValue("string", "app_name", "Interlude Music Debug")
             }
             signingConfig =
-                if (workflowDebugKeystoreFile != null) {
-                    signingConfigs.getByName("workflowDebug")
-                } else if (persistentDebugKeystoreFile.exists()) {
-                    signingConfigs.getByName("persistentDebug")
-                } else {
-                    signingConfigs.getByName("debug")
-                }
+            if (workflowDebugKeystoreFile != null) {
+                signingConfigs.getByName("workflowDebug")
+            } else if (persistentDebugKeystoreFile.exists()) {
+                signingConfigs.getByName("persistentDebug")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 
@@ -189,10 +182,10 @@ android {
         jniLibs {
             useLegacyPackaging = false
             keepDebugSymbols +=
-                listOf(
-                    "**/libandroidx.graphics.path.so",
-                    "**/libdatastore_shared_counter.so",
-                )
+            listOf(
+                "**/libandroidx.graphics.path.so",
+                "**/libdatastore_shared_counter.so",
+            )
         }
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
