@@ -2661,6 +2661,7 @@ class MusicService :
 
         Timber.tag("RepeatDebug").d("transition reason=$reason repeat=${player.repeatMode} idx=${player.currentMediaItemIndex}/${player.mediaItemCount}")
         Timber.tag("AutomixDebug").d("transition seen, enabled=${dataStore.get(com.metrolist.music.constants.AutomixEnabledKey, false)}")
+        mixReadyKey = null
         cancelAutomixRamp(restoreSpeed = true)
         if (automixOn()) {
             val automixIds = listOfNotNull(
@@ -5033,6 +5034,23 @@ class MusicService :
         return if (automixSpeedActive) current.withSpeed(automixBaseSpeed) else current
     }
 
+    private var mixReadyKey: String? = null
+
+    // Logs "MIX READY" once per song pair when both songs' BPM is known, so smooth skips can be tested easily.
+    private fun logMixReady() {
+        if (!automixOn()) return
+        val aId = player.currentMediaItem?.mediaId ?: return
+        val bId = automixNextMediaId() ?: return
+        if (aId == bId) return
+        val a = automixAnalyzer.get(aId)
+        val b = automixAnalyzer.get(bId)
+        if (a == null || b == null || !a.hasReliableBpm || !b.hasReliableBpm) return
+        val key = "$aId>$bId"
+        if (key == mixReadyKey) return
+        mixReadyKey = key
+        Timber.tag("AutomixDebug").d("MIX READY: bpmA=${a.bpm} bpmB=${b.bpm}")
+    }
+
     private fun automixTargetRatio(): Float? {
         if (!automixOn()) return null
         val aId = player.currentMediaItem?.mediaId ?: return null
@@ -5117,6 +5135,7 @@ class MusicService :
     private fun scheduleCrossfade() {
         cancelAutomixRamp(restoreSpeed = true)
         automixEnsureAnalysis()
+        logMixReady()
         Timber.tag("AutomixDebug").d("scheduleCrossfade: enabled=$crossfadeEnabled dur=$crossfadeDuration gapless=$crossfadeGapless nextGapless=${isNextItemGapless()} hasNext=${player.hasNextMediaItem()} playerDur=${player.duration} pos=${player.currentPosition}")
         crossfadeMessage?.cancel()
         crossfadeMessage = null
