@@ -66,6 +66,8 @@ import com.metrolist.music.constants.ShufflePlaylistFirstKey
 import com.metrolist.music.constants.SimilarContent
 import com.metrolist.music.constants.SkipSilenceInstantKey
 import com.metrolist.music.constants.SkipSilenceKey
+import com.metrolist.music.constants.SmoothSkipTempoStyle
+import com.metrolist.music.constants.SmoothSkipTempoStyleKey
 import com.metrolist.music.constants.StopMusicOnTaskClearKey
 import com.metrolist.music.constants.VarispeedKey
 import com.metrolist.music.ui.component.DefaultDialog
@@ -173,6 +175,10 @@ fun PlayerSettings(
     val (automixEnabled, onAutomixEnabledChange) = rememberPreference(com.metrolist.music.constants.AutomixEnabledKey, defaultValue = false)
     val (smoothSkipDuration, onSmoothSkipDurationChange) = rememberPreference(com.metrolist.music.constants.SmoothSkipDurationKey, defaultValue = 5f)
     val (smoothSkipMaxTempoChange, onSmoothSkipMaxTempoChangeChange) = rememberPreference(com.metrolist.music.constants.SmoothSkipMaxTempoChangeKey, defaultValue = 33f)
+    val (smoothSkipTempoStyle, onSmoothSkipTempoStyleChange) = rememberEnumPreference(
+        SmoothSkipTempoStyleKey,
+        defaultValue = SmoothSkipTempoStyle.PLAYING_SONG
+    )
     val (autoDownloadOnLike, onAutoDownloadOnLikeChange) = rememberPreference(
         AutoDownloadOnLikeKey,
         defaultValue = false
@@ -249,6 +255,30 @@ fun PlayerSettings(
                     AudioQuality.AUTO -> stringResource(R.string.audio_quality_auto)
                     AudioQuality.HIGH -> stringResource(R.string.audio_quality_high)
                     AudioQuality.LOW -> stringResource(R.string.audio_quality_low)
+                }
+            }
+        )
+    }
+
+    var showTempoStyleDialog by remember {
+        mutableStateOf(false)
+    }
+
+    if (showTempoStyleDialog) {
+        EnumDialog(
+            onDismiss = { showTempoStyleDialog = false },
+            onSelect = {
+                onSmoothSkipTempoStyleChange(it)
+                showTempoStyleDialog = false
+            },
+            title = "Tempo change style",
+            current = smoothSkipTempoStyle,
+            values = SmoothSkipTempoStyle.values().toList(),
+            valueText = {
+                when (it) {
+                    SmoothSkipTempoStyle.PLAYING_SONG -> "Playing song changes"
+                    SmoothSkipTempoStyle.NEXT_SONG -> "Next song changes"
+                    SmoothSkipTempoStyle.BOTH -> "Both change equally"
                 }
             }
         )
@@ -404,11 +434,25 @@ fun PlayerSettings(
                         }
                     ))
                     add(Material3SettingsItem(
+                        icon = painterResource(R.drawable.sync),
+                        title = { Text("Tempo change style") },
+                        description = {
+                            Text(
+                                when (smoothSkipTempoStyle) {
+                                    SmoothSkipTempoStyle.PLAYING_SONG -> "Playing song changes"
+                                    SmoothSkipTempoStyle.NEXT_SONG -> "Next song changes"
+                                    SmoothSkipTempoStyle.BOTH -> "Both change equally"
+                                }
+                            )
+                        },
+                        onClick = { showTempoStyleDialog = true }
+                    ))
+                    add(Material3SettingsItem(
                         icon = painterResource(R.drawable.speed),
                         title = { Text("Max tempo change") },
                         description = {
                             Column {
-                                Text("The song that's playing can speed up or slow down by up to ${smoothSkipMaxTempoChange.roundToInt()}% to match the next song")
+                                Text("Songs can speed up or slow down by up to ${smoothSkipMaxTempoChange.roundToInt()}% to match each other's tempo")
                                 Slider(
                                     value = smoothSkipMaxTempoChange,
                                     onValueChange = onSmoothSkipMaxTempoChangeChange,

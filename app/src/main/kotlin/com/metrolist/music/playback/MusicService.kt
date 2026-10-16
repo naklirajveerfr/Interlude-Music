@@ -166,6 +166,8 @@ import com.metrolist.music.constants.ShufflePlaylistFirstKey
 import com.metrolist.music.constants.SimilarContent
 import com.metrolist.music.constants.SkipSilenceInstantKey
 import com.metrolist.music.constants.SkipSilenceKey
+import com.metrolist.music.constants.SmoothSkipTempoStyle
+import com.metrolist.music.constants.SmoothSkipTempoStyleKey
 import com.metrolist.music.constants.StopMusicOnTaskClearKey
 import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.db.entities.Event
@@ -310,6 +312,7 @@ class MusicService :
     private var smoothSkipEnabled = false
     private var smoothSkipDuration = 5000f
     private var smoothSkipMaxTempoChange = 0.33f
+    private var smoothSkipTempoStyle = SmoothSkipTempoStyle.PLAYING_SONG
     private var mixDurationMs = 5000f
     private var crossfadeDuration = 5000f
     private var crossfadeGapless = true
@@ -1183,6 +1186,13 @@ class MusicService :
                 smoothSkipDuration = duration * 1000f
                 smoothSkipMaxTempoChange = maxTempo / 100f
             }
+
+        scope.launch {
+            dataStore.data
+                .map { it[SmoothSkipTempoStyleKey].toEnum(SmoothSkipTempoStyle.PLAYING_SONG) }
+                .distinctUntilChanged()
+                .collect { smoothSkipTempoStyle = it }
+        }
 
         // Observe and cache common preferences to avoid runBlocking reads in playback callbacks
         scope.launch {
@@ -5018,6 +5028,10 @@ class MusicService :
     // playback events right after the player swap reschedule the crossfade and cancel that one.
     private var automixFadeRampJob: Job? = null
 
+    // True while a smooth skip eases the incoming song's tempo; playback events fired right after the
+    // player swap reschedule the crossfade and must not cancel that ease.
+    private var automixEasing = false
+
     private fun automixOn(): Boolean =
         dataStore.get(com.metrolist.music.constants.AutomixEnabledKey, false) && smoothSkipEnabled
 
@@ -5095,6 +5109,7 @@ class MusicService :
             }
         }
         automixSpeedActive = false
+        automixEasing = false
     }
 
     fun isSmoothSkipEnabled(): Boolean = automixOn()
@@ -5118,8 +5133,49 @@ class MusicService :
             mixFadeMs.value = 0L
             return false
         }
-        if (ratio != null) easeOutgoingTempo(fadingPlayer, ratio, mixDurationMs.toLong())
+        if (ratio != null) startTempoMatch(ratio)
         return true
+    }
+
+    // ratio is the incoming song's tempo relative to the outgoing one. The style decides which song moves:
+    // the playing song, the next song, or both by the same factor.
+    private fun startTempoMatch(ratio: Float) {
+        when (smoothSkipTempoStyle) {
+            SmoothSkipTempoStyle.PLAYING_SONG -> easeOutgoingTempo(fadingPlayer, ratio, mixDurationMs.toLong())
+            SmoothSkipTempoStyle.NEXT_SONG -> easeIncomingTempo(player, ratio, AUTOMIX_SKIP_EASE_MS)
+            SmoothSkipTempoStyle.BOTH -> {
+                val half = kotlin.math.sqrt(ratio)
+                easeOutgoingTempo(fadingPlayer, half, mixDurationMs.toLong())
+                easeIncomingTempo(player, half, AUTOMIX_SKIP_EASE_MS)
+            }
+        }
+    }
+
+    // The incoming song starts at the outgoing song's tempo and eases back to its own slowly.
+    private fun easeIncomingTempo(incoming: Player, ratio: Float, durationMs: Long) {
+        val base = incoming.playbackParameters.speed
+        val from = base / ratio
+        automixBaseSpeed = base
+        automixSpeedActive = true
+        automixEasing = true
+        incoming.setPlaybackSpeed(from)
+        val steps = (durationMs / 250L).toInt().coerceIn(8, 120)
+        automixRampJob?.cancel()
+        automixRampJob =
+            scope.launch {
+                for (i in 1..steps) {
+                    delay(durationMs / steps)
+                    if (!isActive || incoming !== player) return@launch
+                    val p = i / steps.toFloat()
+                    try {
+                        incoming.setPlaybackSpeed(from + (base - from) * (p * p * (3f - 2f * p)))
+                    } catch (_: Exception) {
+                        return@launch
+                    }
+                }
+                automixSpeedActive = false
+                automixEasing = false
+            }
     }
 
     // The song fading out gradually speeds up or slows down to the incoming song's tempo while the
@@ -5146,7 +5202,7 @@ class MusicService :
     }
 
     private fun scheduleCrossfade() {
-        cancelAutomixRamp(restoreSpeed = true)
+        if (!automixEasing) cancelAutomixRamp(restoreSpeed = true)
         automixEnsureAnalysis()
         logMixReady()
         Timber.tag("AutomixDebug").d("scheduleCrossfade: enabled=$crossfadeEnabled dur=$crossfadeDuration gapless=$crossfadeGapless nextGapless=${isNextItemGapless()} hasNext=${player.hasNextMediaItem()} playerDur=${player.duration} pos=${player.currentPosition}")
@@ -5236,6 +5292,7 @@ class MusicService :
         automixRampJob?.cancel()
         automixRampJob = null
         automixSpeedActive = false
+        automixEasing = false
 
         if (shuffleModeEnabled) {
             val shufflePlaylistFirst = dataStore.get(ShufflePlaylistFirstKey, false)
@@ -5391,6 +5448,7 @@ class MusicService :
         const val NOTIFICATION_ID = 888
         const val ERROR_CODE_NO_STREAM = 1000001
         const val CHUNK_LENGTH = 512 * 1024L
+        const val AUTOMIX_SKIP_EASE_MS = 20_000L
         const val PERSISTENT_QUEUE_FILE = "persistent_queue.data"
         const val PERSISTENT_AUTOMIX_FILE = "persistent_automix.data"
         const val PERSISTENT_PLAYER_STATE_FILE = "persistent_player_state.data"

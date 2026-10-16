@@ -730,6 +730,13 @@ val CountryCodeToName =
 val AutomixEnabledKey = androidx.datastore.preferences.core.booleanPreferencesKey("automixEnabled")
 val SmoothSkipDurationKey = androidx.datastore.preferences.core.floatPreferencesKey("smoothSkipDuration")
 val SmoothSkipMaxTempoChangeKey = androidx.datastore.preferences.core.floatPreferencesKey("smoothSkipMaxTempoChange")
+val SmoothSkipTempoStyleKey = stringPreferencesKey("smoothSkipTempoStyle")
+
+enum class SmoothSkipTempoStyle {
+    PLAYING_SONG,
+    NEXT_SONG,
+    BOTH,
+}
 val AutomixProviderKey = androidx.datastore.preferences.core.stringPreferencesKey("automixProvider")
 val AutomixApiKeyKey = androidx.datastore.preferences.core.stringPreferencesKey("automixApiKey")
 val AutomixModelKey = androidx.datastore.preferences.core.stringPreferencesKey("automixModel")
