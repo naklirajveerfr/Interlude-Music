@@ -309,6 +309,7 @@ class MusicService :
     private var crossfadeEnabled = false
     private var smoothSkipEnabled = false
     private var smoothSkipDuration = 5000f
+    private var smoothSkipMaxTempoChange = 0.33f
     private var mixDurationMs = 5000f
     private var crossfadeDuration = 5000f
     private var crossfadeGapless = true
@@ -1168,15 +1169,19 @@ class MusicService :
 
         combine(
             dataStore.data.map {
-                (it[com.metrolist.music.constants.AutomixEnabledKey] ?: false) to
-                    (it[com.metrolist.music.constants.SmoothSkipDurationKey] ?: 5f)
+                Triple(
+                    it[com.metrolist.music.constants.AutomixEnabledKey] ?: false,
+                    it[com.metrolist.music.constants.SmoothSkipDurationKey] ?: 5f,
+                    it[com.metrolist.music.constants.SmoothSkipMaxTempoChangeKey] ?: 33f,
+                )
             },
             listenTogetherManager.roomState,
-        ) { (enabled, duration), roomState -> (enabled && roomState == null) to duration }
+        ) { (enabled, duration, maxTempo), roomState -> Triple(enabled && roomState == null, duration, maxTempo) }
             .distinctUntilChanged()
-            .collect(scope) { (enabled, duration) ->
+            .collect(scope) { (enabled, duration, maxTempo) ->
                 smoothSkipEnabled = enabled
                 smoothSkipDuration = duration * 1000f
+                smoothSkipMaxTempoChange = maxTempo / 100f
             }
 
         // Observe and cache common preferences to avoid runBlocking reads in playback callbacks
@@ -5063,7 +5068,15 @@ class MusicService :
             return null
         }
         val r = b.bpm!! / a.bpm!!
-        val best = listOf(r, r * 2f, r / 2f).minByOrNull { kotlin.math.abs(it - 1f) } ?: return null
+        val max = smoothSkipMaxTempoChange
+        // Match the plain tempo when it is within the limit, otherwise the closest half/double-time match.
+        val picked =
+            if (kotlin.math.abs(r - 1f) <= max) {
+                r
+            } else {
+                listOf(r, r * 2f, r / 2f).minByOrNull { kotlin.math.abs(it - 1f) } ?: return null
+            }
+        val best = picked.coerceIn(maxOf(1f - max, 0.25f), 1f + max)
         val diff = kotlin.math.abs(best - 1f)
         Timber.tag("AutomixDebug").d("ramp plan: bpmA=${a.bpm} bpmB=${b.bpm} ratio=$best")
         if (diff < 0.004f) return null

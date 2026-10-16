@@ -172,6 +172,7 @@ fun PlayerSettings(
     )
     val (automixEnabled, onAutomixEnabledChange) = rememberPreference(com.metrolist.music.constants.AutomixEnabledKey, defaultValue = false)
     val (smoothSkipDuration, onSmoothSkipDurationChange) = rememberPreference(com.metrolist.music.constants.SmoothSkipDurationKey, defaultValue = 5f)
+    val (smoothSkipMaxTempoChange, onSmoothSkipMaxTempoChangeChange) = rememberPreference(com.metrolist.music.constants.SmoothSkipMaxTempoChangeKey, defaultValue = 33f)
     val (autoDownloadOnLike, onAutoDownloadOnLikeChange) = rememberPreference(
         AutoDownloadOnLikeKey,
         defaultValue = false
@@ -398,6 +399,20 @@ fun PlayerSettings(
                                     onValueChange = onSmoothSkipDurationChange,
                                     valueRange = 1f..15f,
                                     steps = 14
+                                )
+                            }
+                        }
+                    ))
+                    add(Material3SettingsItem(
+                        icon = painterResource(R.drawable.speed),
+                        title = { Text("Max tempo change") },
+                        description = {
+                            Column {
+                                Text("The song that's playing can speed up or slow down by up to ${smoothSkipMaxTempoChange.roundToInt()}% to match the next song")
+                                Slider(
+                                    value = smoothSkipMaxTempoChange,
+                                    onValueChange = onSmoothSkipMaxTempoChangeChange,
+                                    valueRange = 5f..100f
                                 )
                             }
                         }
