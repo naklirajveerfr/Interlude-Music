@@ -5008,6 +5008,10 @@ class MusicService :
     private var automixSpeedActive = false
     private var automixBaseSpeed = 1f
 
+    // True while a smooth skip eases the incoming song's tempo; playback events fired right after the
+    // player swap reschedule the crossfade and must not cancel that ease.
+    private var automixEasing = false
+
     private fun automixOn(): Boolean =
         dataStore.get(com.metrolist.music.constants.AutomixEnabledKey, false) && smoothSkipEnabled
 
@@ -5060,6 +5064,7 @@ class MusicService :
             }
         }
         automixSpeedActive = false
+        automixEasing = false
     }
 
     fun isSmoothSkipEnabled(): Boolean = automixOn()
@@ -5094,6 +5099,7 @@ class MusicService :
         val from = base / ratio
         automixBaseSpeed = base
         automixSpeedActive = true
+        automixEasing = true
         incoming.setPlaybackSpeed(from)
         val steps = (durationMs / 250L).toInt().coerceIn(8, 120)
         automixRampJob?.cancel()
@@ -5110,11 +5116,12 @@ class MusicService :
                     }
                 }
                 automixSpeedActive = false
+                automixEasing = false
             }
     }
 
     private fun scheduleCrossfade() {
-        cancelAutomixRamp(restoreSpeed = true)
+        if (!automixEasing) cancelAutomixRamp(restoreSpeed = true)
         automixEnsureAnalysis()
         Timber.tag("AutomixDebug").d("scheduleCrossfade: enabled=$crossfadeEnabled dur=$crossfadeDuration gapless=$crossfadeGapless nextGapless=${isNextItemGapless()} hasNext=${player.hasNextMediaItem()} playerDur=${player.duration} pos=${player.currentPosition}")
         crossfadeMessage?.cancel()
@@ -5203,6 +5210,7 @@ class MusicService :
         automixRampJob?.cancel()
         automixRampJob = null
         automixSpeedActive = false
+        automixEasing = false
 
         if (shuffleModeEnabled) {
             val shufflePlaylistFirst = dataStore.get(ShufflePlaylistFirstKey, false)
