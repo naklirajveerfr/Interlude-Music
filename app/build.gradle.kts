@@ -133,7 +133,7 @@ android {
             }
             isDebuggable = true
             if (appNameOverride == null) {
-                resValue("string", "app_name", "Interlude Music")
+                resValue("string", "app_name", "Interlude Music Debug")
             }
             signingConfig =
                 if (workflowDebugKeystoreFile != null) {
