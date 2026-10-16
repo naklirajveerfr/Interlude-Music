@@ -59,7 +59,7 @@ import com.metrolist.music.constants.DefaultOpenTabKey
 import com.metrolist.music.constants.DensityScale
 import com.metrolist.music.constants.DensityScaleKey
 import com.metrolist.music.constants.DynamicThemeKey
-import com.metrolist.music.constants.EnableDynamicIconKey
+
 import com.metrolist.music.constants.EnableHighRefreshRateKey
 import com.metrolist.music.constants.EnableLandscapeScalingKey
 import com.metrolist.music.constants.ForceBottomNavBarKey
@@ -124,7 +124,7 @@ import com.metrolist.music.ui.component.WavySlider
 import com.metrolist.music.ui.theme.DefaultThemeColor
 import com.metrolist.music.ui.theme.PlayerSliderColors
 import com.metrolist.music.ui.utils.backToMain
-import com.metrolist.music.utils.IconUtils
+
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.launch
@@ -142,16 +142,7 @@ fun AppearanceSettings(
             DynamicThemeKey,
             defaultValue = true,
         )
-    val (enableDynamicIcon, onEnableDynamicIconPrefChange) =
-        rememberPreference(
-            EnableDynamicIconKey,
-            defaultValue = true,
-        )
-    val iconContext = LocalContext.current
-    val onEnableDynamicIconChange: (Boolean) -> Unit = { newValue ->
-        onEnableDynamicIconPrefChange(newValue)
-        IconUtils.setIcon(iconContext, newValue)
-    }
+
     val (enableHighRefreshRate, onEnableHighRefreshRateChange) =
         rememberPreference(
             EnableHighRefreshRateKey,
@@ -1339,30 +1330,7 @@ fun AppearanceSettings(
                             ),
                         )
                     }
-                    add(
-                        Material3SettingsItem(
-                            icon = painterResource(R.drawable.palette),
-                            title = { Text(stringResource(R.string.enable_dynamic_icon)) },
-                            description = { Text(stringResource(R.string.enable_dynamic_icon_desc)) },
-                            trailingContent = {
-                                Switch(
-                                    checked = enableDynamicIcon,
-                                    onCheckedChange = onEnableDynamicIconChange,
-                                    thumbContent = {
-                                        Icon(
-                                            painter =
-                                                painterResource(
-                                                    id = if (enableDynamicIcon) R.drawable.check else R.drawable.close,
-                                                ),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(SwitchDefaults.IconSize),
-                                        )
-                                    },
-                                )
-                            },
-                            onClick = { onEnableDynamicIconChange(!enableDynamicIcon) },
-                        ),
-                    )
+
                     add(
                         Material3SettingsItem(
                             icon = painterResource(R.drawable.palette),
