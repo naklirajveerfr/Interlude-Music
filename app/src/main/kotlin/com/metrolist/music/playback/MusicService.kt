@@ -5193,7 +5193,9 @@ class MusicService :
                     if (!isActive || outgoing !== fadingPlayer) return@launch
                     val p = i / steps.toFloat()
                     try {
-                        outgoing.setPlaybackSpeed(from + (to - from) * (p * p * (3f - 2f * p)))
+                        // Front-loaded: the outgoing song's volume fades out quickly, so most of the tempo change
+                        // has to happen early to be audible.
+                        outgoing.setPlaybackSpeed(from + (to - from) * (1f - (1f - p) * (1f - p) * (1f - p)))
                     } catch (_: Exception) {
                         return@launch
                     }
