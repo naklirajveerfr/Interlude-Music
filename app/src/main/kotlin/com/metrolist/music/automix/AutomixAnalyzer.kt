@@ -11,6 +11,7 @@ import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.cache.ContentMetadata
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -27,6 +28,25 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sqrt
 
+/** A regular beat grid in the song's own time: beats fall at anchorSec + k * periodSec. */
+data class BeatGrid(
+    val periodSec: Double,
+    val anchorSec: Double,
+    val strength: Float,
+) {
+    val isReliable: Boolean get() = strength >= MIN_STRENGTH
+
+    /** Seconds from [posSec] to the next beat (0 when exactly on one). */
+    fun secondsToNextBeat(posSec: Double): Double {
+        val x = (posSec - anchorSec) / periodSec
+        return (kotlin.math.ceil(x) - x) * periodSec
+    }
+
+    companion object {
+        const val MIN_STRENGTH = 1.6f
+    }
+}
+
 data class TrackAnalysis(
     val bpm: Float?,
     val confidence: Float,
@@ -34,6 +54,7 @@ data class TrackAnalysis(
     val silentTailSec: Float,
     val quietTailSec: Float,
     val tailKnown: Boolean = false,
+    val beatGrid: BeatGrid? = null,
 ) {
     val hasReliableBpm: Boolean get() = bpm != null && confidence >= MIN_CONFIDENCE
 
@@ -107,6 +128,8 @@ private class FrameStream(
         private set
     var t0 = 0.0
         private set
+    var fluxStartSec = 0.0
+        private set
     val rms = ArrayList<Float>()
     val flux = ArrayList<Float>()
 
@@ -152,6 +175,7 @@ private class FrameStream(
                 }
                 prevLog[k] = l
             }
+            if (flux.isEmpty()) fluxStartSec = t
             flux.add(if (hasPrev) f else 0f)
             hasPrev = true
         }
@@ -202,7 +226,8 @@ class AutomixAnalyzer(
                     results[mediaId] = r
                     Timber.tag("AutomixDebug").d(
                         "id=$mediaId bpm=${r.bpm} conf=${r.confidence} intro=${r.introSilenceSec}s " +
-                            "silentTail=${r.silentTailSec}s quietTail=${r.quietTailSec}s tailKnown=${r.tailKnown}",
+                            "silentTail=${r.silentTailSec}s quietTail=${r.quietTailSec}s tailKnown=${r.tailKnown} " +
+                            "beatPeriod=${r.beatGrid?.periodSec} beatStrength=${r.beatGrid?.strength}",
                     )
                     r
                 } catch (e: CancellationException) {
@@ -282,6 +307,11 @@ class AutomixAnalyzer(
     private companion object {
         const val HEAD_FETCH_BYTES = 1_000_000L
         const val MAX_FETCH_ATTEMPTS = 2
+        const val TEMPO_WINDOW_SEC = 30.0
+        const val TEMPO_AGREE_TOLERANCE = 0.03f
+        const val DISAGREE_CONFIDENCE_FACTOR = 0.8f
+        const val BEAT_TIGHTNESS = 100f
+        const val BEAT_WINDOW_SEC = 14.0
     }
 
     private fun probeDurationSec(path: String): Double {
@@ -405,9 +435,9 @@ class AutomixAnalyzer(
         return list.sorted()[list.size / 2]
     }
 
-    private fun estimateBpm(fluxRaw: List<Float>, hopSec: Double): Pair<Float, Float>? {
+    // Spectral flux minus its local mean, so only onsets that stand out from their surroundings remain.
+    private fun onsetEnvelope(fluxRaw: List<Float>, hopSec: Double): FloatArray {
         val n = fluxRaw.size
-        if (n < 400) return null
         val w = max(3, (0.5 / hopSec).toInt())
         val prefix = DoubleArray(n + 1)
         for (i in 0 until n) prefix[i + 1] = prefix[i] + fluxRaw[i]
@@ -418,6 +448,141 @@ class AutomixAnalyzer(
             val mean = (prefix[b] - prefix[a]) / (b - a)
             e[i] = max(0.0, fluxRaw[i] - mean).toFloat()
         }
+        return e
+    }
+
+    // Dynamic-programming beat tracker (after Ellis 2007): picks the beat sequence that lands on onset peaks while
+    // keeping the spacing close to the given tempo, then fits a regular grid through it. Times are on the song's
+    // clock: startSec is the time of the first flux frame.
+    private fun trackBeats(flux: List<Float>, hopSec: Double, startSec: Double, bpm: Double): BeatGrid? {
+        val n = flux.size
+        val period = 60.0 / (bpm * hopSec)
+        if (period < 4.0 || n < period * 8) return null
+        val e = onsetEnvelope(flux, hopSec)
+        var mean = 0.0
+        for (v in e) mean += v
+        mean /= n
+        var variance = 0.0
+        for (v in e) variance += (v - mean) * (v - mean)
+        val std = sqrt(variance / n)
+        if (std <= 0.0 || mean <= 0.0) return null
+        val onset = FloatArray(n) { (e[it] / std).toFloat() }
+
+        val minLag = max(1, (period / 2).toInt())
+        val maxLag = (period * 2).toInt() + 1
+        val score = FloatArray(n)
+        val back = IntArray(n) { -1 }
+        for (t in 0 until n) {
+            var best = 0f
+            var bestPrev = -1
+            for (lag in minLag..maxLag) {
+                val p = t - lag
+                if (p < 0) break
+                val dev = kotlin.math.ln(lag / period)
+                val s = score[p] - BEAT_TIGHTNESS * (dev * dev).toFloat()
+                if (s > best) {
+                    best = s
+                    bestPrev = p
+                }
+            }
+            score[t] = onset[t] + best
+            back[t] = bestPrev
+        }
+
+        // The chain has to end near the end of the audio, so start the backtrace from the best of the last beat.
+        val tailStart = max(0, n - period.toInt() - 1)
+        var t = tailStart
+        for (i in tailStart until n) if (score[i] > score[t]) t = i
+        val beats = ArrayList<Int>()
+        while (t >= 0) {
+            beats.add(t)
+            t = back[t]
+        }
+        beats.reverse()
+        if (beats.size < 8) return null
+
+        // Least-squares line through (beat number, beat time), dropping beats that sit off the line and refitting once.
+        val times = DoubleArray(beats.size) { startSec + beats[it] * hopSec }
+        val nominal = 60.0 / bpm
+        var p = nominal
+        var anchor = times[0]
+        val inlier = BooleanArray(times.size) { true }
+        for (pass in 0 until 2) {
+            var c = 0
+            var sx = 0.0
+            var sy = 0.0
+            var sxx = 0.0
+            var sxy = 0.0
+            for (i in times.indices) {
+                if (!inlier[i]) continue
+                val x = kotlin.math.round((times[i] - times[0]) / p)
+                c++
+                sx += x
+                sy += times[i]
+                sxx += x * x
+                sxy += x * times[i]
+            }
+            val denom = c * sxx - sx * sx
+            if (c < 6 || denom <= 0.0) return null
+            p = (c * sxy - sx * sy) / denom
+            anchor = (sy - p * sx) / c
+            for (i in times.indices) {
+                val x = kotlin.math.round((times[i] - times[0]) / p)
+                inlier[i] = kotlin.math.abs(times[i] - (anchor + p * x)) <= 0.15 * p
+            }
+        }
+        if (kotlin.math.abs(p - nominal) > 0.1 * nominal) return null
+
+        // Strength: how much stronger the onsets on the grid are than onsets in general.
+        var sum = 0.0
+        var cnt = 0
+        for (i in beats.indices) {
+            if (!inlier[i]) continue
+            val f = beats[i]
+            var peak = onset[f]
+            if (f > 0) peak = max(peak, onset[f - 1])
+            if (f < n - 1) peak = max(peak, onset[f + 1])
+            sum += peak
+            cnt++
+        }
+        if (cnt < 6) return null
+        return BeatGrid(p, anchor, (sum / cnt / (mean / std)).toFloat())
+    }
+
+    /** Beat grid of the audio just before [positionSec] of a playing song, or null if it can't be found in time. */
+    suspend fun beatGridBefore(mediaId: String, positionSec: Double, bpm: Float): BeatGrid? =
+        withContext(Dispatchers.Default) {
+            val file = File(tmpDir, "beat_" + System.nanoTime() + "_" + mediaId.replace(Regex("[^A-Za-z0-9_-]"), "_") + ".tmp")
+            try {
+                tmpDir.mkdirs()
+                if (copyFromCache(mediaId, file, false) < 0) return@withContext null
+                val from = max(0.0, positionSec - BEAT_WINDOW_SEC)
+                val stream = FrameStream(from, positionSec)
+                decode(file.absolutePath, from, positionSec + 0.5) { m, n, r, t ->
+                    ensureActive()
+                    stream.push(m, n, r, t)
+                }
+                // Not enough of the song is cached to reach the playing position.
+                if (stream.rate == 0 || stream.endSec < positionSec - 1.0) return@withContext null
+                val grid = trackBeats(stream.flux, stream.hopSec, stream.fluxStartSec, bpm.toDouble())
+                Timber.tag("AutomixDebug").d(
+                    "beat grid before ${positionSec}s: period=${grid?.periodSec} strength=${grid?.strength} (bpm hint $bpm)",
+                )
+                grid
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                Timber.tag("AutomixDebug").w("beat window failed for $mediaId: ${e.message}")
+                null
+            } finally {
+                file.delete()
+            }
+        }
+
+    private fun estimateBpm(fluxRaw: List<Float>, hopSec: Double): Pair<Float, Float>? {
+        val n = fluxRaw.size
+        if (n < 400) return null
+        val e = onsetEnvelope(fluxRaw, hopSec)
 
         fun corr(lag: Double): Double {
             val li = lag.toInt()
@@ -466,11 +631,39 @@ class AutomixAnalyzer(
         return Pair(refined.toFloat(), (refinedScore / (sum / cnt)).toFloat())
     }
 
+    // Estimates tempo on up to two consecutive windows of the song's start and only trusts the result fully when
+    // they agree, since one window can land on an intro, a breakdown or a half/double-time reading.
+    private fun estimateBpmWindows(flux: List<Float>, hopSec: Double): Pair<Float, Float>? {
+        val windowLen = (TEMPO_WINDOW_SEC / hopSec).toInt()
+        val first = estimateBpm(flux.subList(0, min(flux.size, windowLen)), hopSec)
+        // A short second window (a partly cached song) is too noisy to be allowed to veto the first one.
+        val second =
+            if (flux.size - windowLen >= windowLen / 2) {
+                estimateBpm(flux.subList(windowLen, min(flux.size, 2 * windowLen)), hopSec)
+            } else {
+                null
+            }
+        if (first == null || second == null) {
+            Timber.tag("AutomixDebug").d("tempo windows: w1=$first w2=$second (single window)")
+            return first ?: second
+        }
+        val ratio = second.first / first.first
+        val agree = kotlin.math.abs(ratio - 1f) <= TEMPO_AGREE_TOLERANCE
+        Timber.tag("AutomixDebug").d("tempo windows: w1=$first w2=$second agree=$agree")
+        if (agree) {
+            val total = first.second + second.second
+            val bpm = (first.first * first.second + second.first * second.second) / total
+            return Pair(bpm, total / 2f)
+        }
+        val best = if (first.second >= second.second) first else second
+        return Pair(best.first, best.second * DISAGREE_CONFIDENCE_FACTOR)
+    }
+
     private fun analyzeFile(file: File, full: Boolean): TrackAnalysis? {
         val path = file.absolutePath
         val duration = try { probeDurationSec(path) } catch (e: Exception) { -1.0 }
         val bpmFrom = 4.0
-        val bpmTo = 34.0
+        val bpmTo = 64.0
 
         val head = FrameStream(bpmFrom, bpmTo)
         try {
@@ -484,7 +677,7 @@ class AutomixAnalyzer(
 
         val firstLoud = head.rms.indexOfFirst { it >= 0.03f * ref }
         val intro = if (firstLoud < 0) 0f else min(8.0, head.frameStartSec(firstLoud)).toFloat()
-        val est = estimateBpm(head.flux, head.hopSec)
+        val est = estimateBpmWindows(head.flux, head.hopSec)
 
         var silentTail = 0f
         var quietTail = 0f
@@ -510,6 +703,10 @@ class AutomixAnalyzer(
                 tailKnown = true
             }
         }
-        return TrackAnalysis(est?.first, est?.second ?: 0f, intro, silentTail, quietTail, tailKnown)
+        val grid =
+            est
+                ?.takeIf { it.second >= TrackAnalysis.MIN_CONFIDENCE }
+                ?.let { runCatching { trackBeats(head.flux, head.hopSec, head.fluxStartSec, it.first.toDouble()) }.getOrNull() }
+        return TrackAnalysis(est?.first, est?.second ?: 0f, intro, silentTail, quietTail, tailKnown, grid)
     }
 }

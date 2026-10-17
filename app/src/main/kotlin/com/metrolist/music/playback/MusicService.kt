@@ -313,6 +313,7 @@ class MusicService :
     private var smoothSkipDuration = 5000f
     private var smoothSkipMaxTempoChange = 0.33f
     private var smoothSkipTempoStyle = SmoothSkipTempoStyle.PLAYING_SONG
+    private var smoothSkipBeatAlign = false
     private var mixDurationMs = 5000f
     private var crossfadeDuration = 5000f
     private var crossfadeGapless = true
@@ -1192,6 +1193,13 @@ class MusicService :
                 .map { it[SmoothSkipTempoStyleKey].toEnum(SmoothSkipTempoStyle.PLAYING_SONG) }
                 .distinctUntilChanged()
                 .collect { smoothSkipTempoStyle = it }
+        }
+
+        scope.launch {
+            dataStore.data
+                .map { it[com.metrolist.music.constants.SmoothSkipBeatAlignKey] ?: false }
+                .distinctUntilChanged()
+                .collect { smoothSkipBeatAlign = it }
         }
 
         // Observe and cache common preferences to avoid runBlocking reads in playback callbacks
@@ -5134,7 +5142,107 @@ class MusicService :
             return false
         }
         if (ratio != null) startTempoMatch(ratio)
+        if (beatAlignOn()) startBeatAlign()
         return true
+    }
+
+    // ---- Beta: beat alignment of a smooth skip ----
+    private var beatPrepJob: Job? = null
+    private var beatAlignJob: Job? = null
+    private var beatAlignSeeking = false
+    private var pendingOutgoingBeats: Pair<String, com.metrolist.music.automix.BeatGrid>? = null
+
+    // The incoming song only stays on the outgoing song's beats if it starts at the outgoing song's tempo,
+    // which is what the "next song changes" style does.
+    private fun beatAlignOn(): Boolean =
+        smoothSkipBeatAlign && smoothSkipEnabled && smoothSkipTempoStyle == SmoothSkipTempoStyle.NEXT_SONG
+
+    /**
+     * Called when a next button is pressed: finds the playing song's beats so they are ready if the press turns
+     * into a smooth skip. A quick tap releases first and cancels this through [cancelBeatAlignPrep].
+     */
+    fun prepareBeatAlign() {
+        if (!::player.isInitialized || isCrossfading || !beatAlignOn()) return
+        val mediaId = player.currentMediaItem?.mediaId ?: return
+        val bpm = automixAnalyzer.get(mediaId)?.takeIf { it.hasReliableBpm }?.bpm ?: return
+        beatPrepJob?.cancel()
+        pendingOutgoingBeats = null
+        beatPrepJob =
+            scope.launch {
+                delay(BEAT_PREP_DELAY_MS)
+                val grid = automixAnalyzer.beatGridBefore(mediaId, player.currentPosition / 1000.0, bpm)
+                if (grid != null && grid.isReliable && player.currentMediaItem?.mediaId == mediaId) {
+                    pendingOutgoingBeats = mediaId to grid
+                }
+            }
+    }
+
+    fun cancelBeatAlignPrep() {
+        beatPrepJob?.cancel()
+        beatPrepJob = null
+    }
+
+    // Once the incoming song is really playing (and still nearly silent), shifts it by under half a beat so its beats
+    // land on the outgoing song's beats. Both songs then run at the same tempo, so they stay together.
+    private fun startBeatAlign() {
+        val incoming = player
+        val outgoing = fadingPlayer ?: return
+        val incomingId = incoming.currentMediaItem?.mediaId ?: return
+        val outgoingId = outgoing.currentMediaItem?.mediaId ?: return
+        val prep = beatPrepJob
+        beatAlignJob?.cancel()
+        beatAlignJob =
+            scope.launch {
+                var waited = 0L
+                while (!incoming.isPlaying && waited < BEAT_ALIGN_WAIT_MS) {
+                    delay(20)
+                    waited += 20
+                }
+                if (!incoming.isPlaying || incoming !== player || outgoing !== fadingPlayer) return@launch
+
+                val outGrid =
+                    kotlinx.coroutines.withTimeoutOrNull(BEAT_PREP_WAIT_MS) {
+                        prep?.join()
+                        pendingOutgoingBeats?.takeIf { it.first == outgoingId }?.second
+                    }
+                pendingOutgoingBeats = null
+                val inGrid = automixAnalyzer.get(incomingId)?.beatGrid?.takeIf { it.isReliable }
+                if (outGrid == null || inGrid == null) {
+                    Timber.tag("AutomixDebug").d("beat align skipped: out=${outGrid?.strength} in=${inGrid?.strength}")
+                    return@launch
+                }
+                if (incoming !== player || outgoing !== fadingPlayer) return@launch
+
+                val outSpeed = outgoing.playbackParameters.speed.toDouble().coerceAtLeast(0.05)
+                val inSpeed = incoming.playbackParameters.speed.toDouble().coerceAtLeast(0.05)
+                // Only worth aligning when the two songs really run at the same pace (or at half/double time).
+                val realPeriodRatio = (inGrid.periodSec / inSpeed) / (outGrid.periodSec / outSpeed)
+                if (listOf(1.0, 2.0, 0.5).none { kotlin.math.abs(realPeriodRatio / it - 1.0) < BEAT_TEMPO_TOLERANCE }) {
+                    Timber.tag("AutomixDebug").d("beat align skipped: tempos differ, real period ratio=$realPeriodRatio")
+                    return@launch
+                }
+                val inPos = incoming.currentPosition / 1000.0
+                // Real seconds until the outgoing song's next beat, and media seconds until the incoming one's.
+                val untilOutBeat = outGrid.secondsToNextBeat(outgoing.currentPosition / 1000.0) / outSpeed
+                val untilInBeat = inGrid.secondsToNextBeat(inPos)
+                // After the seek the incoming clock only resumes once it has rebuffered, so that time is taken off.
+                var shift = untilInBeat - (untilOutBeat - BEAT_SEEK_LATENCY_MS / 1000.0) * inSpeed
+                shift -= inGrid.periodSec * kotlin.math.round(shift / inGrid.periodSec)
+                Timber.tag("AutomixDebug").d(
+                    "beat align: shift=${(shift * 1000).toInt()}ms outStrength=${outGrid.strength} inStrength=${inGrid.strength}",
+                )
+                if (kotlin.math.abs(shift) < 0.015) return@launch
+                var target = inPos + shift
+                if (target < 0.0) target += inGrid.periodSec
+                // The incoming song rebuffers during the seek; the outgoing song must keep playing meanwhile.
+                beatAlignSeeking = true
+                try {
+                    incoming.seekTo(incoming.currentMediaItemIndex, (target * 1000).toLong())
+                    delay(BEAT_SEEK_SETTLE_MS)
+                } finally {
+                    beatAlignSeeking = false
+                }
+            }
     }
 
     // ratio is the incoming song's tempo relative to the outgoing one. The style decides which song moves:
@@ -5329,7 +5437,7 @@ class MusicService :
                     if (isCrossfading && fadingPlayer != null) {
                         if (isPlaying) {
                             fadingPlayer?.play()
-                        } else {
+                        } else if (!beatAlignSeeking) {
                             fadingPlayer?.pause()
                         }
                     } else {
@@ -5451,6 +5559,12 @@ class MusicService :
         const val ERROR_CODE_NO_STREAM = 1000001
         const val CHUNK_LENGTH = 512 * 1024L
         const val AUTOMIX_SKIP_EASE_MS = 20_000L
+        const val BEAT_PREP_DELAY_MS = 300L
+        const val BEAT_ALIGN_WAIT_MS = 1_000L
+        const val BEAT_PREP_WAIT_MS = 300L
+        const val BEAT_SEEK_LATENCY_MS = 60L
+        const val BEAT_SEEK_SETTLE_MS = 400L
+        const val BEAT_TEMPO_TOLERANCE = 0.03
         const val PERSISTENT_QUEUE_FILE = "persistent_queue.data"
         const val PERSISTENT_AUTOMIX_FILE = "persistent_automix.data"
         const val PERSISTENT_PLAYER_STATE_FILE = "persistent_player_state.data"

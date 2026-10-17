@@ -179,6 +179,7 @@ fun PlayerSettings(
         SmoothSkipTempoStyleKey,
         defaultValue = SmoothSkipTempoStyle.PLAYING_SONG
     )
+    val (smoothSkipBeatAlign, onSmoothSkipBeatAlignChange) = rememberPreference(com.metrolist.music.constants.SmoothSkipBeatAlignKey, defaultValue = false)
     val (autoDownloadOnLike, onAutoDownloadOnLikeChange) = rememberPreference(
         AutoDownloadOnLikeKey,
         defaultValue = false
@@ -446,6 +447,27 @@ fun PlayerSettings(
                             )
                         },
                         onClick = { showTempoStyleDialog = true }
+                    ))
+                    add(Material3SettingsItem(
+                        icon = painterResource(R.drawable.sync),
+                        title = { Text("Beat align (beta)") },
+                        description = { Text("Also line up the beats of both songs when you smooth skip. Only works with the \"Next song changes\" tempo style") },
+                        trailingContent = {
+                            Switch(
+                                checked = smoothSkipBeatAlign,
+                                onCheckedChange = onSmoothSkipBeatAlignChange,
+                                thumbContent = {
+                                    Icon(
+                                        painter = painterResource(
+                                            id = if (smoothSkipBeatAlign) R.drawable.check else R.drawable.close
+                                        ),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(SwitchDefaults.IconSize)
+                                    )
+                                }
+                            )
+                        },
+                        onClick = { onSmoothSkipBeatAlignChange(!smoothSkipBeatAlign) }
                     ))
                     add(Material3SettingsItem(
                         icon = painterResource(R.drawable.speed),

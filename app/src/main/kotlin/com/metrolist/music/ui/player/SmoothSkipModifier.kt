@@ -26,12 +26,14 @@ fun Modifier.smoothSkipOnHold(): Modifier =
         pointerInput(playerConnection) {
             awaitEachGesture {
                 awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                playerConnection?.service?.prepareBeatAlign()
                 var held = true
                 withTimeoutOrNull(SMOOTH_SKIP_HOLD_MS) {
                     waitForUpOrCancellation(PointerEventPass.Initial)
                     held = false
                 }
                 val connection = playerConnection
+                if (!held) connection?.service?.cancelBeatAlignPrep()
                 if (held && connection != null && connection.service.isSmoothSkipEnabled() && connection.canSkipNext.value) {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     connection.seekToNextSmooth()

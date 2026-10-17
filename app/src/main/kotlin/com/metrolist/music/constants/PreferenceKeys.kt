@@ -731,6 +731,7 @@ val AutomixEnabledKey = androidx.datastore.preferences.core.booleanPreferencesKe
 val SmoothSkipDurationKey = androidx.datastore.preferences.core.floatPreferencesKey("smoothSkipDuration")
 val SmoothSkipMaxTempoChangeKey = androidx.datastore.preferences.core.floatPreferencesKey("smoothSkipMaxTempoChange")
 val SmoothSkipTempoStyleKey = stringPreferencesKey("smoothSkipTempoStyle")
+val SmoothSkipBeatAlignKey = androidx.datastore.preferences.core.booleanPreferencesKey("smoothSkipBeatAlign")
 
 enum class SmoothSkipTempoStyle {
     PLAYING_SONG,
