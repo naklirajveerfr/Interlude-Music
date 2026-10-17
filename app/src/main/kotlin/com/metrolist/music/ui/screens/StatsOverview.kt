@@ -56,7 +56,7 @@ import kotlin.math.max
 import kotlin.math.roundToInt
 
 private const val MAX_DAILY_BARS = 62
-private val MAX_BAR_WIDTH = 20.dp
+private val MAX_BAR_WIDTH = 40.dp
 
 data class ChartBucket(
     val label: String,
@@ -267,7 +267,7 @@ private fun ListeningBarChart(data: ChartData) {
 
         val count = data.buckets.size
         val slot = chartWidth / count
-        val barWidth = minOf(slot * 0.5f, MAX_BAR_WIDTH.toPx())
+        val barWidth = minOf(slot * 0.8f, MAX_BAR_WIDTH.toPx())
         data.buckets.forEachIndexed { index, bucket ->
             val barHeight = chartHeight * (bucket.minutes / maxValue)
             if (barHeight > 0f) {
