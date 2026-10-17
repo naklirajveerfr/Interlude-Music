@@ -5152,10 +5152,12 @@ class MusicService :
     private var beatAlignSeeking = false
     private var pendingOutgoingBeats: Pair<String, com.metrolist.music.automix.BeatGrid>? = null
 
+    private fun beatAlignOn(): Boolean = smoothSkipBeatAlign && smoothSkipEnabled
+
     // The incoming song only stays on the outgoing song's beats if it starts at the outgoing song's tempo,
-    // which is what the "next song changes" style does.
-    private fun beatAlignOn(): Boolean =
-        smoothSkipBeatAlign && smoothSkipEnabled && smoothSkipTempoStyle == SmoothSkipTempoStyle.NEXT_SONG
+    // which is what the "next song changes" style does, so beat align always uses it.
+    private fun effectiveTempoStyle(): SmoothSkipTempoStyle =
+        if (smoothSkipBeatAlign) SmoothSkipTempoStyle.NEXT_SONG else smoothSkipTempoStyle
 
     /**
      * Called when a next button is pressed: finds the playing song's beats so they are ready if the press turns
@@ -5248,7 +5250,7 @@ class MusicService :
     // ratio is the incoming song's tempo relative to the outgoing one. The style decides which song moves:
     // the playing song, the next song, or both by the same factor.
     private fun startTempoMatch(ratio: Float) {
-        when (smoothSkipTempoStyle) {
+        when (effectiveTempoStyle()) {
             SmoothSkipTempoStyle.PLAYING_SONG -> easeOutgoingTempo(fadingPlayer, ratio, mixDurationMs.toLong())
             SmoothSkipTempoStyle.NEXT_SONG -> easeIncomingTempo(player, ratio, AUTOMIX_SKIP_EASE_MS)
             SmoothSkipTempoStyle.BOTH -> {

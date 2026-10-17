@@ -439,19 +439,24 @@ fun PlayerSettings(
                         title = { Text("Tempo change style") },
                         description = {
                             Text(
-                                when (smoothSkipTempoStyle) {
-                                    SmoothSkipTempoStyle.PLAYING_SONG -> "Playing song changes"
-                                    SmoothSkipTempoStyle.NEXT_SONG -> "Next song changes"
-                                    SmoothSkipTempoStyle.BOTH -> "Both change equally"
+                                if (smoothSkipBeatAlign) {
+                                    "Next song changes (set by Beat align)"
+                                } else {
+                                    when (smoothSkipTempoStyle) {
+                                        SmoothSkipTempoStyle.PLAYING_SONG -> "Playing song changes"
+                                        SmoothSkipTempoStyle.NEXT_SONG -> "Next song changes"
+                                        SmoothSkipTempoStyle.BOTH -> "Both change equally"
+                                    }
                                 }
                             )
                         },
+                        enabled = !smoothSkipBeatAlign,
                         onClick = { showTempoStyleDialog = true }
                     ))
                     add(Material3SettingsItem(
                         icon = painterResource(R.drawable.sync),
                         title = { Text("Beat align (beta)") },
-                        description = { Text("Also line up the beats of both songs when you smooth skip. Only works with the \"Next song changes\" tempo style") },
+                        description = { Text("Also line up the beats of both songs when you smooth skip. Uses the \"Next song changes\" tempo style") },
                         trailingContent = {
                             Switch(
                                 checked = smoothSkipBeatAlign,
