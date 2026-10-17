@@ -13,7 +13,7 @@ An unofficial, ad-free YouTube Music client for Android, built with **Material 3
 > [!IMPORTANT]
 > Interlude is not affiliated with, endorsed by, or sponsored by Google or YouTube.
 
-Interlude is a fork of [Metrolist](https://github.com/MetrolistGroup/Metrolist). It is a personal project that is actively evolving, so some features may still have rough edges.
+Interlude is a fork of [Metrolist](https://github.com/MetrolistGroup/Metrolist). It is a personal project that is actively evolving, so some features may still have rough edges. Interlude is Actively getting updates and fixes to make it better for users
 
 <!-- Add screenshots here, for example: -->
 
