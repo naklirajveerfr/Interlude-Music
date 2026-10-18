@@ -5310,7 +5310,7 @@ class MusicService :
     // Keeps the incoming song's beats on the outgoing song's for the rest of the mix. The seek above is only as exact
     // as its latency guess and the tempo match as the two BPM estimates, so every quarter second the leftover phase
     // error is measured and trimmed with a small speed change on top of the tempo ease.
-    private suspend fun lockPhase(incoming: Player, outgoing: Player, inGrid: BeatGrid, outGrid: BeatGrid) {
+    private suspend fun lockPhase(incoming: Player, outgoing: Player, inGrid: com.metrolist.music.automix.BeatGrid, outGrid: com.metrolist.music.automix.BeatGrid) {
         val fixedSpeed = incoming.playbackParameters.speed
         // The ease's current speed while it runs, its original base speed once it has ended, or the plain speed if
         // there was no ease.
