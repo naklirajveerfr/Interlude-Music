@@ -180,6 +180,7 @@ fun PlayerSettings(
         defaultValue = SmoothSkipTempoStyle.PLAYING_SONG
     )
     val (smoothSkipBeatAlign, onSmoothSkipBeatAlignChange) = rememberPreference(com.metrolist.music.constants.SmoothSkipBeatAlignKey, defaultValue = false)
+    val (smoothSkipBassSwap, onSmoothSkipBassSwapChange) = rememberPreference(com.metrolist.music.constants.SmoothSkipBassSwapKey, defaultValue = true)
     val (autoDownloadOnLike, onAutoDownloadOnLikeChange) = rememberPreference(
         AutoDownloadOnLikeKey,
         defaultValue = false
@@ -473,6 +474,27 @@ fun PlayerSettings(
                             )
                         },
                         onClick = { onSmoothSkipBeatAlignChange(!smoothSkipBeatAlign) }
+                    ))
+                    add(Material3SettingsItem(
+                        icon = painterResource(R.drawable.equalizer),
+                        title = { Text("Bass swap") },
+                        description = { Text("Trade the two songs' basslines in the middle of a smooth skip instead of playing both at once") },
+                        trailingContent = {
+                            Switch(
+                                checked = smoothSkipBassSwap,
+                                onCheckedChange = onSmoothSkipBassSwapChange,
+                                thumbContent = {
+                                    Icon(
+                                        painter = painterResource(
+                                            id = if (smoothSkipBassSwap) R.drawable.check else R.drawable.close
+                                        ),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(SwitchDefaults.IconSize)
+                                    )
+                                }
+                            )
+                        },
+                        onClick = { onSmoothSkipBassSwapChange(!smoothSkipBassSwap) }
                     ))
                     add(Material3SettingsItem(
                         icon = painterResource(R.drawable.speed),

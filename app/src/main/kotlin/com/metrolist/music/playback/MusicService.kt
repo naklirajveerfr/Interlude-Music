@@ -24,6 +24,7 @@ import android.media.AudioDeviceInfo
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.audiofx.AudioEffect
+import com.metrolist.music.playback.audio.BassSwapAudioProcessor
 import com.metrolist.music.playback.audio.VolumeNormalizationAudioProcessor
 import com.metrolist.music.utils.safeDataStoreEdit
 import android.net.ConnectivityManager
@@ -314,6 +315,10 @@ class MusicService :
     private var smoothSkipMaxTempoChange = 0.08f
     private var smoothSkipTempoStyle = SmoothSkipTempoStyle.PLAYING_SONG
     private var smoothSkipBeatAlign = false
+    private var smoothSkipBassSwap = true
+
+    // Set by a smooth skip so the crossfade it starts trades the two songs' basslines.
+    private var mixBassSwap = false
     private var mixDurationMs = 5000f
     private var crossfadeDuration = 5000f
     private var crossfadeGapless = true
@@ -439,6 +444,7 @@ class MusicService :
     private var openedAudioEffectSessionId: Int = C.AUDIO_SESSION_ID_UNSET
     private val playerNormalizationProcessors = HashMap<Player, VolumeNormalizationAudioProcessor>()
     private val playerEqualizerProcessors = HashMap<Player, CustomEqualizerAudioProcessor>()
+    private val playerBassProcessors = HashMap<Player, BassSwapAudioProcessor>()
 
     private var loudnessSetupJob: Job? = null
     private var loudnessSetupGeneration: Long = 0L
@@ -1202,6 +1208,13 @@ class MusicService :
                 .collect { smoothSkipBeatAlign = it }
         }
 
+        scope.launch {
+            dataStore.data
+                .map { it[com.metrolist.music.constants.SmoothSkipBassSwapKey] ?: true }
+                .distinctUntilChanged()
+                .collect { smoothSkipBassSwap = it }
+        }
+
         // Observe and cache common preferences to avoid runBlocking reads in playback callbacks
         scope.launch {
             dataStore.data.map { it[PersistentQueueKey] ?: true }.distinctUntilChanged().collect { cachedPersistentQueue = it }
@@ -1332,6 +1345,7 @@ class MusicService :
     private fun createExoPlayer(prefs: Preferences? = null): ExoPlayer {
         val normalizationProcessor = VolumeNormalizationAudioProcessor()
         val eqProcessor = CustomEqualizerAudioProcessor()
+        val bassProcessor = BassSwapAudioProcessor()
 
         val silenceProcessor = SilenceDetectorAudioProcessor { handleLongSilenceDetected() }
 
@@ -1357,7 +1371,7 @@ class MusicService :
                 .setMediaSourceFactory(
                     createMediaSourceFactory(normalizationProcessor) { createdPlayer },
                 )
-                .setRenderersFactory(createRenderersFactory(normalizationProcessor, eqProcessor, silenceProcessor, useAudioTrackPlaybackParams))
+                .setRenderersFactory(createRenderersFactory(normalizationProcessor, eqProcessor, bassProcessor, silenceProcessor, useAudioTrackPlaybackParams))
                 .setLoadControl(
                     // Start playback once ~750ms is buffered (media3's default is 1000ms) so first
                     // audio is audible a touch sooner. min/max/after-rebuffer match the media3 1.x
@@ -1385,6 +1399,7 @@ class MusicService :
         playerNormalizationProcessors[player] = normalizationProcessor
         playerSilenceProcessors[player] = silenceProcessor
         playerEqualizerProcessors[player] = eqProcessor
+        playerBassProcessors[player] = bassProcessor
         equalizerService.addAudioProcessor(eqProcessor)
 
         if (prefs != null) {
@@ -4197,6 +4212,7 @@ class MusicService :
     private fun createRenderersFactory(
         normalizationProcessor: VolumeNormalizationAudioProcessor,
         eqProcessor: CustomEqualizerAudioProcessor,
+        bassProcessor: BassSwapAudioProcessor,
         silenceProcessor: SilenceDetectorAudioProcessor,
         useAudioTrackPlaybackParams: Boolean,
     ) = object : DefaultRenderersFactory(this) {
@@ -4257,6 +4273,7 @@ class MusicService :
                     arrayOf(
                         normalizationProcessor,
                         eqProcessor,
+                        bassProcessor,
                         silenceProcessor,
                     ),
                     SilenceSkippingAudioProcessor(2_000_000, 20_000, 256),
@@ -5144,8 +5161,10 @@ class MusicService :
         crossfadeMessage = null
         cancelAutomixRamp(restoreSpeed = true)
         mixFadeMs.value = smoothSkipDuration.toLong()
+        mixBassSwap = smoothSkipBassSwap
         startCrossfade(smooth = true)
         if (!isCrossfading) {
+            mixBassSwap = false
             mixFadeMs.value = 0L
             return false
         }
@@ -5390,6 +5409,7 @@ class MusicService :
         secPlayer.setMediaItems(items)
         secPlayer.seekTo(targetIndex, if (smooth) automixEntryOffsetMs(targetIndex) else 0L)
         secPlayer.volume = 0f
+        if (smooth && mixBassSwap) playerBassProcessors[secPlayer]?.setBassGain(0f, immediate = true)
 
         secPlayer.setPlaybackParameters(automixIncomingParams())
 
@@ -5424,6 +5444,10 @@ class MusicService :
         isCrossfading = true
         val nextPlayer = secondaryPlayer ?: return
         val currentPlayer = player
+        val bassSwap = mixBassSwap
+        mixBassSwap = false
+        val outgoingBass = if (bassSwap) playerBassProcessors[currentPlayer] else null
+        val incomingBass = if (bassSwap) playerBassProcessors[nextPlayer] else null
 
         fadingPlayer = currentPlayer
         player = nextPlayer
@@ -5479,7 +5503,7 @@ class MusicService :
 
         openAudioEffectSession()
 
-        crossfadeJob =
+        val fadeJob =
             scope.launch {
                 val speed = fadingPlayer?.playbackParameters?.speed?.coerceAtLeast(0.01f) ?: 1f
                 val duration = (mixDurationMs / speed).toLong()
@@ -5505,6 +5529,11 @@ class MusicService :
                     try {
                         player.volume = startVolume * fadeIn
                         fadingPlayer?.volume = startVolume * fadeOut
+                        if (bassSwap) {
+                            val swap = bassSwapAmount(progress)
+                            incomingBass?.setBassGain(swap)
+                            outgoingBass?.setBassGain(1f - swap)
+                        }
                     } catch (e: Exception) {
                         break
                     }
@@ -5520,6 +5549,15 @@ class MusicService :
 
                 cleanupCrossfade(fadingPlayerSessionId = previousAudioSessionId)
             }
+        crossfadeJob = fadeJob
+        // A cancelled mix must not leave the incoming song without its bass.
+        if (bassSwap) fadeJob.invokeOnCompletion { incomingBass?.setBassGain(1f) }
+    }
+
+    // 0 until the two songs are about equally loud (around 30% of the way through the fade), 1 a little later.
+    private fun bassSwapAmount(progress: Float): Float {
+        val t = ((progress - BASS_SWAP_START) / (BASS_SWAP_END - BASS_SWAP_START)).coerceIn(0f, 1f)
+        return t * t * (3f - 2f * t)
     }
 
     private fun cleanupCrossfade(fadingPlayerSessionId: Int = C.AUDIO_SESSION_ID_UNSET) {
@@ -5546,6 +5584,7 @@ class MusicService :
         playerNormalizationProcessors.remove(player)
         playerSilenceProcessors.remove(player)
         playerEqualizerProcessors.remove(player)?.let(equalizerService::removeAudioProcessor)
+        playerBassProcessors.remove(player)
         player.release()
     }
 
@@ -5575,6 +5614,8 @@ class MusicService :
         const val BEAT_SEEK_LATENCY_MS = 60L
         const val BEAT_SEEK_SETTLE_MS = 400L
         const val BEAT_TEMPO_TOLERANCE = 0.03
+        const val BASS_SWAP_START = 0.2f
+        const val BASS_SWAP_END = 0.4f
         const val PERSISTENT_QUEUE_FILE = "persistent_queue.data"
         const val PERSISTENT_AUTOMIX_FILE = "persistent_automix.data"
         const val PERSISTENT_PLAYER_STATE_FILE = "persistent_player_state.data"
