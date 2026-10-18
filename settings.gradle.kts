@@ -29,6 +29,10 @@ dependencyResolutionManagement {
                 }
             }
         }
+        exclusiveContent {
+            forRepository { maven("https://mvn.0110.be/releases") }
+            filter { includeGroup("be.tarsos.dsp") }
+        }
         google()
         mavenCentral()
         maven { setUrl("https://jitpack.io") }

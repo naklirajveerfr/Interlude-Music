@@ -666,8 +666,12 @@ class AutomixAnalyzer(
         val bpmTo = 64.0
 
         val head = FrameStream(bpmFrom, bpmTo)
+        val tarsos = TarsosBpmDetector()
         try {
-            decode(path, 0.0, bpmTo + 1.0) { m, n, r, t -> head.push(m, n, r, t) }
+            decode(path, 0.0, bpmTo + 1.0) { m, n, r, t ->
+                head.push(m, n, r, t)
+                if (t >= bpmFrom && t <= bpmTo) tarsos.push(m, n, r)
+            }
         } catch (e: Exception) {
             Timber.tag("AutomixDebug").w("head decode stopped: ${e.message}")
         }
@@ -677,7 +681,10 @@ class AutomixAnalyzer(
 
         val firstLoud = head.rms.indexOfFirst { it >= 0.03f * ref }
         val intro = if (firstLoud < 0) 0f else min(8.0, head.frameStartSec(firstLoud)).toFloat()
-        val est = estimateBpmWindows(head.flux, head.hopSec)
+        // TarsosDSP gives the tempo; the spectral estimator only covers songs it can't call reliably.
+        val est =
+            runCatching { tarsos.estimate() }.getOrNull()?.takeIf { it.second >= TrackAnalysis.MIN_CONFIDENCE }
+                ?: estimateBpmWindows(head.flux, head.hopSec)
 
         var silentTail = 0f
         var quietTail = 0f
