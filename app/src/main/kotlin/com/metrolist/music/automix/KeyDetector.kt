@@ -32,7 +32,7 @@ data class KeyEstimate(val tonic: Int, val minor: Boolean, val strength: Float, 
     }
 
     companion object {
-        const val MIN_STRENGTH = 0.55f
+        const val MIN_STRENGTH = 0.35f
         const val MIN_MARGIN = 0.08f
     }
 }

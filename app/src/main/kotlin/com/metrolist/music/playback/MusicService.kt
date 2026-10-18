@@ -5214,9 +5214,17 @@ class MusicService :
      * into a smooth skip. A quick tap releases first and cancels this through [cancelBeatAlignPrep].
      */
     fun prepareBeatAlign() {
-        if (!::player.isInitialized || isCrossfading || !beatAlignOn()) return
+        if (!::player.isInitialized || isCrossfading || !beatAlignOn()) {
+            Timber.tag("AutomixDebug").d("beat prep skipped: crossfading=$isCrossfading beatAlignOn=${beatAlignOn()}")
+            return
+        }
         val mediaId = player.currentMediaItem?.mediaId ?: return
-        val bpm = automixAnalyzer.get(mediaId)?.takeIf { it.hasReliableBpm && it.tempoStable }?.bpm ?: return
+        val outAnalysis = automixAnalyzer.get(mediaId)
+        val bpm = outAnalysis?.takeIf { it.hasReliableBpm && it.tempoStable }?.bpm
+        if (bpm == null) {
+            Timber.tag("AutomixDebug").d("beat prep skipped: no steady bpm for $mediaId (analysis=${outAnalysis != null})")
+            return
+        }
         beatPrepJob?.cancel()
         pendingOutgoingBeats = null
         beatPrepJob =
@@ -5225,6 +5233,8 @@ class MusicService :
                 val grid = automixAnalyzer.beatGridBefore(mediaId, player.currentPosition / 1000.0, bpm)
                 if (grid != null && grid.isReliable && player.currentMediaItem?.mediaId == mediaId) {
                     pendingOutgoingBeats = mediaId to grid
+                } else {
+                    Timber.tag("AutomixDebug").d("beat prep: no usable grid (grid=${grid != null} strength=${grid?.strength}) sameSong=${player.currentMediaItem?.mediaId == mediaId}")
                 }
             }
     }
@@ -5260,7 +5270,14 @@ class MusicService :
                 pendingOutgoingBeats = null
                 val inGrid = automixAnalyzer.get(incomingId)?.takeIf { it.tempoStable }?.beatGrid?.takeIf { it.isReliable }
                 if (outGrid == null || inGrid == null) {
-                    Timber.tag("AutomixDebug").d("beat align skipped: out=${outGrid?.strength} in=${inGrid?.strength}")
+                    Timber.tag("AutomixDebug").d(
+                        "beat align skipped: out=${outGrid?.strength} in=${inGrid?.strength} prep=${when {
+                            prep == null -> "none"
+                            prep.isCancelled -> "cancelled"
+                            prep.isCompleted -> "done"
+                            else -> "running"
+                        }}",
+                    )
                     return@launch
                 }
                 if (incoming !== player || outgoing !== fadingPlayer) return@launch
