@@ -320,6 +320,9 @@ class MusicService :
     // Set by a smooth skip so the crossfade it starts trades the two songs' basslines.
     private var mixBassSwap = false
     private var mixDurationMs = 5000f
+
+    // Length of the smooth skip mix that is about to start, which can be shorter than the setting.
+    private var smoothMixDuration = 5000f
     private var crossfadeDuration = 5000f
     private var crossfadeGapless = true
     private var crossfadeMessage: PlayerMessage? = null
@@ -5100,20 +5103,25 @@ class MusicService :
         Timber.tag("AutomixDebug").d("MIX READY: bpmA=${a.bpm} bpmB=${b.bpm}")
     }
 
-    private fun automixTargetRatio(): Float? {
-        if (!automixOn()) return null
-        val aId = player.currentMediaItem?.mediaId ?: return null
-        val bId = automixNextMediaId() ?: return null
-        if (aId == bId) return null
+    // How a smooth skip into the next song goes: beat matched when both tempos are known, steady and within the
+    // limit, otherwise a plain, shorter fade with no tempo change and no beat align.
+    private class MixPlan(val beatMatch: Boolean, val ratio: Float?, val durationMs: Float)
+
+    private fun planSmoothSkip(): MixPlan {
+        val fade = MixPlan(false, null, minOf(smoothSkipDuration, UNMATCHED_MIX_MS))
+        if (!automixOn()) return fade
+        val aId = player.currentMediaItem?.mediaId ?: return fade
+        val bId = automixNextMediaId() ?: return fade
+        if (aId == bId) return fade
         val a = automixAnalyzer.get(aId)
         val b = automixAnalyzer.get(bId)
         if (a == null || b == null || !a.hasReliableBpm || !b.hasReliableBpm) {
             Timber.tag("AutomixDebug").d("ramp skipped: A=${a?.bpm}/${a?.confidence} B=${b?.bpm}/${b?.confidence}")
-            return null
+            return fade
         }
         if (!a.tempoStable || !b.tempoStable) {
             Timber.tag("AutomixDebug").d("ramp skipped: unsteady tempo A=${a.tempoStable} B=${b.tempoStable}")
-            return null
+            return fade
         }
         val r = b.bpm!! / a.bpm!!
         val max = smoothSkipMaxTempoChange
@@ -5122,17 +5130,16 @@ class MusicService :
             if (kotlin.math.abs(r - 1f) <= max) {
                 r
             } else {
-                listOf(r, r * 2f, r / 2f).minByOrNull { kotlin.math.abs(it - 1f) } ?: return null
+                listOf(r, r * 2f, r / 2f).minByOrNull { kotlin.math.abs(it - 1f) } ?: return fade
             }
         val diff = kotlin.math.abs(picked - 1f)
         Timber.tag("AutomixDebug").d("ramp plan: bpmA=${a.bpm} bpmB=${b.bpm} ratio=$picked")
         // A half-stretched pair sounds warped without being in time, so a gap beyond the limit gets no stretching.
         if (diff > max) {
             Timber.tag("AutomixDebug").d("ramp skipped: tempo gap ${diff * 100}% is beyond the ${max * 100}% limit")
-            return null
+            return fade
         }
-        if (diff < 0.004f) return null
-        return picked
+        return MixPlan(true, if (diff < 0.004f) null else picked, smoothSkipDuration)
     }
 
     private fun cancelAutomixRamp(restoreSpeed: Boolean) {
@@ -5161,13 +5168,15 @@ class MusicService :
         if (castConnectionHandler?.isCasting?.value == true) return false
         if (player.repeatMode == REPEAT_MODE_ONE || !player.hasNextMediaItem() || !player.isPlaying) return false
 
-        val ratio = automixTargetRatio()
+        val plan = planSmoothSkip()
+        Timber.tag("AutomixDebug").d("smooth skip: ${if (plan.beatMatch) "beat match" else "fade"} ${plan.durationMs.toLong()}ms")
+        smoothMixDuration = plan.durationMs
         crossfadeMessage?.cancel()
         crossfadeMessage = null
         cancelAutomixRamp(restoreSpeed = true)
         automixEaseSpeed = 0f
         automixPhaseTrim = 1f
-        mixFadeMs.value = smoothSkipDuration.toLong()
+        mixFadeMs.value = plan.durationMs.toLong()
         mixBassSwap = smoothSkipBassSwap
         startCrossfade(smooth = true)
         if (!isCrossfading) {
@@ -5175,8 +5184,8 @@ class MusicService :
             mixFadeMs.value = 0L
             return false
         }
-        if (ratio != null) startTempoMatch(ratio)
-        if (beatAlignOn()) startBeatAlign()
+        plan.ratio?.let { startTempoMatch(it) }
+        if (plan.beatMatch && beatAlignOn()) startBeatAlign()
         return true
     }
 
@@ -5438,7 +5447,7 @@ class MusicService :
 
     private fun startCrossfade(smooth: Boolean = false) {
         if (isCrossfading) return
-        mixDurationMs = if (smooth) smoothSkipDuration else crossfadeDuration
+        mixDurationMs = if (smooth) smoothMixDuration else crossfadeDuration
 
         val repeatMode = player.repeatMode
         val shuffleModeEnabled = player.shuffleModeEnabled
@@ -5670,6 +5679,7 @@ class MusicService :
         const val BEAT_SEEK_LATENCY_MS = 60L
         const val BEAT_SEEK_SETTLE_MS = 400L
         const val BEAT_TEMPO_TOLERANCE = 0.03
+        const val UNMATCHED_MIX_MS = 4_000f
         const val PHASE_LOCK_INTERVAL_MS = 250L
         const val PHASE_LOCK_DEADBAND_SEC = 0.008
         const val PHASE_LOCK_TAU_SEC = 0.75
