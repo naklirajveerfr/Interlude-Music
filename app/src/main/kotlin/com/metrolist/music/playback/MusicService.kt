@@ -5088,6 +5088,10 @@ class MusicService :
 
     private var mixReadyKey: String? = null
 
+    // Fires when a smooth skip into the next song is ready, so the skip buttons can flash.
+    private val _mixReadyEvents = kotlinx.coroutines.flow.MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val mixReadyEvents: kotlinx.coroutines.flow.SharedFlow<Unit> = _mixReadyEvents
+
     // Logs "MIX READY" once per song pair when both songs' BPM is known, so smooth skips can be tested easily.
     private fun logMixReady() {
         if (!automixOn()) return
@@ -5102,6 +5106,7 @@ class MusicService :
         mixReadyKey = key
         Timber.tag("AutomixDebug").d("MIX READY: bpmA=${a.bpm} bpmB=${b.bpm}")
         if (a.tempoStable) startBeatWarm(aId, a.bpm!!)
+        _mixReadyEvents.tryEmit(Unit)
     }
 
     // How a smooth skip into the next song goes: beat matched when both tempos are known, steady and within the
