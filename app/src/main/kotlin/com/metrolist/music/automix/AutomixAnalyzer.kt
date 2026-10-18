@@ -68,6 +68,7 @@ data class TrackAnalysis(
     val tailKnown: Boolean = false,
     val beatGrid: BeatGrid? = null,
     val tempoStable: Boolean = true,
+    val key: KeyEstimate? = null,
 ) {
     val hasReliableBpm: Boolean get() = bpm != null && confidence >= MIN_CONFIDENCE
 
@@ -76,7 +77,7 @@ data class TrackAnalysis(
     }
 }
 
-private class Fft(private val n: Int) {
+internal class Fft(private val n: Int) {
     private val cosT = FloatArray(n / 2) { cos(2.0 * PI * it / n).toFloat() }
     private val sinT = FloatArray(n / 2) { -kotlin.math.sin(2.0 * PI * it / n).toFloat() }
     private val rev = IntArray(n)
@@ -740,10 +741,14 @@ class AutomixAnalyzer(
 
         val head = FrameStream(bpmFrom, bpmTo)
         val tarsos = TarsosBpmDetector()
+        val chroma = ChromaStream()
         try {
             decode(path, 0.0, bpmTo + 1.0) { m, n, r, t ->
                 head.push(m, n, r, t)
-                if (t >= bpmFrom && t <= bpmTo) tarsos.push(m, n, r)
+                if (t >= bpmFrom && t <= bpmTo) {
+                    tarsos.push(m, n, r)
+                    chroma.push(m, n, r)
+                }
             }
         } catch (e: Exception) {
             Timber.tag("AutomixDebug").w("head decode stopped: ${e.message}")
@@ -786,6 +791,6 @@ class AutomixAnalyzer(
             est
                 ?.takeIf { it.second >= TrackAnalysis.MIN_CONFIDENCE }
                 ?.let { runCatching { trackBeats(head.flux, head.lowFlux, head.hopSec, head.fluxStartSec, it.first.toDouble()) }.getOrNull() }
-        return TrackAnalysis(est?.first, est?.second ?: 0f, intro, silentTail, quietTail, tailKnown, grid, tarsosEst?.stable ?: true)
+        return TrackAnalysis(est?.first, est?.second ?: 0f, intro, silentTail, quietTail, tailKnown, grid, tarsosEst?.stable ?: true, runCatching { chroma.estimate() }.getOrNull())
     }
 }
