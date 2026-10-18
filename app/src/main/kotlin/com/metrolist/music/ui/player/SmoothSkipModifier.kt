@@ -24,7 +24,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 
 private const val SMOOTH_SKIP_HOLD_MS = 1500L
 private const val FLASH_IN_MS = 400
-private const val FLASH_HOLD_MS = 1_000L
+private const val FLASH_HOLD_MS = 500L
 private const val FLASH_OUT_MS = 600
 
 /**
@@ -37,7 +37,7 @@ fun Modifier.smoothSkipOnHold(): Modifier =
         val haptic = LocalHapticFeedback.current
         val primary = MaterialTheme.colorScheme.primary
 
-        // When the smooth skip is ready the button fades into the primary color, then back a second later.
+        // When the smooth skip is ready the button fades into the primary color, then back half a second later.
         val flash = remember { Animatable(0f) }
         LaunchedEffect(playerConnection) {
             playerConnection?.service?.mixReadyEvents?.collect {
