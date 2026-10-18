@@ -55,6 +55,7 @@ data class TrackAnalysis(
     val quietTailSec: Float,
     val tailKnown: Boolean = false,
     val beatGrid: BeatGrid? = null,
+    val tempoStable: Boolean = true,
 ) {
     val hasReliableBpm: Boolean get() = bpm != null && confidence >= MIN_CONFIDENCE
 
@@ -682,9 +683,8 @@ class AutomixAnalyzer(
         val firstLoud = head.rms.indexOfFirst { it >= 0.03f * ref }
         val intro = if (firstLoud < 0) 0f else min(8.0, head.frameStartSec(firstLoud)).toFloat()
         // TarsosDSP gives the tempo; the spectral estimator only covers songs it can't call reliably.
-        val est =
-            runCatching { tarsos.estimate() }.getOrNull()?.takeIf { it.second >= TrackAnalysis.MIN_CONFIDENCE }
-                ?: estimateBpmWindows(head.flux, head.hopSec)
+        val tarsosEst = runCatching { tarsos.estimate() }.getOrNull()?.takeIf { it.confidence >= TrackAnalysis.MIN_CONFIDENCE }
+        val est = tarsosEst?.let { Pair(it.bpm, it.confidence) } ?: estimateBpmWindows(head.flux, head.hopSec)
 
         var silentTail = 0f
         var quietTail = 0f
@@ -714,6 +714,6 @@ class AutomixAnalyzer(
             est
                 ?.takeIf { it.second >= TrackAnalysis.MIN_CONFIDENCE }
                 ?.let { runCatching { trackBeats(head.flux, head.hopSec, head.fluxStartSec, it.first.toDouble()) }.getOrNull() }
-        return TrackAnalysis(est?.first, est?.second ?: 0f, intro, silentTail, quietTail, tailKnown, grid)
+        return TrackAnalysis(est?.first, est?.second ?: 0f, intro, silentTail, quietTail, tailKnown, grid, tarsosEst?.stable ?: true)
     }
 }

@@ -174,7 +174,7 @@ fun PlayerSettings(
     )
     val (automixEnabled, onAutomixEnabledChange) = rememberPreference(com.metrolist.music.constants.AutomixEnabledKey, defaultValue = false)
     val (smoothSkipDuration, onSmoothSkipDurationChange) = rememberPreference(com.metrolist.music.constants.SmoothSkipDurationKey, defaultValue = 5f)
-    val (smoothSkipMaxTempoChange, onSmoothSkipMaxTempoChangeChange) = rememberPreference(com.metrolist.music.constants.SmoothSkipMaxTempoChangeKey, defaultValue = 33f)
+    val (smoothSkipMaxTempoChange, onSmoothSkipMaxTempoChangeChange) = rememberPreference(com.metrolist.music.constants.SmoothSkipMaxTempoChangeKey, defaultValue = 8f)
     val (smoothSkipTempoStyle, onSmoothSkipTempoStyleChange) = rememberEnumPreference(
         SmoothSkipTempoStyleKey,
         defaultValue = SmoothSkipTempoStyle.PLAYING_SONG

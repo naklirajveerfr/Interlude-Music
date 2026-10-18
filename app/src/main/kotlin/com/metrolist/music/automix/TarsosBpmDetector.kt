@@ -10,6 +10,9 @@ import kotlin.math.abs
 import kotlin.math.exp
 import kotlin.math.round
 
+/** [stable] is false when the first and second half of the audio give different tempos. */
+data class TempoEstimate(val bpm: Float, val confidence: Float, val stable: Boolean)
+
 /**
  * Tempo estimate built on TarsosDSP: a complex-domain onset detector feeds the BeatRoot beat tracker and the
  * tempo is the spacing of the tracked beats. Feed mono PCM with [push], then read the result with [estimate].
@@ -64,10 +67,10 @@ class TarsosBpmDetector {
     }
 
     /**
-     * Returns (bpm, confidence) in the 70..180 range, or null when there is too little audio or no steady beat.
+     * Returns the tempo in the 70..180 range, or null when there is too little audio or no steady beat.
      * Confidence is on the same scale as the spectral estimator's, where [TrackAnalysis.MIN_CONFIDENCE] is reliable.
      */
-    fun estimate(): Pair<Float, Float>? {
+    fun estimate(): TempoEstimate? {
         if (broken || rate == 0 || samples < MIN_AUDIO_SEC * rate || onsets.size < MIN_BEATS) return null
         val beats = ArrayList<Double>()
         beatRoot.trackBeats(OnsetHandler { time, _ -> beats.add(time) })
@@ -99,7 +102,7 @@ class TarsosBpmDetector {
         Timber.tag("AutomixDebug").d(
             "tarsos: bpm=$bpm conf=$confidence beats=${beats.size} onsets=${onsets.size} support=$support chance=$chance agree=$agree",
         )
-        return Pair(bpm.toFloat(), confidence.toFloat())
+        return TempoEstimate(bpm.toFloat(), confidence.toFloat(), agree)
     }
 
     // Onset times are rounded to 10 ms, so the period comes from the whole beat span rather than single gaps.

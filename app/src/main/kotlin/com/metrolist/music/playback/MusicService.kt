@@ -311,7 +311,7 @@ class MusicService :
     private var crossfadeEnabled = false
     private var smoothSkipEnabled = false
     private var smoothSkipDuration = 5000f
-    private var smoothSkipMaxTempoChange = 0.33f
+    private var smoothSkipMaxTempoChange = 0.08f
     private var smoothSkipTempoStyle = SmoothSkipTempoStyle.PLAYING_SONG
     private var smoothSkipBeatAlign = false
     private var mixDurationMs = 5000f
@@ -1176,7 +1176,7 @@ class MusicService :
                 Triple(
                     it[com.metrolist.music.constants.AutomixEnabledKey] ?: false,
                     it[com.metrolist.music.constants.SmoothSkipDurationKey] ?: 5f,
-                    it[com.metrolist.music.constants.SmoothSkipMaxTempoChangeKey] ?: 33f,
+                    it[com.metrolist.music.constants.SmoothSkipMaxTempoChangeKey] ?: 8f,
                 )
             },
             listenTogetherManager.roomState,
@@ -5089,6 +5089,10 @@ class MusicService :
             Timber.tag("AutomixDebug").d("ramp skipped: A=${a?.bpm}/${a?.confidence} B=${b?.bpm}/${b?.confidence}")
             return null
         }
+        if (!a.tempoStable || !b.tempoStable) {
+            Timber.tag("AutomixDebug").d("ramp skipped: unsteady tempo A=${a.tempoStable} B=${b.tempoStable}")
+            return null
+        }
         val r = b.bpm!! / a.bpm!!
         val max = smoothSkipMaxTempoChange
         // Match the plain tempo when it is within the limit, otherwise the closest half/double-time match.
@@ -5098,11 +5102,15 @@ class MusicService :
             } else {
                 listOf(r, r * 2f, r / 2f).minByOrNull { kotlin.math.abs(it - 1f) } ?: return null
             }
-        val best = picked.coerceIn(maxOf(1f - max, 0.25f), 1f + max)
-        val diff = kotlin.math.abs(best - 1f)
-        Timber.tag("AutomixDebug").d("ramp plan: bpmA=${a.bpm} bpmB=${b.bpm} ratio=$best")
+        val diff = kotlin.math.abs(picked - 1f)
+        Timber.tag("AutomixDebug").d("ramp plan: bpmA=${a.bpm} bpmB=${b.bpm} ratio=$picked")
+        // A half-stretched pair sounds warped without being in time, so a gap beyond the limit gets no stretching.
+        if (diff > max) {
+            Timber.tag("AutomixDebug").d("ramp skipped: tempo gap ${diff * 100}% is beyond the ${max * 100}% limit")
+            return null
+        }
         if (diff < 0.004f) return null
-        return best
+        return picked
     }
 
     private fun cancelAutomixRamp(restoreSpeed: Boolean) {
@@ -5166,7 +5174,7 @@ class MusicService :
     fun prepareBeatAlign() {
         if (!::player.isInitialized || isCrossfading || !beatAlignOn()) return
         val mediaId = player.currentMediaItem?.mediaId ?: return
-        val bpm = automixAnalyzer.get(mediaId)?.takeIf { it.hasReliableBpm }?.bpm ?: return
+        val bpm = automixAnalyzer.get(mediaId)?.takeIf { it.hasReliableBpm && it.tempoStable }?.bpm ?: return
         beatPrepJob?.cancel()
         pendingOutgoingBeats = null
         beatPrepJob =
@@ -5208,7 +5216,7 @@ class MusicService :
                         pendingOutgoingBeats?.takeIf { it.first == outgoingId }?.second
                     }
                 pendingOutgoingBeats = null
-                val inGrid = automixAnalyzer.get(incomingId)?.beatGrid?.takeIf { it.isReliable }
+                val inGrid = automixAnalyzer.get(incomingId)?.takeIf { it.tempoStable }?.beatGrid?.takeIf { it.isReliable }
                 if (outGrid == null || inGrid == null) {
                     Timber.tag("AutomixDebug").d("beat align skipped: out=${outGrid?.strength} in=${inGrid?.strength}")
                     return@launch
