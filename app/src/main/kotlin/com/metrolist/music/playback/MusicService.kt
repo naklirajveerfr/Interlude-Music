@@ -5251,18 +5251,26 @@ class MusicService :
                     return@launch
                 }
                 val inPos = incoming.currentPosition / 1000.0
-                // Real seconds until the outgoing song's next beat, and media seconds until the incoming one's.
-                val untilOutBeat = outGrid.secondsToNextBeat(outgoing.currentPosition / 1000.0) / outSpeed
-                val untilInBeat = inGrid.secondsToNextBeat(inPos)
+                val outPos = outgoing.currentPosition / 1000.0
+                // With a clear downbeat in both songs (and the same pace) whole bars are lined up, not just single beats.
+                val barAlign =
+                    outGrid.isBarReliable && inGrid.isBarReliable &&
+                        kotlin.math.abs(realPeriodRatio - 1.0) < BEAT_TEMPO_TOLERANCE
+                // Real seconds until the outgoing song's next beat (or downbeat), and media seconds until the incoming one's.
+                val untilOutBeat =
+                    (if (barAlign) outGrid.secondsToNextDownbeat(outPos) else outGrid.secondsToNextBeat(outPos)) / outSpeed
+                val untilInBeat = if (barAlign) inGrid.secondsToNextDownbeat(inPos) else inGrid.secondsToNextBeat(inPos)
+                val unit = if (barAlign) inGrid.periodSec * 4.0 else inGrid.periodSec
                 // After the seek the incoming clock only resumes once it has rebuffered, so that time is taken off.
                 var shift = untilInBeat - (untilOutBeat - BEAT_SEEK_LATENCY_MS / 1000.0) * inSpeed
-                shift -= inGrid.periodSec * kotlin.math.round(shift / inGrid.periodSec)
+                shift -= unit * kotlin.math.round(shift / unit)
                 Timber.tag("AutomixDebug").d(
-                    "beat align: shift=${(shift * 1000).toInt()}ms outStrength=${outGrid.strength} inStrength=${inGrid.strength}",
+                    "beat align: shift=${(shift * 1000).toInt()}ms bars=$barAlign outStrength=${outGrid.strength} " +
+                        "inStrength=${inGrid.strength} outBar=${outGrid.barStrength} inBar=${inGrid.barStrength}",
                 )
                 if (kotlin.math.abs(shift) < 0.015) return@launch
                 var target = inPos + shift
-                if (target < 0.0) target += inGrid.periodSec
+                if (target < 0.0) target += unit
                 // The incoming song rebuffers during the seek; the outgoing song must keep playing meanwhile.
                 beatAlignSeeking = true
                 try {

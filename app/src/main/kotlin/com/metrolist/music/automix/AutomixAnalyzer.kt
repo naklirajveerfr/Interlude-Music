@@ -33,8 +33,12 @@ data class BeatGrid(
     val periodSec: Double,
     val anchorSec: Double,
     val strength: Float,
+    /** Which of the four beats of a bar is the downbeat: beat k (at anchorSec + k * periodSec) opens a bar when k mod 4 equals this. -1 if unknown. */
+    val barPhase: Int = -1,
+    val barStrength: Float = 0f,
 ) {
     val isReliable: Boolean get() = strength >= MIN_STRENGTH
+    val isBarReliable: Boolean get() = barPhase >= 0 && barStrength >= MIN_BAR_STRENGTH
 
     /** Seconds from [posSec] to the next beat (0 when exactly on one). */
     fun secondsToNextBeat(posSec: Double): Double {
@@ -42,8 +46,16 @@ data class BeatGrid(
         return (kotlin.math.ceil(x) - x) * periodSec
     }
 
+    /** Seconds from [posSec] to the next downbeat (0 when exactly on one). Only meaningful when [isBarReliable]. */
+    fun secondsToNextDownbeat(posSec: Double): Double {
+        val bar = 4.0 * periodSec
+        val x = (posSec - anchorSec - barPhase * periodSec) / bar
+        return (kotlin.math.ceil(x) - x) * bar
+    }
+
     companion object {
         const val MIN_STRENGTH = 1.6f
+        const val MIN_BAR_STRENGTH = 1.2f
     }
 }
 
@@ -123,6 +135,7 @@ private class FrameStream(
     private var filled = 0
     private var frameIdx = 0
     private var maxBin = 1
+    private var lowMaxBin = 1
     private var hasPrev = false
 
     var rate = 0
@@ -134,6 +147,9 @@ private class FrameStream(
     val rms = ArrayList<Float>()
     val flux = ArrayList<Float>()
 
+    // Onset strength of the bass range only (up to about 200 Hz), where the kick that marks a downbeat lives.
+    val lowFlux = ArrayList<Float>()
+
     val hopSec: Double get() = H.toDouble() / rate
     val endSec: Double get() = t0 + (frameIdx.toLong() * H + N).toDouble() / rate
 
@@ -144,6 +160,7 @@ private class FrameStream(
             rate = sampleRate
             t0 = tSec
             maxBin = min(N / 2 - 1, (5000.0 / (rate / 2.0) * (N / 2)).toInt()).coerceAtLeast(2)
+            lowMaxBin = min(maxBin, (200.0 / (rate / 2.0) * (N / 2)).toInt()).coerceAtLeast(1)
         }
         for (i in 0 until n) {
             buf[filled++] = mono[i]
@@ -167,17 +184,22 @@ private class FrameStream(
             }
             fft.transform(re, im)
             var f = 0f
+            var lowF = 0f
             for (k in 1..maxBin) {
                 val mag = sqrt(re[k] * re[k] + im[k] * im[k]) / N * 4f
                 val l = ln1p(100f * mag)
                 if (hasPrev) {
                     val d = l - prevLog[k]
-                    if (d > 0f) f += d
+                    if (d > 0f) {
+                        f += d
+                        if (k <= lowMaxBin) lowF += d
+                    }
                 }
                 prevLog[k] = l
             }
             if (flux.isEmpty()) fluxStartSec = t
             flux.add(if (hasPrev) f else 0f)
+            lowFlux.add(if (hasPrev) lowF else 0f)
             hasPrev = true
         }
         frameIdx++
@@ -228,7 +250,8 @@ class AutomixAnalyzer(
                     Timber.tag("AutomixDebug").d(
                         "id=$mediaId bpm=${r.bpm} conf=${r.confidence} intro=${r.introSilenceSec}s " +
                             "silentTail=${r.silentTailSec}s quietTail=${r.quietTailSec}s tailKnown=${r.tailKnown} " +
-                            "beatPeriod=${r.beatGrid?.periodSec} beatStrength=${r.beatGrid?.strength}",
+                            "beatPeriod=${r.beatGrid?.periodSec} beatStrength=${r.beatGrid?.strength} " +
+                            "barPhase=${r.beatGrid?.barPhase} barStrength=${r.beatGrid?.barStrength}",
                     )
                     r
                 } catch (e: CancellationException) {
@@ -455,7 +478,7 @@ class AutomixAnalyzer(
     // Dynamic-programming beat tracker (after Ellis 2007): picks the beat sequence that lands on onset peaks while
     // keeping the spacing close to the given tempo, then fits a regular grid through it. Times are on the song's
     // clock: startSec is the time of the first flux frame.
-    private fun trackBeats(flux: List<Float>, hopSec: Double, startSec: Double, bpm: Double): BeatGrid? {
+    private fun trackBeats(flux: List<Float>, lowFlux: List<Float>, hopSec: Double, startSec: Double, bpm: Double): BeatGrid? {
         val n = flux.size
         val period = 60.0 / (bpm * hopSec)
         if (period < 4.0 || n < period * 8) return null
@@ -547,7 +570,55 @@ class AutomixAnalyzer(
             cnt++
         }
         if (cnt < 6) return null
-        return BeatGrid(p, anchor, (sum / cnt / (mean / std)).toFloat())
+        val strength = (sum / cnt / (mean / std)).toFloat()
+        val (barPhase, barStrength) = findDownbeat(e, lowFlux, hopSec, startSec, p, anchor)
+        return BeatGrid(p, anchor, strength, barPhase, barStrength)
+    }
+
+    // Picks which of the four beats of a bar is the downbeat: the beat position whose onsets (bass onsets weighted in)
+    // stand out most over many bars. The strength is that position's average against the average of the other three,
+    // so a steady four-on-the-floor kick, which gives no clue, comes out unreliable.
+    private fun findDownbeat(
+        onset: FloatArray,
+        lowFlux: List<Float>,
+        hopSec: Double,
+        startSec: Double,
+        period: Double,
+        anchor: Double,
+    ): Pair<Int, Float> {
+        val none = Pair(-1, 0f)
+        val n = onset.size
+        if (lowFlux.size != n) return none
+        val low = onsetEnvelope(lowFlux, hopSec)
+        var onsetMean = 0.0
+        var lowMean = 0.0
+        for (i in 0 until n) {
+            onsetMean += onset[i]
+            lowMean += low[i]
+        }
+        onsetMean /= n
+        lowMean /= n
+        if (onsetMean <= 0.0 || lowMean <= 0.0) return none
+
+        val sum = DoubleArray(4)
+        val count = IntArray(4)
+        val kMin = kotlin.math.ceil((startSec - anchor) / period).toInt()
+        val kMax = kotlin.math.floor((startSec + (n - 1) * hopSec - anchor) / period).toInt()
+        for (k in kMin..kMax) {
+            val f = kotlin.math.round((anchor + k * period - startSec) / hopSec).toInt()
+            if (f < 1 || f > n - 2) continue
+            val broad = max(onset[f - 1], max(onset[f], onset[f + 1])) / onsetMean
+            val bass = max(low[f - 1], max(low[f], low[f + 1])) / lowMean
+            val phase = k.mod(4)
+            sum[phase] += broad + bass
+            count[phase]++
+        }
+        if (count.any { it < 3 }) return none
+        val mean = DoubleArray(4) { sum[it] / count[it] }
+        val best = mean.indices.maxByOrNull { mean[it] } ?: return none
+        val others = (mean.sum() - mean[best]) / 3.0
+        if (others <= 0.0) return none
+        return Pair(best, (mean[best] / others).toFloat())
     }
 
     /** Beat grid of the audio just before [positionSec] of a playing song, or null if it can't be found in time. */
@@ -565,9 +636,10 @@ class AutomixAnalyzer(
                 }
                 // Not enough of the song is cached to reach the playing position.
                 if (stream.rate == 0 || stream.endSec < positionSec - 1.0) return@withContext null
-                val grid = trackBeats(stream.flux, stream.hopSec, stream.fluxStartSec, bpm.toDouble())
+                val grid = trackBeats(stream.flux, stream.lowFlux, stream.hopSec, stream.fluxStartSec, bpm.toDouble())
                 Timber.tag("AutomixDebug").d(
-                    "beat grid before ${positionSec}s: period=${grid?.periodSec} strength=${grid?.strength} (bpm hint $bpm)",
+                    "beat grid before ${positionSec}s: period=${grid?.periodSec} strength=${grid?.strength} " +
+                        "barPhase=${grid?.barPhase} barStrength=${grid?.barStrength} (bpm hint $bpm)",
                 )
                 grid
             } catch (e: CancellationException) {
@@ -713,7 +785,7 @@ class AutomixAnalyzer(
         val grid =
             est
                 ?.takeIf { it.second >= TrackAnalysis.MIN_CONFIDENCE }
-                ?.let { runCatching { trackBeats(head.flux, head.hopSec, head.fluxStartSec, it.first.toDouble()) }.getOrNull() }
+                ?.let { runCatching { trackBeats(head.flux, head.lowFlux, head.hopSec, head.fluxStartSec, it.first.toDouble()) }.getOrNull() }
         return TrackAnalysis(est?.first, est?.second ?: 0f, intro, silentTail, quietTail, tailKnown, grid, tarsosEst?.stable ?: true)
     }
 }
