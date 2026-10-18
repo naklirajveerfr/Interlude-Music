@@ -5049,6 +5049,11 @@ class MusicService :
     private var automixSpeedActive = false
     private var automixBaseSpeed = 1f
 
+    // The incoming song's speed as set by the tempo ease (0 when there is none), and the small correction the
+    // phase lock of a beat-aligned smooth skip multiplies on top of it.
+    private var automixEaseSpeed = 0f
+    private var automixPhaseTrim = 1f
+
     // Tempo ramp of the song fading out during a smooth skip. Kept apart from automixRampJob because
     // playback events right after the player swap reschedule the crossfade and cancel that one.
     private var automixFadeRampJob: Job? = null
@@ -5160,6 +5165,8 @@ class MusicService :
         crossfadeMessage?.cancel()
         crossfadeMessage = null
         cancelAutomixRamp(restoreSpeed = true)
+        automixEaseSpeed = 0f
+        automixPhaseTrim = 1f
         mixFadeMs.value = smoothSkipDuration.toLong()
         mixBassSwap = smoothSkipBassSwap
         startCrossfade(smooth = true)
@@ -5268,18 +5275,56 @@ class MusicService :
                     "beat align: shift=${(shift * 1000).toInt()}ms bars=$barAlign outStrength=${outGrid.strength} " +
                         "inStrength=${inGrid.strength} outBar=${outGrid.barStrength} inBar=${inGrid.barStrength}",
                 )
-                if (kotlin.math.abs(shift) < 0.015) return@launch
-                var target = inPos + shift
-                if (target < 0.0) target += unit
-                // The incoming song rebuffers during the seek; the outgoing song must keep playing meanwhile.
-                beatAlignSeeking = true
-                try {
-                    incoming.seekTo(incoming.currentMediaItemIndex, (target * 1000).toLong())
-                    delay(BEAT_SEEK_SETTLE_MS)
-                } finally {
-                    beatAlignSeeking = false
+                if (kotlin.math.abs(shift) >= 0.015) {
+                    var target = inPos + shift
+                    if (target < 0.0) target += unit
+                    // The incoming song rebuffers during the seek; the outgoing song must keep playing meanwhile.
+                    beatAlignSeeking = true
+                    try {
+                        incoming.seekTo(incoming.currentMediaItemIndex, (target * 1000).toLong())
+                        delay(BEAT_SEEK_SETTLE_MS)
+                    } finally {
+                        beatAlignSeeking = false
+                    }
                 }
+                if (kotlin.math.abs(realPeriodRatio - 1.0) < BEAT_TEMPO_TOLERANCE) lockPhase(incoming, outgoing, inGrid, outGrid)
             }
+    }
+
+    // Keeps the incoming song's beats on the outgoing song's for the rest of the mix. The seek above is only as exact
+    // as its latency guess and the tempo match as the two BPM estimates, so every quarter second the leftover phase
+    // error is measured and trimmed with a small speed change on top of the tempo ease.
+    private suspend fun lockPhase(incoming: Player, outgoing: Player, inGrid: BeatGrid, outGrid: BeatGrid) {
+        val fixedSpeed = incoming.playbackParameters.speed
+        // The ease's current speed while it runs, its original base speed once it has ended, or the plain speed if
+        // there was no ease.
+        fun baseSpeed() =
+            when {
+                automixSpeedActive -> automixEaseSpeed
+                automixEaseSpeed > 0f -> automixBaseSpeed
+                else -> fixedSpeed
+            }
+        try {
+            while (isCrossfading && incoming === player && outgoing === fadingPlayer) {
+                delay(PHASE_LOCK_INTERVAL_MS)
+                if (!incoming.isPlaying || !outgoing.isPlaying) continue
+                val inBeats = (incoming.currentPosition / 1000.0 - inGrid.anchorSec) / inGrid.periodSec
+                val outBeats = (outgoing.currentPosition / 1000.0 - outGrid.anchorSec) / outGrid.periodSec
+                val d = inBeats - outBeats
+                // Positive when the incoming song's beats come earlier than the outgoing song's, so it has to slow down.
+                val errSec = (d - kotlin.math.round(d)) * inGrid.periodSec
+                val trim = if (kotlin.math.abs(errSec) < PHASE_LOCK_DEADBAND_SEC) 1.0 else 1.0 - errSec / PHASE_LOCK_TAU_SEC
+                automixPhaseTrim = trim.toFloat().coerceIn(1f - PHASE_LOCK_MAX_TRIM, 1f + PHASE_LOCK_MAX_TRIM)
+                incoming.setPlaybackSpeed(baseSpeed() * automixPhaseTrim)
+                Timber.tag("AutomixDebug").d("phase lock: err=${(errSec * 1000).toInt()}ms trim=$automixPhaseTrim")
+            }
+        } finally {
+            automixPhaseTrim = 1f
+            try {
+                if (incoming === player) incoming.setPlaybackSpeed(baseSpeed())
+            } catch (_: Exception) {
+            }
+        }
     }
 
     // ratio is the incoming song's tempo relative to the outgoing one. The style decides which song moves:
@@ -5303,7 +5348,8 @@ class MusicService :
         automixBaseSpeed = base
         automixSpeedActive = true
         automixEasing = true
-        incoming.setPlaybackSpeed(from)
+        automixEaseSpeed = from
+        incoming.setPlaybackSpeed(from * automixPhaseTrim)
         val steps = (durationMs / 250L).toInt().coerceIn(8, 120)
         automixRampJob?.cancel()
         automixRampJob =
@@ -5313,7 +5359,9 @@ class MusicService :
                     if (!isActive || incoming !== player) return@launch
                     val p = i / steps.toFloat()
                     try {
-                        incoming.setPlaybackSpeed(from + (base - from) * (p * p * (3f - 2f * p)))
+                        val eased = from + (base - from) * (p * p * (3f - 2f * p))
+                        automixEaseSpeed = eased
+                        incoming.setPlaybackSpeed(eased * automixPhaseTrim)
                     } catch (_: Exception) {
                         return@launch
                     }
@@ -5622,6 +5670,10 @@ class MusicService :
         const val BEAT_SEEK_LATENCY_MS = 60L
         const val BEAT_SEEK_SETTLE_MS = 400L
         const val BEAT_TEMPO_TOLERANCE = 0.03
+        const val PHASE_LOCK_INTERVAL_MS = 250L
+        const val PHASE_LOCK_DEADBAND_SEC = 0.008
+        const val PHASE_LOCK_TAU_SEC = 0.75
+        const val PHASE_LOCK_MAX_TRIM = 0.03f
         const val BASS_SWAP_START = 0.2f
         const val BASS_SWAP_END = 0.4f
         const val PERSISTENT_QUEUE_FILE = "persistent_queue.data"
