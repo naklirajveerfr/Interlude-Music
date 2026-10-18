@@ -5101,6 +5101,7 @@ class MusicService :
         if (key == mixReadyKey) return
         mixReadyKey = key
         Timber.tag("AutomixDebug").d("MIX READY: bpmA=${a.bpm} bpmB=${b.bpm}")
+        if (a.tempoStable) startBeatWarm(aId, a.bpm!!)
     }
 
     // How a smooth skip into the next song goes: beat matched when both tempos are known, steady and within the
@@ -5201,6 +5202,35 @@ class MusicService :
     private var beatAlignJob: Job? = null
     private var beatAlignSeeking = false
     private var pendingOutgoingBeats: Pair<String, com.metrolist.music.automix.BeatGrid>? = null
+    private var pendingBeatsAtSec = 0.0
+    private var warmBeatJob: Job? = null
+
+    // Finding a song's beats near its playing position takes several seconds, longer than a smooth skip's hold, so it
+    // is done ahead of time: once a song pair is ready the playing song's beats are refreshed in the background, and a
+    // skip finds them waiting. Beats stay on a fixed grid, so a grid a few seconds old still fits.
+    private suspend fun computeOutgoingBeats(mediaId: String, bpm: Float) {
+        val pos = player.currentPosition / 1000.0
+        if (player.currentMediaItem?.mediaId != mediaId) return
+        val grid = automixAnalyzer.beatGridBefore(mediaId, pos, bpm)
+        if (grid != null && grid.isReliable) {
+            pendingOutgoingBeats = mediaId to grid
+            pendingBeatsAtSec = pos
+        } else {
+            Timber.tag("AutomixDebug").d("beat grid not usable (grid=${grid != null} strength=${grid?.strength})")
+        }
+    }
+
+    private fun startBeatWarm(mediaId: String, bpm: Float) {
+        if (!beatAlignOn()) return
+        warmBeatJob?.cancel()
+        warmBeatJob =
+            scope.launch {
+                while (!isCrossfading && player.currentMediaItem?.mediaId == mediaId) {
+                    if (player.isPlaying) computeOutgoingBeats(mediaId, bpm)
+                    delay(BEAT_WARM_INTERVAL_MS)
+                }
+            }
+    }
 
     private fun beatAlignOn(): Boolean = smoothSkipBeatAlign && smoothSkipEnabled
 
@@ -5226,16 +5256,20 @@ class MusicService :
             return
         }
         beatPrepJob?.cancel()
+        val cached = pendingOutgoingBeats
+        val fresh =
+            cached != null && cached.first == mediaId &&
+                kotlin.math.abs(player.currentPosition / 1000.0 - pendingBeatsAtSec) < BEAT_GRID_FRESH_SEC
+        if (fresh) {
+            Timber.tag("AutomixDebug").d("beat prep: using the grid found ahead of time")
+            beatPrepJob = null
+            return
+        }
         pendingOutgoingBeats = null
         beatPrepJob =
             scope.launch {
                 delay(BEAT_PREP_DELAY_MS)
-                val grid = automixAnalyzer.beatGridBefore(mediaId, player.currentPosition / 1000.0, bpm)
-                if (grid != null && grid.isReliable && player.currentMediaItem?.mediaId == mediaId) {
-                    pendingOutgoingBeats = mediaId to grid
-                } else {
-                    Timber.tag("AutomixDebug").d("beat prep: no usable grid (grid=${grid != null} strength=${grid?.strength}) sameSong=${player.currentMediaItem?.mediaId == mediaId}")
-                }
+                computeOutgoingBeats(mediaId, bpm)
             }
     }
 
@@ -5699,7 +5733,9 @@ class MusicService :
         const val AUTOMIX_SKIP_EASE_MS = 20_000L
         const val BEAT_PREP_DELAY_MS = 300L
         const val BEAT_ALIGN_WAIT_MS = 1_000L
-        const val BEAT_PREP_WAIT_MS = 300L
+        const val BEAT_PREP_WAIT_MS = 2_500L
+        const val BEAT_WARM_INTERVAL_MS = 20_000L
+        const val BEAT_GRID_FRESH_SEC = 30.0
         const val BEAT_SEEK_LATENCY_MS = 60L
         const val BEAT_SEEK_SETTLE_MS = 400L
         const val BEAT_TEMPO_TOLERANCE = 0.03
