@@ -1219,6 +1219,10 @@ class MusicService :
                 .map { it[com.metrolist.music.constants.SmoothSkipBassSwapKey] ?: true }
                 .distinctUntilChanged()
                 .collect { smoothSkipBassSwap = it }
+        }
+
+        scope.launch {
+            dataStore.data
                 .map { it[com.metrolist.music.constants.SmoothSkipLyricMuteKey] ?: true }
                 .distinctUntilChanged()
                 .collect { smoothSkipLyricMute = it }
