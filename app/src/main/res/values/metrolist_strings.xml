@@ -1048,4 +1048,6 @@
     <string name="onboarding_shape_pill">Pill</string>
     <string name="onboarding_shape_soft">Soft</string>
     <string name="onboarding_slider_title">Choose your slider style</string>
+    <string name="smooth_skip_mute_vocals">Mute vocals when mixing</string>
+    <string name="smooth_skip_mute_vocals_desc">When you smooth skip, waits for the sung line to end, then mutes the vocals of the playing song while its beat fades out. Uses saved lyrics for timing</string>
 </resources>

@@ -24,6 +24,7 @@ import android.media.AudioDeviceInfo
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.audiofx.AudioEffect
+import com.metrolist.music.playback.audio.VocalMuteAudioProcessor
 import com.metrolist.music.playback.audio.VolumeNormalizationAudioProcessor
 import com.metrolist.music.utils.safeDataStoreEdit
 import android.net.ConnectivityManager
@@ -314,6 +315,7 @@ class MusicService :
     private var smoothSkipMaxTempoChange = 0.33f
     private var smoothSkipTempoStyle = SmoothSkipTempoStyle.PLAYING_SONG
     private var smoothSkipBeatAlign = false
+    private var smoothSkipLyricMute = true
     private var mixDurationMs = 5000f
     private var crossfadeDuration = 5000f
     private var crossfadeGapless = true
@@ -439,6 +441,7 @@ class MusicService :
     private var openedAudioEffectSessionId: Int = C.AUDIO_SESSION_ID_UNSET
     private val playerNormalizationProcessors = HashMap<Player, VolumeNormalizationAudioProcessor>()
     private val playerEqualizerProcessors = HashMap<Player, CustomEqualizerAudioProcessor>()
+    private val playerVocalProcessors = HashMap<Player, VocalMuteAudioProcessor>()
 
     private var loudnessSetupJob: Job? = null
     private var loudnessSetupGeneration: Long = 0L
@@ -1202,6 +1205,13 @@ class MusicService :
                 .collect { smoothSkipBeatAlign = it }
         }
 
+        scope.launch {
+            dataStore.data
+                .map { it[com.metrolist.music.constants.SmoothSkipLyricMuteKey] ?: true }
+                .distinctUntilChanged()
+                .collect { smoothSkipLyricMute = it }
+        }
+
         // Observe and cache common preferences to avoid runBlocking reads in playback callbacks
         scope.launch {
             dataStore.data.map { it[PersistentQueueKey] ?: true }.distinctUntilChanged().collect { cachedPersistentQueue = it }
@@ -1334,6 +1344,7 @@ class MusicService :
         val eqProcessor = CustomEqualizerAudioProcessor()
 
         val silenceProcessor = SilenceDetectorAudioProcessor { handleLongSilenceDetected() }
+        val vocalProcessor = VocalMuteAudioProcessor()
 
         // Set initial state — use pre-read prefs when available, otherwise fall back to DataStore
         val useAudioTrackPlaybackParams = if (prefs != null) {
@@ -1357,7 +1368,7 @@ class MusicService :
                 .setMediaSourceFactory(
                     createMediaSourceFactory(normalizationProcessor) { createdPlayer },
                 )
-                .setRenderersFactory(createRenderersFactory(normalizationProcessor, eqProcessor, silenceProcessor, useAudioTrackPlaybackParams))
+                .setRenderersFactory(createRenderersFactory(normalizationProcessor, eqProcessor, silenceProcessor, vocalProcessor, useAudioTrackPlaybackParams))
                 .setLoadControl(
                     // Start playback once ~750ms is buffered (media3's default is 1000ms) so first
                     // audio is audible a touch sooner. min/max/after-rebuffer match the media3 1.x
@@ -1385,6 +1396,7 @@ class MusicService :
         playerNormalizationProcessors[player] = normalizationProcessor
         playerSilenceProcessors[player] = silenceProcessor
         playerEqualizerProcessors[player] = eqProcessor
+        playerVocalProcessors[player] = vocalProcessor
         equalizerService.addAudioProcessor(eqProcessor)
 
         if (prefs != null) {
@@ -4198,6 +4210,7 @@ class MusicService :
         normalizationProcessor: VolumeNormalizationAudioProcessor,
         eqProcessor: CustomEqualizerAudioProcessor,
         silenceProcessor: SilenceDetectorAudioProcessor,
+        vocalProcessor: VocalMuteAudioProcessor,
         useAudioTrackPlaybackParams: Boolean,
     ) = object : DefaultRenderersFactory(this) {
         override fun buildAudioRenderers(
@@ -4258,6 +4271,7 @@ class MusicService :
                         normalizationProcessor,
                         eqProcessor,
                         silenceProcessor,
+                        vocalProcessor,
                     ),
                     SilenceSkippingAudioProcessor(2_000_000, 20_000, 256),
                     SonicAudioProcessor(),
@@ -5131,6 +5145,35 @@ class MusicService :
         if (castConnectionHandler?.isCasting?.value == true) return false
         if (player.repeatMode == REPEAT_MODE_ONE || !player.hasNextMediaItem() || !player.isPlaying) return false
 
+        if (smoothSkipLyricMute) {
+            if (vocalMuteSkipJob?.isActive == true) return true
+            vocalMuteSkipJob =
+                scope.launch {
+                    val mutedPlayer = player
+                    val mediaId = mutedPlayer.currentMediaItem?.mediaId
+                    val vocals = playerVocalProcessors[mutedPlayer]
+                    var started = false
+                    try {
+                        if (vocals != null && mediaId != null) {
+                            waitForLyricGap(mutedPlayer, mediaId)
+                            if (player !== mutedPlayer || mutedPlayer.currentMediaItem?.mediaId != mediaId) return@launch
+                            vocals.muted = true
+                        }
+                        started = performSeamlessTransition()
+                        if (!started && player === mutedPlayer) mutedPlayer.seekToNext()
+                    } finally {
+                        // The muted player is released with the transition; otherwise it keeps playing, so unmute it.
+                        if (!started) vocals?.muted = false
+                    }
+                }
+            return true
+        }
+        return performSeamlessTransition()
+    }
+
+    private fun performSeamlessTransition(): Boolean {
+        if (isCrossfading || !player.hasNextMediaItem() || !player.isPlaying) return false
+
         val ratio = automixTargetRatio()
         crossfadeMessage?.cancel()
         crossfadeMessage = null
@@ -5144,6 +5187,57 @@ class MusicService :
         if (ratio != null) startTempoMatch(ratio)
         if (beatAlignOn()) startBeatAlign()
         return true
+    }
+
+    // ---- Smooth skip: vocals are muted at the end of the sung line, then the transition starts ----
+    private var vocalMuteSkipJob: Job? = null
+
+    /**
+     * Returns once the vocals of [target] can be muted: straight away in an instrumental gap or when the song has no
+     * synced lyrics, otherwise when the line being sung now ends (capped at [LYRIC_MUTE_MAX_WAIT_MS]).
+     */
+    private suspend fun waitForLyricGap(
+        target: Player,
+        mediaId: String,
+    ) {
+        val spans = syncedLyricSpans(mediaId)
+        val lineEnd = spans.filter { target.currentPosition in it }.maxOfOrNull { it.last } ?: return
+        val deadline = android.os.SystemClock.elapsedRealtime() + LYRIC_MUTE_MAX_WAIT_MS
+        while (target.currentPosition < lineEnd &&
+            target.playWhenReady &&
+            player === target &&
+            target.currentMediaItem?.mediaId == mediaId &&
+            android.os.SystemClock.elapsedRealtime() < deadline
+        ) {
+            delay(LYRIC_MUTE_POLL_MS)
+        }
+    }
+
+    // The time range each lyric line is sung in. Only already saved lyrics are used so this never waits on the network.
+    private suspend fun syncedLyricSpans(mediaId: String): List<LongRange> {
+        val raw =
+            database
+                .lyrics(mediaId)
+                .first()
+                ?.lyrics
+                ?.takeIf { it != LyricsEntity.LYRICS_NOT_FOUND } ?: return emptyList()
+        return withContext(Dispatchers.Default) {
+            val entries = com.metrolist.music.lyrics.LyricsUtils.parseLyrics(raw).filter { it.text.isNotBlank() }
+            entries.mapIndexed { index, entry ->
+                val start = entry.time
+                val wordsEnd = entry.words?.maxOfOrNull { it.endTime }?.let { (it * 1000).toLong() }
+                val end =
+                    if (wordsEnd != null && wordsEnd > start) {
+                        wordsEnd
+                    } else {
+                        // Line-synced lyrics only say when a line starts: assume it is sung for about as long as it
+                        // takes to say it, and never past the next line.
+                        val nextStart = entries.drop(index + 1).firstOrNull { !it.isBackground && it.time > start }?.time
+                        minOf(start + entry.text.length * LYRIC_MS_PER_CHAR + 400L, nextStart ?: Long.MAX_VALUE)
+                    }
+                start..end
+            }
+        }
     }
 
     // ---- Beta: beat alignment of a smooth skip ----
@@ -5538,6 +5632,7 @@ class MusicService :
         playerNormalizationProcessors.remove(player)
         playerSilenceProcessors.remove(player)
         playerEqualizerProcessors.remove(player)?.let(equalizerService::removeAudioProcessor)
+        playerVocalProcessors.remove(player)
         player.release()
     }
 
@@ -5562,6 +5657,9 @@ class MusicService :
         const val CHUNK_LENGTH = 512 * 1024L
         const val AUTOMIX_SKIP_EASE_MS = 20_000L
         const val BEAT_PREP_DELAY_MS = 300L
+        const val LYRIC_MUTE_MAX_WAIT_MS = 8_000L
+        const val LYRIC_MUTE_POLL_MS = 30L
+        const val LYRIC_MS_PER_CHAR = 80L
         const val BEAT_ALIGN_WAIT_MS = 1_000L
         const val BEAT_PREP_WAIT_MS = 300L
         const val BEAT_SEEK_LATENCY_MS = 60L
