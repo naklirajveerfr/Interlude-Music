@@ -9,13 +9,16 @@ import java.nio.ByteOrder
 import kotlin.math.exp
 
 /**
- * Mutes the lead vocal of a stereo song while leaving the rest of the mix alone.
+ * Mutes the vocals of a stereo song and leaves the beat.
  *
- * Lead vocals are almost always panned dead centre, so the centre (mid) signal is the part that carries them.
- * Only the vocal band of that mid signal is subtracted from both channels; the bass and kick below
- * [LOW_CUT_HZ], the hi-hats and air above [HIGH_CUT_HZ] and everything panned off-centre stay as they were.
- * This is phase cancellation, not stem separation, so it also takes some centre-panned snare and synth
- * with it and leaves a little vocal reverb behind.
+ * Two stages, both only while [muted]:
+ * 1. Lead vocals are almost always panned dead centre, so the vocal band ([LOW_CUT_HZ] to [HIGH_CUT_HZ]) of the
+ *    centre (mid) signal is subtracted from both channels.
+ * 2. What is left of the vocal (backing vocals, doubles, reverb) sits off-centre, so the core vocal range
+ *    ([CORE_LOW_HZ] to [CORE_HIGH_HZ]) is also cut on each channel by [CORE_CUT].
+ *
+ * The kick and bass below the band and the hi-hats above it are untouched; the melodic mids of the song dip too.
+ * This is filtering, not stem separation, so it is not a perfect vocal removal.
  *
  * Turning [muted] on or off ramps over [RAMP_MS] so the change never clicks.
  */
@@ -27,15 +30,17 @@ class VocalMuteAudioProcessor : BaseAudioProcessor() {
     private var encoding = C.ENCODING_INVALID
     private var rampStep = 0f
 
-    // 0 leaves the audio untouched, 1 removes the whole vocal band.
+    // 0 leaves the audio untouched, 1 applies the full mute.
     private var amount = 0f
 
-    private var lowCoef = 0f
-    private var highCoef = 0f
-    private var low1 = 0f
-    private var low2 = 0f
-    private var high1 = 0f
-    private var high2 = 0f
+    private val mid = BandFilter()
+    private val left = BandFilter()
+    private val right = BandFilter()
+
+    private var midLow = 0f
+    private var midHigh = 0f
+    private var coreLow = 0f
+    private var coreHigh = 0f
 
     override fun onConfigure(inputAudioFormat: AudioProcessor.AudioFormat): AudioProcessor.AudioFormat {
         val supported =
@@ -46,8 +51,10 @@ class VocalMuteAudioProcessor : BaseAudioProcessor() {
 
         encoding = inputAudioFormat.encoding
         val rate = inputAudioFormat.sampleRate.toFloat()
-        lowCoef = onePoleCoefficient(LOW_CUT_HZ, rate)
-        highCoef = onePoleCoefficient(HIGH_CUT_HZ, rate)
+        midLow = onePoleCoefficient(LOW_CUT_HZ, rate)
+        midHigh = onePoleCoefficient(HIGH_CUT_HZ, rate)
+        coreLow = onePoleCoefficient(CORE_LOW_HZ, rate)
+        coreHigh = onePoleCoefficient(CORE_HIGH_HZ, rate)
         rampStep = 1f / (rate * RAMP_MS / 1000f)
         return inputAudioFormat
     }
@@ -71,59 +78,93 @@ class VocalMuteAudioProcessor : BaseAudioProcessor() {
             repeat(remaining / 4) {
                 val l = inputBuffer.getShort().toFloat()
                 val r = inputBuffer.getShort().toFloat()
-                val band = nextBand((l + r) * 0.5f, target)
-                output.putShort((l - band).coerceIn(-32768f, 32767f).toInt().toShort())
-                output.putShort((r - band).coerceIn(-32768f, 32767f).toInt().toShort())
+                output.putShort(process(l, r, target).coerceIn(-32768f, 32767f).toInt().toShort())
+                output.putShort(lastRight.coerceIn(-32768f, 32767f).toInt().toShort())
             }
         } else {
             repeat(remaining / 8) {
                 val l = inputBuffer.getFloat()
                 val r = inputBuffer.getFloat()
-                val band = nextBand((l + r) * 0.5f, target)
-                output.putFloat((l - band).coerceIn(-1f, 1f))
-                output.putFloat((r - band).coerceIn(-1f, 1f))
+                output.putFloat(process(l, r, target).coerceIn(-1f, 1f))
+                output.putFloat(lastRight.coerceIn(-1f, 1f))
             }
         }
         output.flip()
     }
 
-    // The vocal band of the mid signal, scaled by the current ramp position.
-    private fun nextBand(mid: Float, target: Float): Float {
+    private var lastRight = 0f
+
+    // Returns the left sample and leaves the right one in lastRight.
+    private fun process(
+        l: Float,
+        r: Float,
+        target: Float,
+    ): Float {
         amount =
             when {
                 amount < target -> minOf(target, amount + rampStep)
                 amount > target -> maxOf(target, amount - rampStep)
                 else -> amount
             }
-        low1 += lowCoef * (mid - low1)
-        low2 += lowCoef * (low1 - low2)
-        high1 += highCoef * (mid - high1)
-        high2 += highCoef * (high1 - high2)
-        return (high2 - low2) * amount
+        val centre = mid.band((l + r) * 0.5f, midLow, midHigh) * amount
+        val l1 = l - centre
+        val r1 = r - centre
+        lastRight = r1 - right.band(r1, coreLow, coreHigh) * CORE_CUT * amount
+        return l1 - left.band(l1, coreLow, coreHigh) * CORE_CUT * amount
     }
 
     override fun onFlush(streamMetadata: AudioProcessor.StreamMetadata) {
-        low1 = 0f
-        low2 = 0f
-        high1 = 0f
-        high2 = 0f
+        mid.reset()
+        left.reset()
+        right.reset()
     }
 
     override fun onReset() {
         encoding = C.ENCODING_INVALID
         amount = 0f
-        low1 = 0f
-        low2 = 0f
-        high1 = 0f
-        high2 = 0f
+        mid.reset()
+        left.reset()
+        right.reset()
     }
 
-    private fun onePoleCoefficient(cutoffHz: Float, sampleRate: Float): Float =
-        1f - exp(-2.0 * Math.PI * cutoffHz / sampleRate).toFloat()
+    private fun onePoleCoefficient(
+        cutoffHz: Float,
+        sampleRate: Float,
+    ): Float = 1f - exp(-2.0 * Math.PI * cutoffHz / sampleRate).toFloat()
+
+    // Band between two cutoffs: the difference of two cascaded one-pole low-passes.
+    private class BandFilter {
+        private var low1 = 0f
+        private var low2 = 0f
+        private var high1 = 0f
+        private var high2 = 0f
+
+        fun band(
+            x: Float,
+            lowCoef: Float,
+            highCoef: Float,
+        ): Float {
+            low1 += lowCoef * (x - low1)
+            low2 += lowCoef * (low1 - low2)
+            high1 += highCoef * (x - high1)
+            high2 += highCoef * (high1 - high2)
+            return high2 - low2
+        }
+
+        fun reset() {
+            low1 = 0f
+            low2 = 0f
+            high1 = 0f
+            high2 = 0f
+        }
+    }
 
     private companion object {
         const val LOW_CUT_HZ = 150f
         const val HIGH_CUT_HZ = 7000f
+        const val CORE_LOW_HZ = 300f
+        const val CORE_HIGH_HZ = 3400f
+        const val CORE_CUT = 0.85f
         const val RAMP_MS = 120f
     }
 }
