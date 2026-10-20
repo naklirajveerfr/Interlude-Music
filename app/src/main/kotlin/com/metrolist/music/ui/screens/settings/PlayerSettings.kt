@@ -181,6 +181,7 @@ fun PlayerSettings(
     )
     val (smoothSkipBeatAlign, onSmoothSkipBeatAlignChange) = rememberPreference(com.metrolist.music.constants.SmoothSkipBeatAlignKey, defaultValue = false)
     val (smoothSkipBassSwap, onSmoothSkipBassSwapChange) = rememberPreference(com.metrolist.music.constants.SmoothSkipBassSwapKey, defaultValue = true)
+    val (smoothSkipLyricMute, onSmoothSkipLyricMuteChange) = rememberPreference(com.metrolist.music.constants.SmoothSkipLyricMuteKey, defaultValue = true)
     val (autoDownloadOnLike, onAutoDownloadOnLikeChange) = rememberPreference(
         AutoDownloadOnLikeKey,
         defaultValue = false
@@ -495,6 +496,27 @@ fun PlayerSettings(
                             )
                         },
                         onClick = { onSmoothSkipBassSwapChange(!smoothSkipBassSwap) }
+                    ))
+                    add(Material3SettingsItem(
+                        icon = painterResource(R.drawable.lyrics),
+                        title = { Text(stringResource(R.string.smooth_skip_mute_vocals)) },
+                        description = { Text(stringResource(R.string.smooth_skip_mute_vocals_desc)) },
+                        trailingContent = {
+                            Switch(
+                                checked = smoothSkipLyricMute,
+                                onCheckedChange = onSmoothSkipLyricMuteChange,
+                                thumbContent = {
+                                    Icon(
+                                        painter = painterResource(
+                                            id = if (smoothSkipLyricMute) R.drawable.check else R.drawable.close
+                                        ),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(SwitchDefaults.IconSize)
+                                    )
+                                }
+                            )
+                        },
+                        onClick = { onSmoothSkipLyricMuteChange(!smoothSkipLyricMute) }
                     ))
                     add(Material3SettingsItem(
                         icon = painterResource(R.drawable.speed),
