@@ -82,6 +82,7 @@ import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalDownloadUtil
 import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerConnection
+import com.metrolist.music.playback.MixState
 import com.metrolist.music.R
 import com.metrolist.music.constants.ListItemHeight
 import com.metrolist.music.constants.VarispeedKey
@@ -720,6 +721,8 @@ fun PlayerMenu(
         item { Spacer(modifier = Modifier.height(12.dp)) }
 
         item {
+            val mixStatus by playerConnection.service.mixStatus.collectAsStateWithLifecycle()
+            LaunchedEffect(playerConnection) { playerConnection.service.refreshMixStatus() }
             Material3MenuGroup(
                 items =
                     buildList {
@@ -734,6 +737,48 @@ fun PlayerMenu(
                                         modifier = Modifier.size(24.dp),
                                     )
                                 },
+                                trailingContent =
+                                    if (mixStatus.state == MixState.OFF) {
+                                        null
+                                    } else {
+                                        {
+                                            val analyzing =
+                                                mixStatus.state == MixState.ANALYZING_CURRENT ||
+                                                    mixStatus.state == MixState.ANALYZING_NEXT
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                if (analyzing) {
+                                                    CircularProgressIndicator(
+                                                        modifier = Modifier.size(12.dp),
+                                                        strokeWidth = 1.5.dp,
+                                                    )
+                                                    Spacer(modifier = Modifier.width(6.dp))
+                                                }
+                                                Text(
+                                                    text =
+                                                        when (mixStatus.state) {
+                                                            MixState.ANALYZING_CURRENT -> stringResource(R.string.mix_status_analyzing_current)
+                                                            MixState.ANALYZING_NEXT -> stringResource(R.string.mix_status_analyzing_next)
+                                                            MixState.READY ->
+                                                                stringResource(
+                                                                    R.string.mix_status_ready,
+                                                                    mixStatus.bpmFrom ?: 0,
+                                                                    mixStatus.bpmTo ?: 0,
+                                                                )
+                                                            MixState.FADE_ONLY -> stringResource(R.string.mix_status_fade_only)
+                                                            MixState.FAILED -> stringResource(R.string.mix_status_failed)
+                                                            else -> stringResource(R.string.mix_status_no_next)
+                                                        },
+                                                    style = MaterialTheme.typography.labelMedium,
+                                                    color =
+                                                        if (mixStatus.state == MixState.READY) {
+                                                            MaterialTheme.colorScheme.primary
+                                                        } else {
+                                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                                        },
+                                                )
+                                            }
+                                        }
+                                    },
                                 onClick = {
                                     onShowDetailsDialog()
                                     onDismiss()

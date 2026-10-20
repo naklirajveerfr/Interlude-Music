@@ -1050,4 +1050,10 @@
     <string name="onboarding_slider_title">Choose your slider style</string>
     <string name="smooth_skip_mute_vocals">Mute vocals when mixing</string>
     <string name="smooth_skip_mute_vocals_desc">When you smooth skip, waits for the sung line to end, then mutes the vocals of the playing song while its beat fades out. Uses saved lyrics for timing</string>
+    <string name="mix_status_analyzing_current">Calculating BPM…</string>
+    <string name="mix_status_analyzing_next">Calculating next BPM…</string>
+    <string name="mix_status_ready">Mix ready · %1$d → %2$d BPM</string>
+    <string name="mix_status_fade_only">Fade only</string>
+    <string name="mix_status_failed">Can\'t analyze</string>
+    <string name="mix_status_no_next">No next song</string>
 </resources>

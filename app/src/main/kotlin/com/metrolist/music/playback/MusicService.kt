@@ -1196,6 +1196,7 @@ class MusicService :
             .distinctUntilChanged()
             .collect(scope) { (enabled, duration, maxTempo) ->
                 smoothSkipEnabled = enabled
+                scope.launch(Dispatchers.Main) { updateMixStatus() }
                 smoothSkipDuration = duration * 1000f
                 smoothSkipMaxTempoChange = maxTempo / 100f
             }
@@ -2716,6 +2717,7 @@ class MusicService :
         Timber.tag("AutomixDebug").d("transition seen, enabled=${dataStore.get(com.metrolist.music.constants.AutomixEnabledKey, false)}")
         mixReadyKey = null
         cancelAutomixRamp(restoreSpeed = true)
+        updateMixStatus()
         if (automixOn()) {
             val automixIds = listOfNotNull(
                 player.currentMediaItem?.mediaId,
@@ -2725,10 +2727,9 @@ class MusicService :
                 automixIds.forEach { id ->
                     launch {
                         val res = automixAnalyzer.analyzeWhenReady(id, needTail = false)
-                        if (res != null) {
-                            withContext(Dispatchers.Main) {
-                                if (player.currentMediaItem?.mediaId == automixIds.first()) scheduleCrossfade()
-                            }
+                        withContext(Dispatchers.Main) {
+                            updateMixStatus()
+                            if (res != null && player.currentMediaItem?.mediaId == automixIds.first()) scheduleCrossfade()
                         }
                     }
                 }
@@ -5050,10 +5051,9 @@ class MusicService :
             todo.forEach { id ->
                 launch {
                     val res = automixAnalyzer.analyzeWhenReady(id, needTail = false)
-                    if (res != null) {
-                        withContext(Dispatchers.Main) {
-                            if (player.currentMediaItem?.mediaId == currentId) scheduleCrossfade()
-                        }
+                    withContext(Dispatchers.Main) {
+                        updateMixStatus()
+                        if (res != null && player.currentMediaItem?.mediaId == currentId) scheduleCrossfade()
                     }
                 }
             }
@@ -5101,6 +5101,38 @@ class MusicService :
     }
 
     private var mixReadyKey: String? = null
+
+    private val _mixStatus = MutableStateFlow(MixStatus(MixState.OFF))
+
+    /** Whether a smooth skip into the next song is ready, for the player menu. */
+    val mixStatus: kotlinx.coroutines.flow.StateFlow<MixStatus> = _mixStatus.asStateFlow()
+
+    fun refreshMixStatus() = updateMixStatus()
+
+    // Mirrors planSmoothSkip: ready when both songs' tempos are known and steady.
+    private fun updateMixStatus() {
+        if (!::player.isInitialized) return
+        _mixStatus.value = computeMixStatus()
+    }
+
+    private fun computeMixStatus(): MixStatus {
+        if (!automixOn()) return MixStatus(MixState.OFF)
+        val aId = player.currentMediaItem?.mediaId ?: return MixStatus(MixState.NO_NEXT_SONG)
+        val bId = automixNextMediaId() ?: return MixStatus(MixState.NO_NEXT_SONG)
+        if (aId == bId) return MixStatus(MixState.NO_NEXT_SONG)
+        val a = automixAnalyzer.get(aId)
+        val b = automixAnalyzer.get(bId)
+        if (a == null) {
+            return MixStatus(if (automixAnalyzer.hasFailed(aId)) MixState.FAILED else MixState.ANALYZING_CURRENT)
+        }
+        if (b == null) {
+            return MixStatus(if (automixAnalyzer.hasFailed(bId)) MixState.FAILED else MixState.ANALYZING_NEXT)
+        }
+        val bpmFrom = a.bpm?.let { Math.round(it) }
+        val bpmTo = b.bpm?.let { Math.round(it) }
+        val beatMatch = a.hasReliableBpm && b.hasReliableBpm && a.tempoStable && b.tempoStable
+        return MixStatus(if (beatMatch) MixState.READY else MixState.FADE_ONLY, bpmFrom, bpmTo)
+    }
 
     // Fires when a smooth skip into the next song is ready, so the skip buttons can flash.
     private val _mixReadyEvents = kotlinx.coroutines.flow.MutableSharedFlow<Unit>(extraBufferCapacity = 1)
@@ -5566,6 +5598,7 @@ class MusicService :
         if (!automixEasing) cancelAutomixRamp(restoreSpeed = true)
         automixEnsureAnalysis()
         logMixReady()
+        updateMixStatus()
         Timber.tag("AutomixDebug").d("scheduleCrossfade: enabled=$crossfadeEnabled dur=$crossfadeDuration gapless=$crossfadeGapless nextGapless=${isNextItemGapless()} hasNext=${player.hasNextMediaItem()} playerDur=${player.duration} pos=${player.currentPosition}")
         crossfadeMessage?.cancel()
         crossfadeMessage = null

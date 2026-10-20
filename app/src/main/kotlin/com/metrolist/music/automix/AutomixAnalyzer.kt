@@ -218,6 +218,8 @@ class AutomixAnalyzer(
 
     fun get(mediaId: String): TrackAnalysis? = results[mediaId]
 
+    fun hasFailed(mediaId: String): Boolean = failed.contains(mediaId)
+
     private val failed = ConcurrentHashMap.newKeySet<String>()
     private val polling = ConcurrentHashMap.newKeySet<String>()
     private val fetchAttempts = ConcurrentHashMap<String, Int>()
