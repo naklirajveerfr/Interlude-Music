@@ -736,6 +736,10 @@ val SmoothSkipBassSwapKey = androidx.datastore.preferences.core.booleanPreferenc
 val SmoothSkipLyricMuteKey = androidx.datastore.preferences.core.booleanPreferencesKey("smoothSkipLyricMute")
 val SmoothSkipVocalMuteStrengthKey = androidx.datastore.preferences.core.floatPreferencesKey("smoothSkipVocalMuteStrength")
 val SmoothSkipVocalMuteStyleKey = stringPreferencesKey("smoothSkipVocalMuteStyle")
+val SmoothSkipQuantizeKey = androidx.datastore.preferences.core.booleanPreferencesKey("smoothSkipQuantize")
+val SmoothSkipEqBlendKey = androidx.datastore.preferences.core.booleanPreferencesKey("smoothSkipEqBlend")
+val SmoothSkipEntrySnapKey = androidx.datastore.preferences.core.booleanPreferencesKey("smoothSkipEntrySnap")
+val SmoothSkipExitFxKey = androidx.datastore.preferences.core.booleanPreferencesKey("smoothSkipExitFx")
 
 enum class SmoothSkipTempoStyle {
     PLAYING_SONG,

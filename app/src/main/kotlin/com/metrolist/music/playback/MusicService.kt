@@ -25,6 +25,7 @@ import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.audiofx.AudioEffect
 import com.metrolist.music.playback.audio.BassSwapAudioProcessor
+import com.metrolist.music.playback.audio.MixEffectsAudioProcessor
 import com.metrolist.music.playback.audio.VocalMuteAudioProcessor
 import com.metrolist.music.playback.audio.VolumeNormalizationAudioProcessor
 import com.metrolist.music.utils.safeDataStoreEdit
@@ -171,6 +172,10 @@ import com.metrolist.music.constants.SkipSilenceKey
 import com.metrolist.music.constants.SmoothSkipTempoStyle
 import com.metrolist.music.constants.SmoothSkipTempoStyleKey
 import com.metrolist.music.constants.SmoothSkipVocalMuteStyle
+import com.metrolist.music.constants.SmoothSkipEntrySnapKey
+import com.metrolist.music.constants.SmoothSkipEqBlendKey
+import com.metrolist.music.constants.SmoothSkipExitFxKey
+import com.metrolist.music.constants.SmoothSkipQuantizeKey
 import com.metrolist.music.constants.SmoothSkipVocalMuteStyleKey
 import com.metrolist.music.constants.StopMusicOnTaskClearKey
 import com.metrolist.music.db.MusicDatabase
@@ -322,8 +327,15 @@ class MusicService :
 
     // Set by a smooth skip so the crossfade it starts trades the two songs' basslines.
     private var mixBassSwap = false
+    private var mixEqBlend = false
+    private var mixEchoDelaySec: Float? = null
+    private var mixHardCut = false
     private var smoothSkipLyricMute = true
     private var smoothSkipVocalMuteStyle = SmoothSkipVocalMuteStyle.NORMAL
+    private var smoothSkipQuantize = true
+    private var smoothSkipEqBlend = true
+    private var smoothSkipEntrySnap = true
+    private var smoothSkipExitFx = true
     private var vocalMuteStrength = 1f
     private var mixDurationMs = 5000f
 
@@ -455,6 +467,7 @@ class MusicService :
     private val playerEqualizerProcessors = HashMap<Player, CustomEqualizerAudioProcessor>()
     private val playerBassProcessors = HashMap<Player, BassSwapAudioProcessor>()
     private val playerVocalProcessors = HashMap<Player, VocalMuteAudioProcessor>()
+    private val playerMixFxProcessors = HashMap<Player, MixEffectsAudioProcessor>()
 
     private var loudnessSetupJob: Job? = null
     private var loudnessSetupGeneration: Long = 0L
@@ -1242,6 +1255,24 @@ class MusicService :
 
         scope.launch {
             dataStore.data
+                .map { prefs ->
+                    listOf(
+                        prefs[SmoothSkipQuantizeKey] ?: true,
+                        prefs[SmoothSkipEqBlendKey] ?: true,
+                        prefs[SmoothSkipEntrySnapKey] ?: true,
+                        prefs[SmoothSkipExitFxKey] ?: true,
+                    )
+                }.distinctUntilChanged()
+                .collect { (quantize, eqBlend, entrySnap, exitFx) ->
+                    smoothSkipQuantize = quantize
+                    smoothSkipEqBlend = eqBlend
+                    smoothSkipEntrySnap = entrySnap
+                    smoothSkipExitFx = exitFx
+                }
+        }
+
+        scope.launch {
+            dataStore.data
                 .map { (it[com.metrolist.music.constants.SmoothSkipVocalMuteStrengthKey] ?: 100f) / 100f }
                 .distinctUntilChanged()
                 .collect { strength ->
@@ -1384,6 +1415,7 @@ class MusicService :
 
         val silenceProcessor = SilenceDetectorAudioProcessor { handleLongSilenceDetected() }
         val vocalProcessor = VocalMuteAudioProcessor().also { it.strength = vocalMuteStrength }
+        val mixFxProcessor = MixEffectsAudioProcessor()
 
         // Set initial state — use pre-read prefs when available, otherwise fall back to DataStore
         val useAudioTrackPlaybackParams = if (prefs != null) {
@@ -1407,7 +1439,7 @@ class MusicService :
                 .setMediaSourceFactory(
                     createMediaSourceFactory(normalizationProcessor) { createdPlayer },
                 )
-                .setRenderersFactory(createRenderersFactory(normalizationProcessor, eqProcessor, bassProcessor, silenceProcessor, vocalProcessor, useAudioTrackPlaybackParams))
+                .setRenderersFactory(createRenderersFactory(normalizationProcessor, eqProcessor, bassProcessor, silenceProcessor, vocalProcessor, mixFxProcessor, useAudioTrackPlaybackParams))
                 .setLoadControl(
                     // Start playback once ~750ms is buffered (media3's default is 1000ms) so first
                     // audio is audible a touch sooner. min/max/after-rebuffer match the media3 1.x
@@ -1437,6 +1469,7 @@ class MusicService :
         playerEqualizerProcessors[player] = eqProcessor
         playerBassProcessors[player] = bassProcessor
         playerVocalProcessors[player] = vocalProcessor
+        playerMixFxProcessors[player] = mixFxProcessor
         equalizerService.addAudioProcessor(eqProcessor)
 
         if (prefs != null) {
@@ -4252,6 +4285,7 @@ class MusicService :
         bassProcessor: BassSwapAudioProcessor,
         silenceProcessor: SilenceDetectorAudioProcessor,
         vocalProcessor: VocalMuteAudioProcessor,
+        mixFxProcessor: MixEffectsAudioProcessor,
         useAudioTrackPlaybackParams: Boolean,
     ) = object : DefaultRenderersFactory(this) {
         override fun buildAudioRenderers(
@@ -4314,6 +4348,7 @@ class MusicService :
                         bassProcessor,
                         silenceProcessor,
                         vocalProcessor,
+                        mixFxProcessor,
                     ),
                     SilenceSkippingAudioProcessor(2_000_000, 20_000, 256),
                     SonicAudioProcessor(),
@@ -5113,7 +5148,13 @@ class MusicService :
     private fun automixEntryOffsetMs(targetIndex: Int): Long {
         if (!automixOn() || targetIndex == C.INDEX_UNSET || targetIndex >= player.mediaItemCount) return 0L
         val a = automixAnalyzer.get(player.getMediaItemAt(targetIndex).mediaId) ?: return 0L
-        return if (a.introSilenceSec >= 0.25f) (a.introSilenceSec * 1000f).toLong().coerceAtMost(6_000L) else 0L
+        val introMs = if (a.introSilenceSec >= 0.25f) (a.introSilenceSec * 1000f).toLong().coerceAtMost(6_000L) else 0L
+        if (!smoothSkipEntrySnap) return introMs
+        // Come in on the song's first downbeat (or beat) after any silent intro, so it starts on a bar.
+        val grid = a.takeIf { it.tempoStable }?.beatGrid?.takeIf { it.isReliable } ?: return introMs
+        val fromSec = introMs / 1000.0
+        val aheadSec = if (grid.isBarReliable) grid.secondsToNextDownbeat(fromSec) else grid.secondsToNextBeat(fromSec)
+        return introMs + (aheadSec * 1000).toLong().coerceAtMost(MAX_ENTRY_SNAP_MS)
     }
 
     private fun automixIncomingParams(): PlaybackParameters {
@@ -5177,17 +5218,39 @@ class MusicService :
     }
 
     // How a smooth skip into the next song goes: beat matched when both tempos are known, steady and within the
-    // limit, otherwise a plain fade with no tempo change and no beat align. Both last the configured duration.
-    private class MixPlan(val beatMatch: Boolean, val ratio: Float?, val durationMs: Float)
+    // limit, otherwise a plain fade with no tempo change and no beat align. Both last the configured duration, except
+    // a cut, which is quick. An echoDelaySec means the song going away gets an echo tail.
+    private class MixPlan(
+        val beatMatch: Boolean,
+        val ratio: Float?,
+        val durationMs: Float,
+        val cut: Boolean = false,
+        val echoDelaySec: Float? = null,
+    )
+
+    // Plain fades get an echo tail on the song leaving, and songs in clashing keys get a quick cut with the echo
+    // ringing out instead of a long blend.
+    private fun exitEffectPlan(a: com.metrolist.music.automix.TrackAnalysis?, b: com.metrolist.music.automix.TrackAnalysis?): MixPlan {
+        val keyA = a?.key?.takeIf { it.isConfident }
+        val keyB = b?.key?.takeIf { it.isConfident }
+        val clash = keyA != null && keyB != null && !keyA.isCompatibleWith(keyB)
+        if (clash) Timber.tag("AutomixDebug").d("keys clash: A=${keyA?.tonic}/${keyA?.minor} B=${keyB?.tonic}/${keyB?.minor}")
+        val echoDelay =
+            a?.takeIf { it.hasReliableBpm }?.bpm?.let { 60f / it * ECHO_BEATS }?.coerceIn(0.2f, 0.9f)
+                ?: MixEffectsAudioProcessor.DEFAULT_ECHO_DELAY_SEC
+        return MixPlan(false, null, if (clash) CUT_MIX_MS else smoothSkipDuration, cut = clash, echoDelaySec = echoDelay)
+    }
 
     private fun planSmoothSkip(): MixPlan {
-        val fade = MixPlan(false, null, smoothSkipDuration)
-        if (!automixOn()) return fade
-        val aId = player.currentMediaItem?.mediaId ?: return fade
-        val bId = automixNextMediaId() ?: return fade
-        if (aId == bId) return fade
+        val plain = MixPlan(false, null, smoothSkipDuration)
+        if (!automixOn()) return plain
+        val aId = player.currentMediaItem?.mediaId ?: return plain
+        val bId = automixNextMediaId() ?: return plain
+        if (aId == bId) return plain
         val a = automixAnalyzer.get(aId)
         val b = automixAnalyzer.get(bId)
+        val fade = if (smoothSkipExitFx) exitEffectPlan(a, b) else plain
+        if (fade.cut) return fade
         if (a == null || b == null || !a.hasReliableBpm || !b.hasReliableBpm) {
             Timber.tag("AutomixDebug").d("ramp skipped: A=${a?.bpm}/${a?.confidence} B=${b?.bpm}/${b?.confidence}")
             return fade
@@ -5240,36 +5303,56 @@ class MusicService :
         if (!::player.isInitialized || isCrossfading || !automixOn()) return false
         if (castConnectionHandler?.isCasting?.value == true) return false
         if (player.repeatMode == REPEAT_MODE_ONE || !player.hasNextMediaItem() || !player.isPlaying) return false
+        if (vocalMuteSkipJob?.isActive == true) return true
 
-        if (smoothSkipLyricMute) {
-            if (smoothSkipVocalMuteStyle != SmoothSkipVocalMuteStyle.NORMAL) {
-                val started = performSeamlessTransition()
-                if (started) muteOutgoingVocalsDuringMix(smoothSkipVocalMuteStyle == SmoothSkipVocalMuteStyle.ADAPTIVE)
-                return started
-            }
-            if (vocalMuteSkipJob?.isActive == true) return true
-            vocalMuteSkipJob =
-                scope.launch {
-                    val mutedPlayer = player
-                    val mediaId = mutedPlayer.currentMediaItem?.mediaId
-                    val vocals = playerVocalProcessors[mutedPlayer]
-                    var started = false
-                    try {
-                        if (vocals != null && mediaId != null) {
-                            waitForLyricGap(mutedPlayer, mediaId)
-                            if (player !== mutedPlayer || mutedPlayer.currentMediaItem?.mediaId != mediaId) return@launch
-                            vocals.muted = true
-                        }
-                        started = performSeamlessTransition()
-                        if (!started && player === mutedPlayer) mutedPlayer.seekToNext()
-                    } finally {
-                        // The muted player is released with the transition; otherwise it keeps playing, so unmute it.
-                        if (!started) vocals?.muted = false
-                    }
-                }
-            return true
+        val muteFirst = smoothSkipLyricMute && smoothSkipVocalMuteStyle == SmoothSkipVocalMuteStyle.NORMAL
+        val muteDuringMix = smoothSkipLyricMute && !muteFirst
+        if (!muteFirst && beatBoundaryWaitMs(player) <= 0L) {
+            val started = performSeamlessTransition()
+            if (started && muteDuringMix) muteOutgoingVocalsDuringMix(smoothSkipVocalMuteStyle == SmoothSkipVocalMuteStyle.ADAPTIVE)
+            return started
         }
-        return performSeamlessTransition()
+        vocalMuteSkipJob =
+            scope.launch {
+                val target = player
+                val mediaId = target.currentMediaItem?.mediaId
+                val vocals = if (muteFirst) playerVocalProcessors[target] else null
+                var started = false
+                try {
+                    if (vocals != null && mediaId != null) {
+                        waitForLyricGap(target, mediaId)
+                        if (player !== target || target.currentMediaItem?.mediaId != mediaId) return@launch
+                        vocals.muted = true
+                    }
+                    delay(beatBoundaryWaitMs(target))
+                    if (player !== target || target.currentMediaItem?.mediaId != mediaId) return@launch
+                    started = performSeamlessTransition()
+                    if (!started && player === target) target.seekToNext()
+                    if (started && muteDuringMix) muteOutgoingVocalsDuringMix(smoothSkipVocalMuteStyle == SmoothSkipVocalMuteStyle.ADAPTIVE)
+                } finally {
+                    // The muted player is released with the transition; otherwise it keeps playing, so unmute it.
+                    if (!started) vocals?.muted = false
+                }
+            }
+        return true
+    }
+
+    /**
+     * How long to hold off so the mix starts on the playing song's next downbeat (or its next beat when a downbeat is
+     * too far away or unknown). 0 when the beats are not known or the option is off.
+     */
+    private fun beatBoundaryWaitMs(target: Player): Long {
+        if (!smoothSkipQuantize) return 0L
+        val mediaId = target.currentMediaItem?.mediaId ?: return 0L
+        val grid =
+            pendingOutgoingBeats?.takeIf { it.first == mediaId }?.second?.takeIf { it.isReliable }
+                ?: automixAnalyzer.get(mediaId)?.takeIf { it.tempoStable }?.beatGrid?.takeIf { it.isReliable }
+                ?: return 0L
+        val speed = target.playbackParameters.speed.toDouble().coerceAtLeast(0.05)
+        val posSec = target.currentPosition / 1000.0
+        val untilBar = if (grid.isBarReliable) grid.secondsToNextDownbeat(posSec) / speed else Double.MAX_VALUE
+        val waitSec = if (untilBar <= MAX_BOUNDARY_WAIT_MS / 1000.0) untilBar else grid.secondsToNextBeat(posSec) / speed
+        return ((waitSec * 1000).toLong() - MIX_START_LATENCY_MS).coerceAtLeast(0L)
     }
 
     private fun performSeamlessTransition(): Boolean {
@@ -5285,9 +5368,15 @@ class MusicService :
         automixPhaseTrim = 1f
         mixFadeMs.value = plan.durationMs.toLong()
         mixBassSwap = smoothSkipBassSwap
+        mixEqBlend = smoothSkipEqBlend && !plan.cut
+        mixEchoDelaySec = plan.echoDelaySec
+        mixHardCut = plan.cut
         startCrossfade(smooth = true)
         if (!isCrossfading) {
             mixBassSwap = false
+            mixEqBlend = false
+            mixEchoDelaySec = null
+            mixHardCut = false
             mixFadeMs.value = 0L
             return false
         }
@@ -5718,6 +5807,13 @@ class MusicService :
         secPlayer.seekTo(targetIndex, if (smooth) automixEntryOffsetMs(targetIndex) else 0L)
         secPlayer.volume = 0f
         if (smooth && mixBassSwap) playerBassProcessors[secPlayer]?.setBassGain(0f, immediate = true)
+        if (smooth && mixEqBlend) {
+            playerMixFxProcessors[secPlayer]?.let {
+                it.lowPass = 1f
+                it.active = true
+                it.snap()
+            }
+        }
 
         secPlayer.setPlaybackParameters(automixIncomingParams())
 
@@ -5756,6 +5852,16 @@ class MusicService :
         mixBassSwap = false
         val outgoingBass = if (bassSwap) playerBassProcessors[currentPlayer] else null
         val incomingBass = if (bassSwap) playerBassProcessors[nextPlayer] else null
+        val eqBlend = mixEqBlend
+        val echoDelay = mixEchoDelaySec
+        val hardCut = mixHardCut
+        mixEqBlend = false
+        mixEchoDelaySec = null
+        mixHardCut = false
+        val outgoingFx = playerMixFxProcessors[currentPlayer]
+        val incomingFx = playerMixFxProcessors[nextPlayer]
+        if (echoDelay != null) outgoingFx?.echoDelaySec = echoDelay
+        outgoingFx?.active = eqBlend || echoDelay != null
 
         fadingPlayer = currentPlayer
         player = nextPlayer
@@ -5831,12 +5937,29 @@ class MusicService :
                     }
 
                     val progress = i / steps.toFloat()
-                    val fadeIn = 1.0f - (1.0f - progress) * (1.0f - progress)
-                    val fadeOut = (1.0f - progress) * (1.0f - progress)
+                    val fadeIn = if (hardCut) mixSmoothStep(progress / CUT_RAMP) else 1.0f - (1.0f - progress) * (1.0f - progress)
+                    val fadeOut = if (hardCut) 1f - mixSmoothStep(progress / CUT_RAMP) else (1.0f - progress) * (1.0f - progress)
 
                     try {
                         player.volume = startVolume * fadeIn
-                        fadingPlayer?.volume = startVolume * fadeOut
+                        if (echoDelay != null && outgoingFx != null) {
+                            // The song going away is faded inside its effects so its echo can ring on after it is gone.
+                            fadingPlayer?.volume = startVolume
+                            outgoingFx.dry = fadeOut
+                            outgoingFx.echoSend =
+                                if (hardCut) {
+                                    1f - mixSmoothStep((progress - CUT_RAMP) / 0.12f)
+                                } else {
+                                    mixSmoothStep((progress - 0.3f) / 0.25f) * (1f - mixSmoothStep((progress - 0.7f) / 0.1f))
+                                }
+                            outgoingFx.echoReturn = 1f - mixSmoothStep((progress - 0.88f) / 0.12f)
+                        } else {
+                            fadingPlayer?.volume = startVolume * fadeOut
+                        }
+                        if (eqBlend) {
+                            incomingFx?.lowPass = 1f - mixSmoothStep((progress - 0.1f) / 0.6f)
+                            outgoingFx?.highPass = mixSmoothStep((progress - 0.4f) / 0.6f)
+                        }
                         if (bassSwap) {
                             val swap = bassSwapAmount(progress)
                             incomingBass?.setBassGain(swap)
@@ -5854,12 +5977,25 @@ class MusicService :
                     player.volume = startVolume
                 } catch (e: Exception) {
                 }
+                if (eqBlend) incomingFx?.active = false
 
                 cleanupCrossfade(fadingPlayerSessionId = previousAudioSessionId)
             }
         crossfadeJob = fadeJob
         // A cancelled mix must not leave the incoming song without its bass.
         if (bassSwap) fadeJob.invokeOnCompletion { incomingBass?.setBassGain(1f) }
+        // A cancelled mix must not leave the incoming song dull.
+        if (eqBlend) {
+            fadeJob.invokeOnCompletion {
+                incomingFx?.lowPass = 0f
+                incomingFx?.active = false
+            }
+        }
+    }
+
+    private fun mixSmoothStep(x: Float): Float {
+        val t = x.coerceIn(0f, 1f)
+        return t * t * (3f - 2f * t)
     }
 
     // 0 until the two songs are about equally loud (around 30% of the way through the fade), 1 a little later.
@@ -5894,6 +6030,7 @@ class MusicService :
         playerEqualizerProcessors.remove(player)?.let(equalizerService::removeAudioProcessor)
         playerBassProcessors.remove(player)
         playerVocalProcessors.remove(player)
+        playerMixFxProcessors.remove(player)
         player.release()
     }
 
@@ -5922,6 +6059,12 @@ class MusicService :
         const val LYRIC_MUTE_POLL_MS = 30L
         const val LYRIC_MS_PER_CHAR = 80L
         const val BEAT_ALIGN_WAIT_MS = 1_000L
+        const val MAX_BOUNDARY_WAIT_MS = 3_000L
+        const val MAX_ENTRY_SNAP_MS = 3_000L
+        const val MIX_START_LATENCY_MS = 150L
+        const val CUT_MIX_MS = 2_400f
+        const val CUT_RAMP = 0.08f
+        const val ECHO_BEATS = 0.75f
         const val BEAT_PREP_WAIT_MS = 2_500L
         const val BEAT_WARM_INTERVAL_MS = 20_000L
         const val BEAT_GRID_FRESH_SEC = 30.0

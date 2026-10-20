@@ -28,6 +28,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -38,8 +39,12 @@ import com.metrolist.music.R
 import com.metrolist.music.constants.SmoothSkipBassSwapKey
 import com.metrolist.music.constants.SmoothSkipBeatAlignKey
 import com.metrolist.music.constants.SmoothSkipDurationKey
+import com.metrolist.music.constants.SmoothSkipEntrySnapKey
+import com.metrolist.music.constants.SmoothSkipEqBlendKey
+import com.metrolist.music.constants.SmoothSkipExitFxKey
 import com.metrolist.music.constants.SmoothSkipLyricMuteKey
 import com.metrolist.music.constants.SmoothSkipMaxTempoChangeKey
+import com.metrolist.music.constants.SmoothSkipQuantizeKey
 import com.metrolist.music.constants.SmoothSkipTempoStyle
 import com.metrolist.music.constants.SmoothSkipTempoStyleKey
 import com.metrolist.music.constants.SmoothSkipVocalMuteStrengthKey
@@ -73,6 +78,11 @@ fun SmoothSkipSettings(
         SmoothSkipVocalMuteStyleKey,
         defaultValue = SmoothSkipVocalMuteStyle.NORMAL
     )
+
+    val (quantize, onQuantizeChange) = rememberPreference(SmoothSkipQuantizeKey, defaultValue = true)
+    val (eqBlend, onEqBlendChange) = rememberPreference(SmoothSkipEqBlendKey, defaultValue = true)
+    val (entrySnap, onEntrySnapChange) = rememberPreference(SmoothSkipEntrySnapKey, defaultValue = true)
+    val (exitFx, onExitFxChange) = rememberPreference(SmoothSkipExitFxKey, defaultValue = true)
 
     var showTempoStyleDialog by remember {
         mutableStateOf(false)
@@ -291,6 +301,42 @@ fun SmoothSkipSettings(
             }
         )
 
+        Spacer(modifier = Modifier.height(27.dp))
+
+        Material3SettingsGroup(
+            title = stringResource(R.string.smooth_skip_dj_style),
+            items = listOf(
+                djSwitchItem(
+                    icon = painterResource(R.drawable.sync),
+                    title = stringResource(R.string.smooth_skip_quantize),
+                    description = stringResource(R.string.smooth_skip_quantize_desc),
+                    checked = quantize,
+                    onChange = onQuantizeChange
+                ),
+                djSwitchItem(
+                    icon = painterResource(R.drawable.equalizer),
+                    title = stringResource(R.string.smooth_skip_eq_blend),
+                    description = stringResource(R.string.smooth_skip_eq_blend_desc),
+                    checked = eqBlend,
+                    onChange = onEqBlendChange
+                ),
+                djSwitchItem(
+                    icon = painterResource(R.drawable.skip_next),
+                    title = stringResource(R.string.smooth_skip_entry_snap),
+                    description = stringResource(R.string.smooth_skip_entry_snap_desc),
+                    checked = entrySnap,
+                    onChange = onEntrySnapChange
+                ),
+                djSwitchItem(
+                    icon = painterResource(R.drawable.graphic_eq),
+                    title = stringResource(R.string.smooth_skip_exit_fx),
+                    description = stringResource(R.string.smooth_skip_exit_fx_desc),
+                    checked = exitFx,
+                    onChange = onExitFxChange
+                )
+            )
+        )
+
         Spacer(modifier = Modifier.height(16.dp))
     }
 
@@ -309,3 +355,31 @@ fun SmoothSkipSettings(
         }
     )
 }
+
+private fun djSwitchItem(
+    icon: Painter,
+    title: String,
+    description: String,
+    checked: Boolean,
+    onChange: (Boolean) -> Unit
+) = Material3SettingsItem(
+    icon = icon,
+    title = { Text(title) },
+    description = { Text(description) },
+    trailingContent = {
+        Switch(
+            checked = checked,
+            onCheckedChange = onChange,
+            thumbContent = {
+                Icon(
+                    painter = painterResource(
+                        id = if (checked) R.drawable.check else R.drawable.close
+                    ),
+                    contentDescription = null,
+                    modifier = Modifier.size(SwitchDefaults.IconSize)
+                )
+            }
+        )
+    },
+    onClick = { onChange(!checked) }
+)

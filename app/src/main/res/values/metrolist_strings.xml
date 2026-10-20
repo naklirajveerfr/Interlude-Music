@@ -1065,6 +1065,15 @@
     <string name="smooth_skip_mute_style_next_song_desc">Keeps the vocals playing until the next song starts, then mutes them</string>
     <string name="smooth_skip_mute_style_adaptive">Adaptive</string>
     <string name="smooth_skip_mute_style_adaptive_desc">Mutes the vocals when the vocals of the next song start</string>
+    <string name="smooth_skip_dj_style">DJ style</string>
+    <string name="smooth_skip_quantize">Start on the beat</string>
+    <string name="smooth_skip_quantize_desc">Waits for the next beat or bar of the playing song before the mix starts</string>
+    <string name="smooth_skip_eq_blend">EQ blend</string>
+    <string name="smooth_skip_eq_blend_desc">Opens the next song\'s highs gradually and thins out the playing song as it leaves, like a DJ filter sweep</string>
+    <string name="smooth_skip_entry_snap">Smart entry point</string>
+    <string name="smooth_skip_entry_snap_desc">Starts the next song on its first downbeat instead of its very beginning</string>
+    <string name="smooth_skip_exit_fx">Exit effects</string>
+    <string name="smooth_skip_exit_fx_desc">Echo tail on the song leaving when the beats are not matched. Songs in clashing keys get a quick cut instead of a long blend</string>
     <string name="smooth_skip_configuration">Smooth Skip Configuration</string>
     <string name="smooth_skip_configuration_desc">Duration, tempo matching, bass swap and vocal muting</string>
 </resources>
