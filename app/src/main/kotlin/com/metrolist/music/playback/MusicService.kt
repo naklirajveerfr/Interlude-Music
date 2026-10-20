@@ -329,7 +329,6 @@ class MusicService :
     private var mixBassSwap = false
     private var mixEqBlend = false
     private var mixEchoDelaySec: Float? = null
-    private var mixHardCut = false
     private var smoothSkipLyricMute = true
     private var smoothSkipVocalMuteStyle = SmoothSkipVocalMuteStyle.NORMAL
     private var smoothSkipQuantize = true
@@ -5218,27 +5217,21 @@ class MusicService :
     }
 
     // How a smooth skip into the next song goes: beat matched when both tempos are known, steady and within the
-    // limit, otherwise a plain fade with no tempo change and no beat align. Both last the configured duration, except
-    // a cut, which is quick. An echoDelaySec means the song going away gets an echo tail.
+    // limit, otherwise a plain fade with no tempo change and no beat align. Both last the configured duration.
+    // An echoDelaySec means the song going away gets an echo tail.
     private class MixPlan(
         val beatMatch: Boolean,
         val ratio: Float?,
         val durationMs: Float,
-        val cut: Boolean = false,
         val echoDelaySec: Float? = null,
     )
 
-    // Plain fades get an echo tail on the song leaving, and songs in clashing keys get a quick cut with the echo
-    // ringing out instead of a long blend.
-    private fun exitEffectPlan(a: com.metrolist.music.automix.TrackAnalysis?, b: com.metrolist.music.automix.TrackAnalysis?): MixPlan {
-        val keyA = a?.key?.takeIf { it.isConfident }
-        val keyB = b?.key?.takeIf { it.isConfident }
-        val clash = keyA != null && keyB != null && !keyA.isCompatibleWith(keyB)
-        if (clash) Timber.tag("AutomixDebug").d("keys clash: A=${keyA?.tonic}/${keyA?.minor} B=${keyB?.tonic}/${keyB?.minor}")
+    // Plain fades get an echo tail on the song leaving.
+    private fun exitEffectPlan(a: com.metrolist.music.automix.TrackAnalysis?): MixPlan {
         val echoDelay =
             a?.takeIf { it.hasReliableBpm }?.bpm?.let { 60f / it * ECHO_BEATS }?.coerceIn(0.2f, 0.9f)
                 ?: MixEffectsAudioProcessor.DEFAULT_ECHO_DELAY_SEC
-        return MixPlan(false, null, if (clash) CUT_MIX_MS else smoothSkipDuration, cut = clash, echoDelaySec = echoDelay)
+        return MixPlan(false, null, smoothSkipDuration, echoDelaySec = echoDelay)
     }
 
     private fun planSmoothSkip(): MixPlan {
@@ -5249,8 +5242,7 @@ class MusicService :
         if (aId == bId) return plain
         val a = automixAnalyzer.get(aId)
         val b = automixAnalyzer.get(bId)
-        val fade = if (smoothSkipExitFx) exitEffectPlan(a, b) else plain
-        if (fade.cut) return fade
+        val fade = if (smoothSkipExitFx) exitEffectPlan(a) else plain
         if (a == null || b == null || !a.hasReliableBpm || !b.hasReliableBpm) {
             Timber.tag("AutomixDebug").d("ramp skipped: A=${a?.bpm}/${a?.confidence} B=${b?.bpm}/${b?.confidence}")
             return fade
@@ -5368,15 +5360,13 @@ class MusicService :
         automixPhaseTrim = 1f
         mixFadeMs.value = plan.durationMs.toLong()
         mixBassSwap = smoothSkipBassSwap
-        mixEqBlend = smoothSkipEqBlend && !plan.cut
+        mixEqBlend = smoothSkipEqBlend
         mixEchoDelaySec = plan.echoDelaySec
-        mixHardCut = plan.cut
         startCrossfade(smooth = true)
         if (!isCrossfading) {
             mixBassSwap = false
             mixEqBlend = false
             mixEchoDelaySec = null
-            mixHardCut = false
             mixFadeMs.value = 0L
             return false
         }
@@ -5854,10 +5844,8 @@ class MusicService :
         val incomingBass = if (bassSwap) playerBassProcessors[nextPlayer] else null
         val eqBlend = mixEqBlend
         val echoDelay = mixEchoDelaySec
-        val hardCut = mixHardCut
         mixEqBlend = false
         mixEchoDelaySec = null
-        mixHardCut = false
         val outgoingFx = playerMixFxProcessors[currentPlayer]
         val incomingFx = playerMixFxProcessors[nextPlayer]
         if (echoDelay != null) outgoingFx?.echoDelaySec = echoDelay
@@ -5937,8 +5925,8 @@ class MusicService :
                     }
 
                     val progress = i / steps.toFloat()
-                    val fadeIn = if (hardCut) mixSmoothStep(progress / CUT_RAMP) else 1.0f - (1.0f - progress) * (1.0f - progress)
-                    val fadeOut = if (hardCut) 1f - mixSmoothStep(progress / CUT_RAMP) else (1.0f - progress) * (1.0f - progress)
+                    val fadeIn = 1.0f - (1.0f - progress) * (1.0f - progress)
+                    val fadeOut = (1.0f - progress) * (1.0f - progress)
 
                     try {
                         player.volume = startVolume * fadeIn
@@ -5947,11 +5935,7 @@ class MusicService :
                             fadingPlayer?.volume = startVolume
                             outgoingFx.dry = fadeOut
                             outgoingFx.echoSend =
-                                if (hardCut) {
-                                    1f - mixSmoothStep((progress - CUT_RAMP) / 0.12f)
-                                } else {
-                                    mixSmoothStep((progress - 0.3f) / 0.25f) * (1f - mixSmoothStep((progress - 0.7f) / 0.1f))
-                                }
+                                mixSmoothStep((progress - 0.3f) / 0.25f) * (1f - mixSmoothStep((progress - 0.7f) / 0.1f))
                             outgoingFx.echoReturn = 1f - mixSmoothStep((progress - 0.88f) / 0.12f)
                         } else {
                             fadingPlayer?.volume = startVolume * fadeOut
@@ -6062,8 +6046,6 @@ class MusicService :
         const val MAX_BOUNDARY_WAIT_MS = 3_000L
         const val MAX_ENTRY_SNAP_MS = 3_000L
         const val MIX_START_LATENCY_MS = 150L
-        const val CUT_MIX_MS = 2_400f
-        const val CUT_RAMP = 0.08f
         const val ECHO_BEATS = 0.75f
         const val BEAT_PREP_WAIT_MS = 2_500L
         const val BEAT_WARM_INTERVAL_MS = 20_000L
