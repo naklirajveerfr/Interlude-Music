@@ -66,8 +66,6 @@ import com.metrolist.music.constants.ShufflePlaylistFirstKey
 import com.metrolist.music.constants.SimilarContent
 import com.metrolist.music.constants.SkipSilenceInstantKey
 import com.metrolist.music.constants.SkipSilenceKey
-import com.metrolist.music.constants.SmoothSkipTempoStyle
-import com.metrolist.music.constants.SmoothSkipTempoStyleKey
 import com.metrolist.music.constants.StopMusicOnTaskClearKey
 import com.metrolist.music.constants.VarispeedKey
 import com.metrolist.music.ui.component.DefaultDialog
@@ -173,16 +171,6 @@ fun PlayerSettings(
         defaultValue = false
     )
     val (automixEnabled, onAutomixEnabledChange) = rememberPreference(com.metrolist.music.constants.AutomixEnabledKey, defaultValue = false)
-    val (smoothSkipDuration, onSmoothSkipDurationChange) = rememberPreference(com.metrolist.music.constants.SmoothSkipDurationKey, defaultValue = 5f)
-    val (smoothSkipMaxTempoChange, onSmoothSkipMaxTempoChangeChange) = rememberPreference(com.metrolist.music.constants.SmoothSkipMaxTempoChangeKey, defaultValue = 8f)
-    val (smoothSkipTempoStyle, onSmoothSkipTempoStyleChange) = rememberEnumPreference(
-        SmoothSkipTempoStyleKey,
-        defaultValue = SmoothSkipTempoStyle.PLAYING_SONG
-    )
-    val (smoothSkipBeatAlign, onSmoothSkipBeatAlignChange) = rememberPreference(com.metrolist.music.constants.SmoothSkipBeatAlignKey, defaultValue = false)
-    val (smoothSkipBassSwap, onSmoothSkipBassSwapChange) = rememberPreference(com.metrolist.music.constants.SmoothSkipBassSwapKey, defaultValue = true)
-    val (smoothSkipLyricMute, onSmoothSkipLyricMuteChange) = rememberPreference(com.metrolist.music.constants.SmoothSkipLyricMuteKey, defaultValue = true)
-    val (vocalMuteStrength, onVocalMuteStrengthChange) = rememberPreference(com.metrolist.music.constants.SmoothSkipVocalMuteStrengthKey, defaultValue = 100f)
     val (autoDownloadOnLike, onAutoDownloadOnLikeChange) = rememberPreference(
         AutoDownloadOnLikeKey,
         defaultValue = false
@@ -259,30 +247,6 @@ fun PlayerSettings(
                     AudioQuality.AUTO -> stringResource(R.string.audio_quality_auto)
                     AudioQuality.HIGH -> stringResource(R.string.audio_quality_high)
                     AudioQuality.LOW -> stringResource(R.string.audio_quality_low)
-                }
-            }
-        )
-    }
-
-    var showTempoStyleDialog by remember {
-        mutableStateOf(false)
-    }
-
-    if (showTempoStyleDialog) {
-        EnumDialog(
-            onDismiss = { showTempoStyleDialog = false },
-            onSelect = {
-                onSmoothSkipTempoStyleChange(it)
-                showTempoStyleDialog = false
-            },
-            title = "Tempo change style",
-            current = smoothSkipTempoStyle,
-            values = SmoothSkipTempoStyle.values().toList(),
-            valueText = {
-                when (it) {
-                    SmoothSkipTempoStyle.PLAYING_SONG -> "Playing song changes"
-                    SmoothSkipTempoStyle.NEXT_SONG -> "Next song changes"
-                    SmoothSkipTempoStyle.BOTH -> "Both change equally"
                 }
             }
         )
@@ -421,135 +385,12 @@ fun PlayerSettings(
                         onClick = { onAutomixEnabledChange(!automixEnabled) }
                     ))
                 }
-                if (automixEnabled) {
-                    add(Material3SettingsItem(
-                        icon = painterResource(R.drawable.timer),
-                        title = { Text("Smooth skip duration") },
-                        description = {
-                            Column {
-                                Text(pluralStringResource(R.plurals.seconds, smoothSkipDuration.toInt(), smoothSkipDuration.toInt()))
-                                Slider(
-                                    value = smoothSkipDuration,
-                                    onValueChange = onSmoothSkipDurationChange,
-                                    valueRange = 1f..15f,
-                                    steps = 14
-                                )
-                            }
-                        }
-                    ))
-                    add(Material3SettingsItem(
-                        icon = painterResource(R.drawable.sync),
-                        title = { Text("Tempo change style") },
-                        description = {
-                            Text(
-                                if (smoothSkipBeatAlign) {
-                                    "Next song changes (set by Beat align)"
-                                } else {
-                                    when (smoothSkipTempoStyle) {
-                                        SmoothSkipTempoStyle.PLAYING_SONG -> "Playing song changes"
-                                        SmoothSkipTempoStyle.NEXT_SONG -> "Next song changes"
-                                        SmoothSkipTempoStyle.BOTH -> "Both change equally"
-                                    }
-                                }
-                            )
-                        },
-                        enabled = !smoothSkipBeatAlign,
-                        onClick = { showTempoStyleDialog = true }
-                    ))
-                    add(Material3SettingsItem(
-                        icon = painterResource(R.drawable.sync),
-                        title = { Text("Beat align (beta)") },
-                        description = { Text("Also line up the beats of both songs when you smooth skip. Uses the \"Next song changes\" tempo style") },
-                        trailingContent = {
-                            Switch(
-                                checked = smoothSkipBeatAlign,
-                                onCheckedChange = onSmoothSkipBeatAlignChange,
-                                thumbContent = {
-                                    Icon(
-                                        painter = painterResource(
-                                            id = if (smoothSkipBeatAlign) R.drawable.check else R.drawable.close
-                                        ),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(SwitchDefaults.IconSize)
-                                    )
-                                }
-                            )
-                        },
-                        onClick = { onSmoothSkipBeatAlignChange(!smoothSkipBeatAlign) }
-                    ))
-                    add(Material3SettingsItem(
-                        icon = painterResource(R.drawable.equalizer),
-                        title = { Text("Bass swap") },
-                        description = { Text("Trade the two songs' basslines in the middle of a smooth skip instead of playing both at once") },
-                        trailingContent = {
-                            Switch(
-                                checked = smoothSkipBassSwap,
-                                onCheckedChange = onSmoothSkipBassSwapChange,
-                                thumbContent = {
-                                    Icon(
-                                        painter = painterResource(
-                                            id = if (smoothSkipBassSwap) R.drawable.check else R.drawable.close
-                                        ),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(SwitchDefaults.IconSize)
-                                    )
-                                }
-                            )
-                        },
-                        onClick = { onSmoothSkipBassSwapChange(!smoothSkipBassSwap) }
-                    ))
-                    add(Material3SettingsItem(
-                        icon = painterResource(R.drawable.lyrics),
-                        title = { Text(stringResource(R.string.smooth_skip_mute_vocals)) },
-                        description = { Text(stringResource(R.string.smooth_skip_mute_vocals_desc)) },
-                        trailingContent = {
-                            Switch(
-                                checked = smoothSkipLyricMute,
-                                onCheckedChange = onSmoothSkipLyricMuteChange,
-                                thumbContent = {
-                                    Icon(
-                                        painter = painterResource(
-                                            id = if (smoothSkipLyricMute) R.drawable.check else R.drawable.close
-                                        ),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(SwitchDefaults.IconSize)
-                                    )
-                                }
-                            )
-                        },
-                        onClick = { onSmoothSkipLyricMuteChange(!smoothSkipLyricMute) }
-                    ))
-                    if (smoothSkipLyricMute) {
-                        add(Material3SettingsItem(
-                            icon = painterResource(R.drawable.volume_up),
-                            title = { Text(stringResource(R.string.smooth_skip_mute_strength)) },
-                            description = {
-                                Column {
-                                    Text(stringResource(R.string.smooth_skip_mute_strength_desc, vocalMuteStrength.roundToInt()))
-                                    Slider(
-                                        value = vocalMuteStrength,
-                                        onValueChange = onVocalMuteStrengthChange,
-                                        valueRange = 0f..100f
-                                    )
-                                }
-                            }
-                        ))
-                    }
-                    add(Material3SettingsItem(
-                        icon = painterResource(R.drawable.speed),
-                        title = { Text("Max tempo change") },
-                        description = {
-                            Column {
-                                Text("Songs can speed up or slow down by up to ${smoothSkipMaxTempoChange.roundToInt()}% to match each other's tempo")
-                                Slider(
-                                    value = smoothSkipMaxTempoChange,
-                                    onValueChange = onSmoothSkipMaxTempoChangeChange,
-                                    valueRange = 5f..100f
-                                )
-                            }
-                        }
-                    ))
-                }
+                add(Material3SettingsItem(
+                    icon = painterResource(R.drawable.tune),
+                    title = { Text(stringResource(R.string.smooth_skip_configuration)) },
+                    description = { Text(stringResource(R.string.smooth_skip_configuration_desc)) },
+                    onClick = { navController.navigate("settings/player/smooth_skip") }
+                ))
                 add(Material3SettingsItem(
                     icon = painterResource(R.drawable.history),
                     title = { Text(stringResource(R.string.history_duration)) },
