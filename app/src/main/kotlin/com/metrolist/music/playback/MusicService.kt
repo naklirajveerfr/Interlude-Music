@@ -5167,24 +5167,17 @@ class MusicService :
     }
 
     // How a smooth skip into the next song goes: beat matched when both tempos are known, steady and within the
-    // limit, otherwise a plain, shorter fade with no tempo change and no beat align. Two songs in clearly clashing
-    // keys only overlap briefly either way.
+    // limit, otherwise a plain fade with no tempo change and no beat align. Both last the configured duration.
     private class MixPlan(val beatMatch: Boolean, val ratio: Float?, val durationMs: Float)
 
     private fun planSmoothSkip(): MixPlan {
-        var fade = MixPlan(false, null, minOf(smoothSkipDuration, UNMATCHED_MIX_MS))
+        val fade = MixPlan(false, null, smoothSkipDuration)
         if (!automixOn()) return fade
         val aId = player.currentMediaItem?.mediaId ?: return fade
         val bId = automixNextMediaId() ?: return fade
         if (aId == bId) return fade
         val a = automixAnalyzer.get(aId)
         val b = automixAnalyzer.get(bId)
-        val keyA = a?.key?.takeIf { it.isConfident }
-        val keyB = b?.key?.takeIf { it.isConfident }
-        val keysClash = keyA != null && keyB != null && !keyA.isCompatibleWith(keyB)
-        val maxMs = if (keysClash) KEY_CLASH_MIX_MS else Float.MAX_VALUE
-        if (keysClash) Timber.tag("AutomixDebug").d("keys clash: A=${keyA?.tonic}/${keyA?.minor} B=${keyB?.tonic}/${keyB?.minor}")
-        fade = MixPlan(false, null, minOf(fade.durationMs, maxMs))
         if (a == null || b == null || !a.hasReliableBpm || !b.hasReliableBpm) {
             Timber.tag("AutomixDebug").d("ramp skipped: A=${a?.bpm}/${a?.confidence} B=${b?.bpm}/${b?.confidence}")
             return fade
@@ -5209,7 +5202,7 @@ class MusicService :
             Timber.tag("AutomixDebug").d("ramp skipped: tempo gap ${diff * 100}% is beyond the ${max * 100}% limit")
             return fade
         }
-        return MixPlan(true, if (diff < 0.004f) null else picked, minOf(smoothSkipDuration, maxMs))
+        return MixPlan(true, if (diff < 0.004f) null else picked, smoothSkipDuration)
     }
 
     private fun cancelAutomixRamp(restoreSpeed: Boolean) {
@@ -5886,8 +5879,6 @@ class MusicService :
         const val BEAT_SEEK_LATENCY_MS = 60L
         const val BEAT_SEEK_SETTLE_MS = 400L
         const val BEAT_TEMPO_TOLERANCE = 0.03
-        const val UNMATCHED_MIX_MS = 4_000f
-        const val KEY_CLASH_MIX_MS = 2_500f
         const val PHASE_LOCK_INTERVAL_MS = 250L
         const val PHASE_LOCK_DEADBAND_SEC = 0.008
         const val PHASE_LOCK_TAU_SEC = 0.75
