@@ -43,6 +43,8 @@ import com.metrolist.music.constants.SmoothSkipMaxTempoChangeKey
 import com.metrolist.music.constants.SmoothSkipTempoStyle
 import com.metrolist.music.constants.SmoothSkipTempoStyleKey
 import com.metrolist.music.constants.SmoothSkipVocalMuteStrengthKey
+import com.metrolist.music.constants.SmoothSkipVocalMuteStyle
+import com.metrolist.music.constants.SmoothSkipVocalMuteStyleKey
 import com.metrolist.music.ui.component.EnumDialog
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.Material3SettingsGroup
@@ -67,9 +69,39 @@ fun SmoothSkipSettings(
     val (smoothSkipBassSwap, onSmoothSkipBassSwapChange) = rememberPreference(SmoothSkipBassSwapKey, defaultValue = true)
     val (smoothSkipLyricMute, onSmoothSkipLyricMuteChange) = rememberPreference(SmoothSkipLyricMuteKey, defaultValue = true)
     val (vocalMuteStrength, onVocalMuteStrengthChange) = rememberPreference(SmoothSkipVocalMuteStrengthKey, defaultValue = 100f)
+    val (vocalMuteStyle, onVocalMuteStyleChange) = rememberEnumPreference(
+        SmoothSkipVocalMuteStyleKey,
+        defaultValue = SmoothSkipVocalMuteStyle.NORMAL
+    )
 
     var showTempoStyleDialog by remember {
         mutableStateOf(false)
+    }
+
+    var showVocalMuteStyleDialog by remember {
+        mutableStateOf(false)
+    }
+
+    if (showVocalMuteStyleDialog) {
+        EnumDialog(
+            onDismiss = { showVocalMuteStyleDialog = false },
+            onSelect = {
+                onVocalMuteStyleChange(it)
+                showVocalMuteStyleDialog = false
+            },
+            title = stringResource(R.string.smooth_skip_mute_style),
+            current = vocalMuteStyle,
+            values = SmoothSkipVocalMuteStyle.values().toList(),
+            valueText = {
+                stringResource(
+                    when (it) {
+                        SmoothSkipVocalMuteStyle.NORMAL -> R.string.smooth_skip_mute_style_normal
+                        SmoothSkipVocalMuteStyle.NEXT_SONG_START -> R.string.smooth_skip_mute_style_next_song
+                        SmoothSkipVocalMuteStyle.ADAPTIVE -> R.string.smooth_skip_mute_style_adaptive
+                    }
+                )
+            }
+        )
     }
 
     if (showTempoStyleDialog) {
@@ -225,6 +257,22 @@ fun SmoothSkipSettings(
                     onClick = { onSmoothSkipLyricMuteChange(!smoothSkipLyricMute) }
                 ))
                 if (smoothSkipLyricMute) {
+                    add(Material3SettingsItem(
+                        icon = painterResource(R.drawable.sync),
+                        title = { Text(stringResource(R.string.smooth_skip_mute_style)) },
+                        description = {
+                            Text(
+                                stringResource(
+                                    when (vocalMuteStyle) {
+                                        SmoothSkipVocalMuteStyle.NORMAL -> R.string.smooth_skip_mute_style_normal_desc
+                                        SmoothSkipVocalMuteStyle.NEXT_SONG_START -> R.string.smooth_skip_mute_style_next_song_desc
+                                        SmoothSkipVocalMuteStyle.ADAPTIVE -> R.string.smooth_skip_mute_style_adaptive_desc
+                                    }
+                                )
+                            )
+                        },
+                        onClick = { showVocalMuteStyleDialog = true }
+                    ))
                     add(Material3SettingsItem(
                         icon = painterResource(R.drawable.volume_up),
                         title = { Text(stringResource(R.string.smooth_skip_mute_strength)) },

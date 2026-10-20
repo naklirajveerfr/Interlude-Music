@@ -170,6 +170,8 @@ import com.metrolist.music.constants.SkipSilenceInstantKey
 import com.metrolist.music.constants.SkipSilenceKey
 import com.metrolist.music.constants.SmoothSkipTempoStyle
 import com.metrolist.music.constants.SmoothSkipTempoStyleKey
+import com.metrolist.music.constants.SmoothSkipVocalMuteStyle
+import com.metrolist.music.constants.SmoothSkipVocalMuteStyleKey
 import com.metrolist.music.constants.StopMusicOnTaskClearKey
 import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.db.entities.Event
@@ -321,6 +323,7 @@ class MusicService :
     // Set by a smooth skip so the crossfade it starts trades the two songs' basslines.
     private var mixBassSwap = false
     private var smoothSkipLyricMute = true
+    private var smoothSkipVocalMuteStyle = SmoothSkipVocalMuteStyle.NORMAL
     private var vocalMuteStrength = 1f
     private var mixDurationMs = 5000f
 
@@ -1228,6 +1231,13 @@ class MusicService :
                 .map { it[com.metrolist.music.constants.SmoothSkipLyricMuteKey] ?: true }
                 .distinctUntilChanged()
                 .collect { smoothSkipLyricMute = it }
+        }
+
+        scope.launch {
+            dataStore.data
+                .map { it[SmoothSkipVocalMuteStyleKey].toEnum(SmoothSkipVocalMuteStyle.NORMAL) }
+                .distinctUntilChanged()
+                .collect { smoothSkipVocalMuteStyle = it }
         }
 
         scope.launch {
@@ -5232,6 +5242,11 @@ class MusicService :
         if (player.repeatMode == REPEAT_MODE_ONE || !player.hasNextMediaItem() || !player.isPlaying) return false
 
         if (smoothSkipLyricMute) {
+            if (smoothSkipVocalMuteStyle != SmoothSkipVocalMuteStyle.NORMAL) {
+                val started = performSeamlessTransition()
+                if (started) muteOutgoingVocalsDuringMix(smoothSkipVocalMuteStyle == SmoothSkipVocalMuteStyle.ADAPTIVE)
+                return started
+            }
             if (vocalMuteSkipJob?.isActive == true) return true
             vocalMuteSkipJob =
                 scope.launch {
@@ -5283,6 +5298,40 @@ class MusicService :
 
     // ---- Smooth skip: vocals are muted at the end of the sung line, then the transition starts ----
     private var vocalMuteSkipJob: Job? = null
+    private var mixVocalMuteJob: Job? = null
+
+    /**
+     * Mutes the vocals of the song being mixed out once the mix is under way: when the next song starts playing, or
+     * when [waitForIncomingVocals] is set, when the next song's own vocals start. Songs without saved lyrics fall back
+     * to muting as the next song starts.
+     */
+    private fun muteOutgoingVocalsDuringMix(waitForIncomingVocals: Boolean) {
+        val incoming = player
+        val outgoing = fadingPlayer ?: return
+        val vocals = playerVocalProcessors[outgoing] ?: return
+        val incomingId = incoming.currentMediaItem?.mediaId ?: return
+        fun mixing() = isCrossfading && player === incoming && fadingPlayer === outgoing
+
+        mixVocalMuteJob?.cancel()
+        mixVocalMuteJob =
+            scope.launch {
+                val deadline = android.os.SystemClock.elapsedRealtime() + LYRIC_MUTE_MAX_WAIT_MS
+                while (!incoming.isPlaying && mixing() && android.os.SystemClock.elapsedRealtime() < deadline) {
+                    delay(LYRIC_MUTE_POLL_MS)
+                }
+                if (!mixing()) return@launch
+                if (waitForIncomingVocals) {
+                    val spans = syncedLyricSpans(incomingId)
+                    if (spans.isNotEmpty()) {
+                        // Nothing left to sing over the outgoing song, so its vocals stay.
+                        val vocalStart = spans.filter { it.last > incoming.currentPosition }.minOfOrNull { it.first } ?: return@launch
+                        while (incoming.currentPosition < vocalStart && mixing()) delay(LYRIC_MUTE_POLL_MS)
+                        if (!mixing()) return@launch
+                    }
+                }
+                vocals.muted = true
+            }
+    }
 
     /**
      * Returns once the vocals of [target] can be muted: straight away in an instrumental gap or when the song has no

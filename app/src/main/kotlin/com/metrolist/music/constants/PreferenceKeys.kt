@@ -735,11 +735,18 @@ val SmoothSkipBeatAlignKey = androidx.datastore.preferences.core.booleanPreferen
 val SmoothSkipBassSwapKey = androidx.datastore.preferences.core.booleanPreferencesKey("smoothSkipBassSwap")
 val SmoothSkipLyricMuteKey = androidx.datastore.preferences.core.booleanPreferencesKey("smoothSkipLyricMute")
 val SmoothSkipVocalMuteStrengthKey = androidx.datastore.preferences.core.floatPreferencesKey("smoothSkipVocalMuteStrength")
+val SmoothSkipVocalMuteStyleKey = stringPreferencesKey("smoothSkipVocalMuteStyle")
 
 enum class SmoothSkipTempoStyle {
     PLAYING_SONG,
     NEXT_SONG,
     BOTH,
+}
+
+enum class SmoothSkipVocalMuteStyle {
+    NORMAL,
+    NEXT_SONG_START,
+    ADAPTIVE,
 }
 val AutomixProviderKey = androidx.datastore.preferences.core.stringPreferencesKey("automixProvider")
 val AutomixApiKeyKey = androidx.datastore.preferences.core.stringPreferencesKey("automixApiKey")
