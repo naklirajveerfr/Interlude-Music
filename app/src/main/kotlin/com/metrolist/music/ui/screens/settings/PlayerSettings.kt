@@ -182,6 +182,7 @@ fun PlayerSettings(
     val (smoothSkipBeatAlign, onSmoothSkipBeatAlignChange) = rememberPreference(com.metrolist.music.constants.SmoothSkipBeatAlignKey, defaultValue = false)
     val (smoothSkipBassSwap, onSmoothSkipBassSwapChange) = rememberPreference(com.metrolist.music.constants.SmoothSkipBassSwapKey, defaultValue = true)
     val (smoothSkipLyricMute, onSmoothSkipLyricMuteChange) = rememberPreference(com.metrolist.music.constants.SmoothSkipLyricMuteKey, defaultValue = true)
+    val (vocalMuteStrength, onVocalMuteStrengthChange) = rememberPreference(com.metrolist.music.constants.SmoothSkipVocalMuteStrengthKey, defaultValue = 100f)
     val (autoDownloadOnLike, onAutoDownloadOnLikeChange) = rememberPreference(
         AutoDownloadOnLikeKey,
         defaultValue = false
@@ -518,6 +519,22 @@ fun PlayerSettings(
                         },
                         onClick = { onSmoothSkipLyricMuteChange(!smoothSkipLyricMute) }
                     ))
+                    if (smoothSkipLyricMute) {
+                        add(Material3SettingsItem(
+                            icon = painterResource(R.drawable.volume_up),
+                            title = { Text(stringResource(R.string.smooth_skip_mute_strength)) },
+                            description = {
+                                Column {
+                                    Text(stringResource(R.string.smooth_skip_mute_strength_desc, vocalMuteStrength.roundToInt()))
+                                    Slider(
+                                        value = vocalMuteStrength,
+                                        onValueChange = onVocalMuteStrengthChange,
+                                        valueRange = 0f..100f
+                                    )
+                                }
+                            }
+                        ))
+                    }
                     add(Material3SettingsItem(
                         icon = painterResource(R.drawable.speed),
                         title = { Text("Max tempo change") },

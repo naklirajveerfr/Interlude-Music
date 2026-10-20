@@ -321,6 +321,7 @@ class MusicService :
     // Set by a smooth skip so the crossfade it starts trades the two songs' basslines.
     private var mixBassSwap = false
     private var smoothSkipLyricMute = true
+    private var vocalMuteStrength = 1f
     private var mixDurationMs = 5000f
 
     // Length of the smooth skip mix that is about to start, which can be shorter than the setting.
@@ -1229,6 +1230,16 @@ class MusicService :
                 .collect { smoothSkipLyricMute = it }
         }
 
+        scope.launch {
+            dataStore.data
+                .map { (it[com.metrolist.music.constants.SmoothSkipVocalMuteStrengthKey] ?: 100f) / 100f }
+                .distinctUntilChanged()
+                .collect { strength ->
+                    vocalMuteStrength = strength
+                    playerVocalProcessors.values.forEach { it.strength = strength }
+                }
+        }
+
         // Observe and cache common preferences to avoid runBlocking reads in playback callbacks
         scope.launch {
             dataStore.data.map { it[PersistentQueueKey] ?: true }.distinctUntilChanged().collect { cachedPersistentQueue = it }
@@ -1362,7 +1373,7 @@ class MusicService :
         val bassProcessor = BassSwapAudioProcessor()
 
         val silenceProcessor = SilenceDetectorAudioProcessor { handleLongSilenceDetected() }
-        val vocalProcessor = VocalMuteAudioProcessor()
+        val vocalProcessor = VocalMuteAudioProcessor().also { it.strength = vocalMuteStrength }
 
         // Set initial state — use pre-read prefs when available, otherwise fall back to DataStore
         val useAudioTrackPlaybackParams = if (prefs != null) {

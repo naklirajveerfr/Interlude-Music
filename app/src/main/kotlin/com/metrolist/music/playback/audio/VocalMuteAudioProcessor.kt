@@ -27,6 +27,10 @@ class VocalMuteAudioProcessor : BaseAudioProcessor() {
     @Volatile
     var muted = false
 
+    /** 0 to 1: how much of the full mute is applied while [muted]. */
+    @Volatile
+    var strength = 1f
+
     private var encoding = C.ENCODING_INVALID
     private var rampStep = 0f
 
@@ -106,11 +110,12 @@ class VocalMuteAudioProcessor : BaseAudioProcessor() {
                 amount > target -> maxOf(target, amount - rampStep)
                 else -> amount
             }
-        val centre = mid.band((l + r) * 0.5f, midLow, midHigh) * amount
+        val applied = amount * strength
+        val centre = mid.band((l + r) * 0.5f, midLow, midHigh) * applied
         val l1 = l - centre
         val r1 = r - centre
-        lastRight = r1 - right.band(r1, coreLow, coreHigh) * CORE_CUT * amount
-        return l1 - left.band(l1, coreLow, coreHigh) * CORE_CUT * amount
+        lastRight = r1 - right.band(r1, coreLow, coreHigh) * CORE_CUT * applied
+        return l1 - left.band(l1, coreLow, coreHigh) * CORE_CUT * applied
     }
 
     override fun onFlush(streamMetadata: AudioProcessor.StreamMetadata) {

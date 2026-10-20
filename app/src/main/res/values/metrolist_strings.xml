@@ -1056,4 +1056,6 @@
     <string name="mix_status_fade_only">Fade only</string>
     <string name="mix_status_failed">Can\'t analyze</string>
     <string name="mix_status_no_next">No next song</string>
+    <string name="smooth_skip_mute_strength">Vocal mute strength</string>
+    <string name="smooth_skip_mute_strength_desc">How much of the vocals are removed: %1$d%%. Lower keeps more of the song\'s mids and some vocals</string>
 </resources>
