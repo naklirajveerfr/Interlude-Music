@@ -93,12 +93,14 @@ import com.metrolist.music.playback.ExoDownloadService
 import com.metrolist.music.db.entities.Song
 import com.metrolist.music.db.entities.SpeedDialItem
 import com.metrolist.music.ui.component.BottomSheetState
+import com.metrolist.music.ui.component.LocalBottomSheetPageState
 import com.metrolist.music.ui.component.ListDialog
 import com.metrolist.music.ui.component.Material3MenuGroup
 import com.metrolist.music.ui.component.Material3MenuItemData
 import com.metrolist.music.ui.component.NewAction
 import com.metrolist.music.ui.component.NewActionGrid
 import com.metrolist.music.ui.component.VolumeSlider
+import com.metrolist.music.ui.utils.ShowOffsetDialog
 import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -118,7 +120,9 @@ fun PlayerMenu(
     val navController = LocalNavController.current
     val context = LocalContext.current
     val database = LocalDatabase.current
+    val bottomSheetPageState = LocalBottomSheetPageState.current
     val playerConnection = LocalPlayerConnection.current ?: return
+    val currentSong by playerConnection.currentSong.collectAsStateWithLifecycle(initialValue = null)
     val playerVolume = playerConnection.service.playerVolume.collectAsStateWithLifecycle()
     val lyricsProviderDialogState = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     if (lyricsProviderDialogState.value) {
@@ -797,6 +801,28 @@ fun PlayerMenu(
                                     )
                                 },
                                 onClick = { lyricsProviderDialogState.value = true },
+                            ),
+                        )
+                        add(
+                            Material3MenuItemData(
+                                title = { Text(text = stringResource(R.string.lyrics_offset)) },
+                                description = {
+                                    val offset = currentSong?.song?.lyricsOffset ?: 0
+                                    Text(text = "${if (offset > 0) "+" else ""}${offset}ms")
+                                },
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.fast_forward),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(24.dp),
+                                    )
+                                },
+                                onClick = {
+                                    onDismiss()
+                                    bottomSheetPageState.show {
+                                        ShowOffsetDialog(songProvider = { currentSong?.song })
+                                    }
+                                },
                             ),
                         )
 
