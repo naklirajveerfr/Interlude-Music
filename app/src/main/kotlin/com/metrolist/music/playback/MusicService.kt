@@ -5226,7 +5226,7 @@ class MusicService :
         val echoDelaySec: Float? = null,
     )
 
-    // Every mix gets an echo tail on the song leaving, timed to its tempo.
+    // Plain fades get an echo tail on the song leaving.
     private fun exitEffectPlan(a: com.metrolist.music.automix.TrackAnalysis?): MixPlan {
         val echoDelay =
             a?.takeIf { it.hasReliableBpm }?.bpm?.let { 60f / it * ECHO_BEATS }?.coerceIn(0.2f, 0.9f)
@@ -5267,7 +5267,7 @@ class MusicService :
             Timber.tag("AutomixDebug").d("ramp skipped: tempo gap ${diff * 100}% is beyond the ${max * 100}% limit")
             return fade
         }
-        return MixPlan(true, if (diff < 0.004f) null else picked, smoothSkipDuration, echoDelaySec = fade.echoDelaySec)
+        return MixPlan(true, if (diff < 0.004f) null else picked, smoothSkipDuration)
     }
 
     private fun cancelAutomixRamp(restoreSpeed: Boolean) {
