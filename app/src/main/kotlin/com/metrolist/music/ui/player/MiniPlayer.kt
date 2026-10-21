@@ -93,7 +93,6 @@ import com.metrolist.music.constants.PureBlackMiniPlayerKey
 import com.metrolist.music.constants.SwipeSensitivityKey
 import com.metrolist.music.constants.SwipeThumbnailKey
 import com.metrolist.music.constants.ThumbnailCornerRadius
-import com.metrolist.music.constants.UseNewMiniPlayerDesignKey
 import com.metrolist.music.db.entities.ArtistEntity
 import com.metrolist.music.listentogether.ListenTogetherManager
 import com.metrolist.music.models.MediaMetadata
@@ -146,26 +145,14 @@ fun MiniPlayer(
     modifier: Modifier = Modifier,
     onClick: () -> Unit = {},
 ) {
-    val useNewMiniPlayerDesign by rememberPreference(UseNewMiniPlayerDesignKey, true)
-
     // Create stable progress state - doesn't cause recomposition on position changes
     val progressState = remember { ProgressState(positionState, durationState) }
 
-    if (useNewMiniPlayerDesign) {
-        NewMiniPlayer(
-            progressState = progressState,
-            modifier = modifier,
-            onClick = onClick,
-        )
-    } else {
-        Box(modifier = modifier.fillMaxWidth()) {
-            LegacyMiniPlayer(
-                progressState = progressState,
-                modifier = Modifier.align(Alignment.Center),
-                onClick = onClick,
-            )
-        }
-    }
+    NewMiniPlayer(
+        progressState = progressState,
+        modifier = modifier,
+        onClick = onClick,
+    )
 }
 
 // ============================================================================
