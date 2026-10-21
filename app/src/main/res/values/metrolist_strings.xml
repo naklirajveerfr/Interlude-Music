@@ -1073,7 +1073,7 @@
     <string name="smooth_skip_entry_snap">Smart entry point</string>
     <string name="smooth_skip_entry_snap_desc">Starts the next song on its first downbeat instead of its very beginning</string>
     <string name="smooth_skip_exit_fx">Exit effects</string>
-    <string name="smooth_skip_exit_fx_desc">Adds an echo tail to the song leaving when the beats of the two songs are not matched</string>
+    <string name="smooth_skip_exit_fx_desc">Adds an echo tail to the song leaving, timed to its tempo</string>
     <string name="smooth_skip_configuration">Smooth Skip Configuration</string>
     <string name="smooth_skip_configuration_desc">Duration, tempo matching, bass swap and vocal muting</string>
 </resources>
