@@ -1251,9 +1251,7 @@ fun BottomSheetPlayer(
                                                 onDismiss = menuState::dismiss,
                                                 onShowOffsetDialog = {
                                                     bottomSheetPageState.show {
-                                                        ShowOffsetDialog(
-                                                            songProvider = { currentSong?.song },
-                                                        )
+                                                        ShowOffsetDialog()
                                                     }
                                                 },
                                             )
@@ -1377,9 +1375,7 @@ fun BottomSheetPlayer(
                                                     onDismiss = menuState::dismiss,
                                                     onShowOffsetDialog = {
                                                         bottomSheetPageState.show {
-                                                            ShowOffsetDialog(
-                                                                songProvider = { currentSong?.song },
-                                                            )
+                                                            ShowOffsetDialog()
                                                         }
                                                     },
                                                 )

@@ -20,10 +20,10 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,35 +35,26 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.metrolist.music.LocalDatabase
+import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
-import com.metrolist.music.db.entities.SongEntity
 import kotlinx.coroutines.FlowPreview
 
 @OptIn(FlowPreview::class)
 @Composable
-fun ShowOffsetDialog(songProvider: () -> SongEntity?) {
+fun ShowOffsetDialog() {
     val database = LocalDatabase.current
-    val song = songProvider()
-    var lyricsOffset by rememberSaveable { mutableIntStateOf(song?.lyricsOffset ?: 0) }
-    var textFieldValue by rememberSaveable { mutableStateOf(lyricsOffset.toString()) }
+    val playerConnection = LocalPlayerConnection.current ?: return
+    // Follows the playing song, so the offset is always read from and saved to the song that is playing now.
+    val currentSong by playerConnection.currentSong.collectAsStateWithLifecycle()
+    val songId = currentSong?.song?.id
+    var lyricsOffset by remember(songId) { mutableIntStateOf(currentSong?.song?.lyricsOffset ?: 0) }
+    var textFieldValue by remember(songId) { mutableStateOf(lyricsOffset.toString()) }
 
-    LaunchedEffect(song?.id) {
-        song?.let {
-            lyricsOffset = it.lyricsOffset
-            textFieldValue = lyricsOffset.toString()
-        }
-    }
-
-    LaunchedEffect(lyricsOffset) {
-        songProvider()?.let { song ->
-            database.query {
-                upsert(
-                    song.copy(
-                        lyricsOffset = lyricsOffset
-                    )
-                )
-            }
+    LaunchedEffect(songId, lyricsOffset) {
+        if (songId != null) {
+            database.query { updateLyricsOffset(songId, lyricsOffset) }
         }
     }
 

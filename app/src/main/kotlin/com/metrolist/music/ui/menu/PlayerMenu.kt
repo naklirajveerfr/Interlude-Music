@@ -820,7 +820,7 @@ fun PlayerMenu(
                                 onClick = {
                                     onDismiss()
                                     bottomSheetPageState.show {
-                                        ShowOffsetDialog(songProvider = { currentSong?.song })
+                                        ShowOffsetDialog()
                                     }
                                 },
                             ),

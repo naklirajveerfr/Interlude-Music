@@ -1618,6 +1618,13 @@ interface DatabaseDao {
     }
 
     @Transaction
+    @Query("UPDATE song SET lyricsOffset = :offset WHERE id = :songId")
+    fun updateLyricsOffset(
+        songId: String,
+        offset: Int,
+    )
+
+    @Transaction
     @Query("UPDATE song SET inLibrary = :inLibrary WHERE id = :songId")
     fun inLibrary(
         songId: String,
