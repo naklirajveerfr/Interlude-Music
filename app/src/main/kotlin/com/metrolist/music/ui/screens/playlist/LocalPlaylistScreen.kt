@@ -33,6 +33,7 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.IntOffset
 import com.metrolist.music.constants.AppBarHeight
 import com.metrolist.music.ui.utils.fadingEdge
@@ -1040,7 +1041,9 @@ fun LocalPlaylistHeader(
         }
     }
 
-    val fullArt = playlist.thumbnails.size == 1
+    val windowSize = LocalWindowInfo.current.containerDpSize
+    val isLandscape = windowSize.width > windowSize.height
+    val fullArt = playlist.thumbnails.size == 1 && !isLandscape
     val density = LocalDensity.current
     val headerOffset =
         with(density) {
@@ -1135,6 +1138,26 @@ fun LocalPlaylistHeader(
                     }
 
                     1 -> {
+                        if (!fullArt) {
+                            Surface(
+                                modifier =
+                                    Modifier
+                                        .size(240.dp)
+                                        .shadow(
+                                            elevation = 24.dp,
+                                            shape = RoundedCornerShape(3.dp),
+                                            spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                                        ),
+                                shape = RoundedCornerShape(3.dp),
+                            ) {
+                                AsyncImage(
+                                    model = (overrideThumbnail.value ?: playlist.thumbnails[0]).resize(1200, 1200),
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize(),
+                                )
+                            }
+                        }
                         if (editable) {
                             OverlayEditButton(
                                 visible = true,
