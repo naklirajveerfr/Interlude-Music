@@ -232,7 +232,9 @@ fun BottomSheetPlayer(
     val bottomSheetPageState = LocalBottomSheetPageState.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val playerStyle by rememberEnumPreference(PlayerStyleKey, PlayerStyle.DEFAULT)
-    val useFullArtTest = playerStyle == PlayerStyle.FULLART
+    val useFullArtTest =
+        playerStyle == PlayerStyle.FULLART &&
+            LocalConfiguration.current.orientation != Configuration.ORIENTATION_LANDSCAPE
     val playerFadeStyle by rememberEnumPreference(PlayerFadeStyleKey, PlayerFadeStyle.TRANSLUCENT)
     val lyricsFadeInDuration by rememberPreference(LyricsFadeInDurationKey, defaultValue = 350f)
     val lyricsFadeOutDuration by rememberPreference(LyricsFadeOutDurationKey, defaultValue = 200f)
