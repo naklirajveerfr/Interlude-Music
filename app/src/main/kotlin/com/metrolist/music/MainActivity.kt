@@ -1312,7 +1312,7 @@ class MainActivity : FragmentActivity() {
                                                         } else {
                                                             1f
                                                         }
-                                                }.glass(tintAlpha = 0.5f, bordered = false, chrome = true),
+                                                },
                                     )
                                 }
                             } else {
@@ -1337,7 +1337,7 @@ class MainActivity : FragmentActivity() {
                                                 val progress = playerBottomSheetState.progress
                                                 alpha =
                                                     if (progress > 0f || !shouldShowNavigationBar) 0f else 1f
-                                            }.glass(tintAlpha = 0.5f, bordered = false, chrome = true),
+                                            },
                                 )
                             }
                         },
