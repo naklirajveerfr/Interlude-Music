@@ -5,6 +5,9 @@
 
 package com.metrolist.music.ui.component
 
+import com.metrolist.music.ui.theme.fadingGlass
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Box
 import com.metrolist.music.ui.theme.glass
 import com.metrolist.music.ui.theme.GlassBorderColor
 import androidx.compose.foundation.border
@@ -155,8 +158,10 @@ fun AppNavigationBar(
     val selectedColor = if (pureBlack) Color.White else MaterialTheme.colorScheme.onSurface
     val unselectedColor = contentColor.copy(alpha = if (pureBlack) 0.6f else 1f)
 
+    Box(modifier = modifier) {
+    Box(Modifier.matchParentSize().fadingGlass(fadeTowardsBottom = false, tintAlpha = 0.55f))
     NavigationBar(
-        modifier = modifier.glass(tintAlpha = 0.5f),
+        modifier = Modifier.fillMaxSize(),
         containerColor = Color.Transparent,
         contentColor = contentColor
     ) {
@@ -232,5 +237,6 @@ fun AppNavigationBar(
                 } else null
             )
         }
+    }
     }
 }

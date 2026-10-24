@@ -5,6 +5,7 @@
 
 package com.metrolist.music
 
+import com.metrolist.music.ui.theme.fadingGlass
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.ForegroundServiceStartNotAllowedException
@@ -1081,6 +1082,8 @@ class MainActivity : FragmentActivity() {
                                 exit = fadeOut(animationSpec = tween(durationMillis = 200)),
                             ) {
                                 Row {
+                                    Box {
+                                    Box(Modifier.matchParentSize().fadingGlass(fadeTowardsBottom = true, tintAlpha = 0.45f))
                                     TopAppBar(
                                         title = {
                                             if (currentTitleRes == R.string.home) {
@@ -1161,7 +1164,7 @@ class MainActivity : FragmentActivity() {
                                                 navigationIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                             ),
                                         modifier =
-                                            Modifier.glass(tintAlpha = 0.4f).windowInsetsPadding(
+                                            Modifier.windowInsetsPadding(
                                                 if (showRail) {
                                                     WindowInsets(left = NavigationBarHeight)
                                                         .add(cutoutInsets.only(WindowInsetsSides.Start))
@@ -1170,6 +1173,7 @@ class MainActivity : FragmentActivity() {
                                                 },
                                             ),
                                     )
+                                    }
                                 }
                             }
                         },

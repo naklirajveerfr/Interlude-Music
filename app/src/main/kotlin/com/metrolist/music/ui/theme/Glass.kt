@@ -5,6 +5,10 @@
 
 package com.metrolist.music.ui.theme
 
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -59,6 +63,43 @@ fun Modifier.glass(
                 .background(tint.copy(alpha = (tintAlpha + 0.35f).coerceAtMost(0.95f)))
         }
     return if (bordered) filled.border(0.75.dp, GlassBorderColor, shape) else filled
+}
+
+/**
+ * Frosted glass with no outline that fades out towards one edge, so a bar blends into the
+ * content instead of ending in a hard line. Put it on a layer behind the bar's content
+ * (e.g. a sibling with matchParentSize) so only the glass fades, not icons or text.
+ */
+@Composable
+fun Modifier.fadingGlass(
+    fadeTowardsBottom: Boolean,
+    tintAlpha: Float = 0.5f,
+    blur: Dp = 28.dp,
+): Modifier {
+    val haze = LocalGlassHaze.current
+    val tint = MaterialTheme.colorScheme.surface
+    val stops =
+        if (fadeTowardsBottom) {
+            arrayOf(0f to Color.Black, 0.55f to Color.Black, 1f to Color.Transparent)
+        } else {
+            arrayOf(0f to Color.Transparent, 0.45f to Color.Black, 1f to Color.Black)
+        }
+    val mask = Brush.verticalGradient(*stops)
+    return this
+        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+        .drawWithContent {
+            drawContent()
+            drawRect(mask, blendMode = BlendMode.DstIn)
+        }.then(
+            if (haze != null) {
+                Modifier.hazeEffect(haze) {
+                    blurRadius = blur
+                    tints = listOf(HazeTint(tint.copy(alpha = tintAlpha)))
+                }
+            } else {
+                Modifier.background(tint.copy(alpha = 0.85f))
+            },
+        )
 }
 
 /** Plain theme background behind every screen (follows the theme settings, incl. pure black). */
