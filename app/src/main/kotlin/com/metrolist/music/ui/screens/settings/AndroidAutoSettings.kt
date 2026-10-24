@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.screens.settings
 
+import com.metrolist.music.ui.component.GlassTopAppBar
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
@@ -367,7 +368,7 @@ fun AndroidAutoSettings(
         Spacer(Modifier.height(27.dp))
     }
 
-    TopAppBar(
+    GlassTopAppBar(
         title = { Text(stringResource(R.string.android_auto)) },
         navigationIcon = {
             IconButton(

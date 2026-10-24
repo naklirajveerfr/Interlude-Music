@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.screens.settings.integrations
 
+import com.metrolist.music.ui.component.GlassTopAppBar
 import android.widget.Toast
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
@@ -513,7 +514,7 @@ fun ListenTogetherSettings(navController: NavController) {
         Spacer(modifier = Modifier.height(16.dp))
     }
 
-    TopAppBar(
+    GlassTopAppBar(
         title = { Text(stringResource(R.string.listen_together)) },
         navigationIcon = {
             IconButton(

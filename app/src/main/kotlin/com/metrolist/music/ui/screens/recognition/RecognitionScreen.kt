@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.screens.recognition
 
+import com.metrolist.music.ui.component.GlassTopAppBar
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -199,8 +200,9 @@ fun RecognitionScreen(
     }
 
     Scaffold(
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
-            TopAppBar(
+            GlassTopAppBar(
                 title = { Text(stringResource(R.string.recognize_music)) },
                 navigationIcon = {
                     IconButton(

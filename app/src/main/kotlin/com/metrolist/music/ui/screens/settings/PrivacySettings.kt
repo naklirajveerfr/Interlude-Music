@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.screens.settings
 
+import com.metrolist.music.ui.component.GlassTopAppBar
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -247,7 +248,7 @@ fun PrivacySettings(
         Spacer(modifier = Modifier.height(16.dp))
     }
 
-    TopAppBar(
+    GlassTopAppBar(
         title = { Text(stringResource(R.string.privacy)) },
         navigationIcon = {
             IconButton(

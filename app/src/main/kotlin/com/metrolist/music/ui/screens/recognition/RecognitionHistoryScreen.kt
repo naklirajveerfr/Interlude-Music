@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.screens.recognition
 
+import com.metrolist.music.ui.component.GlassTopAppBar
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -147,8 +148,9 @@ fun RecognitionHistoryScreen(navController: NavController) {
     }
 
     Scaffold(
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
-            TopAppBar(
+            GlassTopAppBar(
                 title = { Text(stringResource(R.string.recognition_history)) },
                 navigationIcon = {
                     IconButton(

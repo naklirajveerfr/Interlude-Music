@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.screens
 
+import com.metrolist.music.ui.component.GlassTopAppBar
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -251,7 +252,7 @@ fun HistoryScreen(
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
-                                    .background(MaterialTheme.colorScheme.background),
+                                    .background(MaterialTheme.colorScheme.background.copy(alpha = 0.6f)),
                         )
                     }
 
@@ -433,7 +434,7 @@ fun HistoryScreen(
         )
     }
 
-    TopAppBar(
+    GlassTopAppBar(
         title = {
             if (inSelectMode) {
                 Text(pluralStringResource(R.plurals.n_selected, selection.size, selection.size))

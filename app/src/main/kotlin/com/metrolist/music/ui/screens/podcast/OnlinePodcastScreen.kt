@@ -1,5 +1,6 @@
 package com.metrolist.music.ui.screens.podcast
 
+import com.metrolist.music.ui.component.GlassTopAppBar
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -234,7 +235,7 @@ fun OnlinePodcastScreen(
             }
         }
 
-        TopAppBar(
+        GlassTopAppBar(
             title = {
                 if (isSearching) {
                     TextField(

@@ -1,5 +1,9 @@
 package com.metrolist.music.ui.screens.equalizer
 
+import com.metrolist.music.ui.component.GlassTopAppBar
+import com.metrolist.music.ui.theme.glass
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.shape.RoundedCornerShape
 import android.annotation.SuppressLint
 import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -185,8 +189,9 @@ private fun EqScreenContent(
     onDeleteProfile: (String) -> Unit
 ) {
     Scaffold(
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
-            TopAppBar(
+            GlassTopAppBar(
                 title = { Text(stringResource(R.string.equalizer_header)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
@@ -205,8 +210,13 @@ private fun EqScreenContent(
                             )
                         }
                         DropdownMenu(
+                            modifier = Modifier.glass(RoundedCornerShape(16.dp), tintAlpha = 0.5f),
                             expanded = showAddMenu,
-                            onDismissRequest = onAddMenuDismissed
+                            onDismissRequest = onAddMenuDismissed,
+                            shape = RoundedCornerShape(16.dp),
+                            containerColor = Color.Transparent,
+                            tonalElevation = 0.dp,
+                            shadowElevation = 0.dp,
                         ) {
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.eq_wizard)) },

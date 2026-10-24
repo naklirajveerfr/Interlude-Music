@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.screens.settings.integrations
 
+import com.metrolist.music.ui.component.GlassTopAppBar
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -613,7 +614,7 @@ fun LastFMSettings(
         )
     }
 
-    TopAppBar(
+    GlassTopAppBar(
         title = { Text(stringResource(R.string.lastfm_integration)) },
         navigationIcon = {
             IconButton(

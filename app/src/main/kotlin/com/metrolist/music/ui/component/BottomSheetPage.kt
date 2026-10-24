@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import com.metrolist.music.ui.theme.glass
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -57,7 +59,7 @@ class BottomSheetPageState(
 fun BottomSheetPage(
     modifier: Modifier = Modifier,
     state: BottomSheetPageState,
-    background: Color = MaterialTheme.colorScheme.surfaceColorAtElevation(NavigationBarDefaults.Elevation),
+    background: Color = MaterialTheme.colorScheme.surface,
 ) {
     val focusManager = LocalFocusManager.current
     val sheetState = rememberMaterialBottomSheetState(initialValue = SheetValue.Hidden)
@@ -69,7 +71,7 @@ fun BottomSheetPage(
             state.isVisible = false
         },
         sheetState = sheetState,
-        containerColor = background,
+        containerColor = Color.Transparent,
         contentColor = MaterialTheme.colorScheme.onSurface,
         dragHandle = {
             Box(
@@ -82,13 +84,19 @@ fun BottomSheetPage(
         },
         modifier = modifier.fillMaxHeight()
     ) {
-        Column(
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 16.dp)
+                .fillMaxSize()
+                .glass(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp), tint = background, tintAlpha = 0.5f, blur = 40.dp)
         ) {
-            state.content(this)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 16.dp)
+            ) {
+                state.content(this)
+            }
         }
     }
 }

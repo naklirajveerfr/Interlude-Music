@@ -61,12 +61,21 @@ fun MetrolistTheme(
         }
     }
 
-    // Use standard MaterialTheme instead of MaterialExpressiveTheme
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = colorScheme.frosted(),
         content = content,
     )
 }
+
+/** Makes the container surface roles translucent so they read as glass over the backdrop. */
+fun ColorScheme.frosted() =
+    copy(
+        surfaceContainerLowest = surfaceContainerLowest.copy(alpha = 0.35f),
+        surfaceContainerLow = surfaceContainerLow.copy(alpha = 0.42f),
+        surfaceContainer = surfaceContainer.copy(alpha = 0.5f),
+        surfaceContainerHigh = surfaceContainerHigh.copy(alpha = 0.58f),
+        surfaceContainerHighest = surfaceContainerHighest.copy(alpha = 0.65f),
+    )
 
 fun Bitmap.extractThemeColor(): Color = Color(
     Palette.from(this)

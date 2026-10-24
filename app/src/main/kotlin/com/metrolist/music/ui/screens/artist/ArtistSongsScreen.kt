@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.screens.artist
 
+import com.metrolist.music.ui.component.GlassTopAppBar
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
@@ -182,7 +183,7 @@ fun ArtistSongsScreen(
             }
         }
 
-        TopAppBar(
+        GlassTopAppBar(
             title = { Text(artist?.artist?.name.orEmpty()) },
             navigationIcon = {
                 IconButton(

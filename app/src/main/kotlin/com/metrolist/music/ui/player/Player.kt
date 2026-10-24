@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.player
 
+import com.metrolist.music.ui.theme.glass
 import androidx.activity.compose.BackHandler
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -886,7 +887,7 @@ fun BottomSheetPlayer(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .background(bottomSheetBackgroundColor),
+                        .glass(tint = bottomSheetBackgroundColor.copy(alpha = 1f), tintAlpha = 0.6f, blur = 48.dp, bordered = false),
             ) {
                 when (playerBackground) {
                     PlayerBackgroundStyle.BLUR -> {

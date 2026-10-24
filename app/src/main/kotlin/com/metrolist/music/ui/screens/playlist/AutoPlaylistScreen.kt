@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.screens.playlist
 
+import com.metrolist.music.ui.component.GlassTopAppBar
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -707,7 +708,7 @@ fun AutoPlaylistScreen(
             }
         }
 
-        TopAppBar(
+        GlassTopAppBar(
             title = {
                 when {
                     inSelectMode -> {

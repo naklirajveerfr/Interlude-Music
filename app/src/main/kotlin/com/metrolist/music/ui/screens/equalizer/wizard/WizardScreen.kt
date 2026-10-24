@@ -1,5 +1,6 @@
 package com.metrolist.music.ui.screens.equalizer.wizard
 
+import com.metrolist.music.ui.component.GlassTopAppBar
 import androidx.compose.animation.*
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
@@ -63,8 +64,9 @@ private fun WizardScreenContent(
     onNavigateBack: () -> Unit
 ) {
     Scaffold(
+        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
-            TopAppBar(
+            GlassTopAppBar(
                 title = {
                     Text(
                         text = when (state.currentStep) {
@@ -79,7 +81,7 @@ private fun WizardScreenContent(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                    containerColor = androidx.compose.ui.graphics.Color.Transparent
                 )
             )
         }

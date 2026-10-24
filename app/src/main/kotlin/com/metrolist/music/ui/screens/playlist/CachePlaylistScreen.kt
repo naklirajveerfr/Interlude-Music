@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.screens.playlist
 
+import com.metrolist.music.ui.component.GlassTopAppBar
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -350,7 +351,7 @@ fun CachePlaylistScreen(
             headerItems = 2
         )
 
-        TopAppBar(
+        GlassTopAppBar(
             title = {
                 when {
                     inSelectMode -> {

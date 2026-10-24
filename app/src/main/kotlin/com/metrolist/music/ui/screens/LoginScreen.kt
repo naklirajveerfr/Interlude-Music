@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.screens
 
+import com.metrolist.music.ui.component.GlassTopAppBar
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.net.Uri
@@ -366,7 +367,7 @@ fun LoginScreen(
             CircularProgressIndicator(Modifier.align(Alignment.Center))
         }
 
-        TopAppBar(
+        GlassTopAppBar(
             title = {
                 Text(
                     stringResource(

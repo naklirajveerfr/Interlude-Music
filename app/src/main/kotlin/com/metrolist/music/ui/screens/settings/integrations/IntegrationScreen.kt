@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.screens.settings.integrations
 
+import com.metrolist.music.ui.component.GlassTopAppBar
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -57,7 +58,7 @@ fun IntegrationScreen(
         )
     }
 
-    TopAppBar(
+    GlassTopAppBar(
         title = { Text(stringResource(R.string.integrations)) },
         navigationIcon = {
             IconButton(

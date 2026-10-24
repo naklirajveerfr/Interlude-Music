@@ -5,6 +5,9 @@
 
 package com.metrolist.music.ui.component
 
+import com.metrolist.music.ui.theme.glass
+import com.metrolist.music.ui.theme.GlassBorderColor
+import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Spacer
@@ -63,13 +66,13 @@ fun AppNavigationRail(
     onSearchLongClick: (() -> Unit)? = null,
     onHomeLongHold: (() -> Unit)? = null,
 ) {
-    val containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
     val haptics = LocalHapticFeedback.current
     val viewConfiguration = LocalViewConfiguration.current
 
+    // The rail sits inside the haze source, so it uses a translucent fill instead of a blur.
     NavigationRail(
-        modifier = modifier,
-        containerColor = containerColor
+        modifier = modifier.border(0.75.dp, GlassBorderColor),
+        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.45f)
     ) {
         Spacer(modifier = Modifier.weight(1f))
 
@@ -145,30 +148,16 @@ fun AppNavigationBar(
     onSearchLongClick: (() -> Unit)? = null,
     onHomeLongHold: (() -> Unit)? = null,
 ) {
-    val containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
     val contentColor = if (pureBlack) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
     val haptics = LocalHapticFeedback.current
     val viewConfiguration = LocalViewConfiguration.current
 
     val selectedColor = if (pureBlack) Color.White else MaterialTheme.colorScheme.onSurface
     val unselectedColor = contentColor.copy(alpha = if (pureBlack) 0.6f else 1f)
-    val fadeHeight = 28.dp
 
     NavigationBar(
-        modifier = modifier.drawBehind {
-            // Fade drawn above the bar: transparent at the top, the bar color at the bar's top edge
-            val fade = fadeHeight.toPx()
-            drawRect(
-                brush = Brush.verticalGradient(
-                    colors = listOf(Color.Transparent, containerColor),
-                    startY = -fade,
-                    endY = 0f,
-                ),
-                topLeft = Offset(0f, -fade),
-                size = Size(size.width, fade),
-            )
-        },
-        containerColor = containerColor,
+        modifier = modifier.glass(tintAlpha = 0.5f),
+        containerColor = Color.Transparent,
         contentColor = contentColor
     ) {
         navigationItems.forEach { screen ->

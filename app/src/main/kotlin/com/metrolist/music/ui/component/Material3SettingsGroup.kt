@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.component
 
+import com.metrolist.music.ui.theme.GlassBorderColor
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -84,7 +86,8 @@ fun Material3SettingsGroup(
                             MaterialTheme.colorScheme.surfaceContainerLow
                         }
                     ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                    border = BorderStroke(0.75.dp, GlassBorderColor),
                 ) {
                     Material3SettingsItemRow(item = item)
                 }

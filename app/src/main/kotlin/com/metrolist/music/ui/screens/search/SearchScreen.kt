@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.screens.search
 
+import com.metrolist.music.ui.component.GlassTopAppBar
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -186,7 +187,7 @@ fun SearchScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            GlassTopAppBar(
                 title = {
                     Row(
                         modifier =
@@ -294,11 +295,11 @@ fun SearchScreen(
                 },
                 colors =
                     TopAppBarDefaults.topAppBarColors(
-                        containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.background,
+                        containerColor = Color.Transparent,
                     ),
             )
         },
-        containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.background,
+        containerColor = Color.Transparent,
     ) { paddingValues ->
         Box(
             modifier =

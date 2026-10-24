@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.screens
 
+import com.metrolist.music.ui.component.GlassTopAppBar
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.asPaddingValues
@@ -144,7 +145,7 @@ fun BrowseScreen(
         }
     }
 
-    TopAppBar(
+    GlassTopAppBar(
         title = { Text(title ?: "") },
         navigationIcon = {
             IconButton(

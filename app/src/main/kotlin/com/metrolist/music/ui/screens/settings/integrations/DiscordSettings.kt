@@ -1,5 +1,6 @@
 package com.metrolist.music.ui.screens.settings.integrations
 
+import com.metrolist.music.ui.component.GlassTopAppBar
 import android.app.Activity
 import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
@@ -877,7 +878,7 @@ fun DiscordSettings(
         )
     }
 
-    TopAppBar(
+    GlassTopAppBar(
         title = { Text(stringResource(R.string.discord_integration)) },
         navigationIcon = {
             IconButton(

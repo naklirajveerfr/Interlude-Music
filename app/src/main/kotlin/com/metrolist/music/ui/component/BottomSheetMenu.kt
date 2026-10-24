@@ -6,6 +6,8 @@
 package com.metrolist.music.ui.component
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import com.metrolist.music.ui.theme.GlassBorderColor
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -163,6 +165,7 @@ fun BottomSheetMenu(
             modifier = Modifier
                 .fillMaxSize()
                 .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+                .border(0.75.dp, GlassBorderColor, RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
         ) {
             if (menuBackgroundStyle == MenuBackgroundStyle.BLUR) {
                 Box(

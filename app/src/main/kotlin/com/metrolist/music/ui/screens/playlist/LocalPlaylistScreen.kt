@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.screens.playlist
 
+import com.metrolist.music.ui.component.GlassTopAppBar
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
@@ -753,7 +754,7 @@ fun LocalPlaylistScreen(
             headerItems = 2,
         )
 
-        TopAppBar(
+        GlassTopAppBar(
             title = {
                 if (inSelectMode) {
                     Text(pluralStringResource(R.plurals.n_selected, selection.size, selection.size))

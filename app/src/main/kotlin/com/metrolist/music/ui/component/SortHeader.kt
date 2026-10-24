@@ -5,6 +5,9 @@
 
 package com.metrolist.music.ui.component
 
+import com.metrolist.music.ui.theme.glass
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Row
@@ -65,7 +68,11 @@ inline fun <reified T : Enum<T>> SortHeader(
         DropdownMenu(
             expanded = menuExpanded,
             onDismissRequest = { menuExpanded = false },
-            modifier = Modifier.widthIn(min = 172.dp),
+            modifier = Modifier.widthIn(min = 172.dp).glass(RoundedCornerShape(16.dp), tintAlpha = 0.5f),
+            shape = RoundedCornerShape(16.dp),
+            containerColor = Color.Transparent,
+            tonalElevation = 0.dp,
+            shadowElevation = 0.dp,
         ) {
             enumValues<T>().forEach { type ->
                 DropdownMenuItem(

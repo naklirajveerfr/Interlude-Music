@@ -105,6 +105,9 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import dev.chrisbanes.haze.HazeState
+import com.metrolist.music.ui.theme.GlassBackdrop
+import com.metrolist.music.ui.theme.LocalGlassHaze
+import com.metrolist.music.ui.theme.glass
 import dev.chrisbanes.haze.hazeSource
 import androidx.compose.ui.util.fastAny
 import androidx.compose.ui.window.Dialog
@@ -1048,7 +1051,10 @@ class MainActivity : FragmentActivity() {
                 val baseBg = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
                 val artistNameAliases by ArtistNameAliases.aliases.collectAsStateWithLifecycle()
 
+                val menuHazeState = remember { HazeState() }
+
                 CompositionLocalProvider(
+                    LocalGlassHaze provides menuHazeState,
                     LocalDatabase provides database,
                     LocalNavController provides navController,
                     LocalContentColor provides if (pureBlack) Color.White else contentColorFor(MaterialTheme.colorScheme.surface),
@@ -1065,9 +1071,8 @@ class MainActivity : FragmentActivity() {
                         ChangelogScreen(onDismiss = { showChangelog.value = false })
                     }
 
-                    val menuHazeState = remember { HazeState() }
-
                     Scaffold(
+                        containerColor = Color.Transparent,
                         snackbarHost = { SnackbarHost(snackbarHostState) },
                         topBar = {
                             AnimatedVisibility(
@@ -1149,14 +1154,14 @@ class MainActivity : FragmentActivity() {
                                         scrollBehavior = topAppBarScrollBehavior,
                                         colors =
                                             TopAppBarDefaults.topAppBarColors(
-                                                containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer,
-                                                scrolledContainerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer,
+                                                containerColor = Color.Transparent,
+                                                scrolledContainerColor = Color.Transparent,
                                                 titleContentColor = MaterialTheme.colorScheme.onSurface,
                                                 actionIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 navigationIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                             ),
                                         modifier =
-                                            Modifier.windowInsetsPadding(
+                                            Modifier.glass(tintAlpha = 0.4f).windowInsetsPadding(
                                                 if (showRail) {
                                                     WindowInsets(left = NavigationBarHeight)
                                                         .add(cutoutInsets.only(WindowInsetsSides.Start))
@@ -1290,7 +1295,7 @@ class MainActivity : FragmentActivity() {
                                                         } else {
                                                             1f
                                                         }
-                                                }.background(baseBg),
+                                                }.glass(tintAlpha = 0.5f, bordered = false),
                                     )
                                 }
                             } else {
@@ -1315,16 +1320,17 @@ class MainActivity : FragmentActivity() {
                                                 val progress = playerBottomSheetState.progress
                                                 alpha =
                                                     if (progress > 0f || !shouldShowNavigationBar) 0f else 1f
-                                            }.background(baseBg),
+                                            }.glass(tintAlpha = 0.5f, bordered = false),
                                 )
                             }
                         },
                         modifier =
                             Modifier
                                 .fillMaxSize()
-                                .hazeSource(menuHazeState)
                                 .nestedScroll(topAppBarScrollBehavior.nestedScrollConnection),
                     ) {
+                        Box(Modifier.fillMaxSize().hazeSource(menuHazeState)) {
+                        GlassBackdrop()
                         Row(Modifier.fillMaxSize()) {
                             val onRailItemClick: (Screens, Boolean) -> Unit =
                                 remember(navController, coroutineScope, topAppBarScrollBehavior, playerBottomSheetState) {
@@ -1431,9 +1437,10 @@ class MainActivity : FragmentActivity() {
                                 }
                             }
                         }
+                        }
                     }
 
-                    val menuBackgroundStyle by rememberEnumPreference(MenuBackgroundStyleKey, MenuBackgroundStyle.OPAQUE)
+                    val menuBackgroundStyle by rememberEnumPreference(MenuBackgroundStyleKey, MenuBackgroundStyle.BLUR)
                     val menuBlurLevel by rememberPreference(MenuBlurLevelKey, defaultValue = 40f)
                     val menuTransparencyLevel by rememberPreference(MenuTransparencyLevelKey, defaultValue = 0.85f)
                     BottomSheetMenu(
@@ -1472,10 +1479,10 @@ class MainActivity : FragmentActivity() {
                                 properties = DialogProperties(usePlatformDefaultWidth = false),
                             ) {
                                 Surface(
-                                    modifier = Modifier.padding(24.dp),
+                                    modifier = Modifier.padding(24.dp).glass(RoundedCornerShape(16.dp), tintAlpha = 0.55f),
                                     shape = RoundedCornerShape(16.dp),
-                                    color = AlertDialogDefaults.containerColor,
-                                    tonalElevation = AlertDialogDefaults.TonalElevation,
+                                    color = Color.Transparent,
+                                    tonalElevation = 0.dp,
                                 ) {
                                     Column(
                                         horizontalAlignment = Alignment.CenterHorizontally,

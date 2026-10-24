@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.screens.settings
 
+import com.metrolist.music.ui.component.GlassTopAppBar
 import android.content.Intent
 import android.os.Build
 import android.provider.Settings
@@ -1179,7 +1180,7 @@ fun ContentSettings(
         Spacer(modifier = Modifier.height(16.dp))
     }
 
-    TopAppBar(
+    GlassTopAppBar(
         title = { Text(stringResource(R.string.content)) },
         navigationIcon = {
             IconButton(

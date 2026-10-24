@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.screens.settings
 
+import com.metrolist.music.ui.component.GlassTopAppBar
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.os.Build
@@ -269,7 +270,7 @@ fun SettingsScreen(
         Spacer(modifier = Modifier.height(16.dp))
     }
 
-    TopAppBar(
+    GlassTopAppBar(
         title = { Text(stringResource(R.string.settings)) },
         navigationIcon = {
             IconButton(

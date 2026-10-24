@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.screens.settings
 
+import com.metrolist.music.ui.component.GlassTopAppBar
 import android.os.Build
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -220,7 +221,7 @@ fun AppearanceSettings(
     val (speedDialCarouselOutline, onSpeedDialCarouselOutlineChange) = rememberPreference(SpeedDialCarouselOutlineKey, defaultValue = false)
     val (iconRoundedness, onIconRoundednessChange) = rememberPreference(IconRoundednessKey, defaultValue = 3f)
     var showIconRoundednessDialog by rememberSaveable { mutableStateOf(false) }
-    val (menuBackgroundStyle, onMenuBackgroundStyleChange) = rememberEnumPreference(MenuBackgroundStyleKey, defaultValue = MenuBackgroundStyle.OPAQUE)
+    val (menuBackgroundStyle, onMenuBackgroundStyleChange) = rememberEnumPreference(MenuBackgroundStyleKey, defaultValue = MenuBackgroundStyle.BLUR)
     val (playerBlurLevel, onPlayerBlurLevelChange) = rememberPreference(PlayerBlurLevelKey, defaultValue = 40f)
     val (playerBlurOpacity, onPlayerBlurOpacityChange) = rememberPreference(PlayerBlurOpacityKey, defaultValue = 1f)
     var showPlayerBlurDialog by rememberSaveable { mutableStateOf(false) }
@@ -2170,7 +2171,7 @@ fun AppearanceSettings(
 
     }
 
-    TopAppBar(
+    GlassTopAppBar(
         title = { Text(stringResource(R.string.appearance)) },
         navigationIcon = {
             IconButton(

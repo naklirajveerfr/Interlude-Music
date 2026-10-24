@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.screens.settings
 
+import com.metrolist.music.ui.component.GlassTopAppBar
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -456,7 +457,7 @@ private val communityLinks = listOf(
                           Spacer(Modifier.height(48.dp))
                       }
 
-                      TopAppBar(
+                      GlassTopAppBar(
                           title = { Text(stringResource(R.string.about)) },
                                 navigationIcon = {
                                     IconButton(

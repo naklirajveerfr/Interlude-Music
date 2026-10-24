@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.component
 
+import com.metrolist.music.ui.theme.glass
 import android.annotation.SuppressLint
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -155,12 +156,16 @@ fun <Int> ChoiceChipsRow(
                 exit = shrinkOut() + fadeOut(),
             ) {
                 DropdownMenu(
-                    modifier = Modifier.padding(start = 12.dp),
+                    modifier = Modifier.padding(start = 12.dp).glass(RoundedCornerShape(16.dp), tintAlpha = 0.5f),
                     expanded = expanded,
                     onDismissRequest = {
                         expanded = false
                         expandIconDegree -= 180
                     },
+                    shape = RoundedCornerShape(16.dp),
+                    containerColor = Color.Transparent,
+                    tonalElevation = 0.dp,
+                    shadowElevation = 0.dp,
                 ) {
                     options.forEach { option ->
                         DropdownMenuItem(

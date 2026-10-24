@@ -46,6 +46,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.graphics.Color
+import com.metrolist.music.ui.theme.glass
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
@@ -77,10 +79,10 @@ fun DefaultDialog(
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
         Surface(
-            modifier = Modifier.padding(24.dp),
+            modifier = Modifier.padding(24.dp).glass(AlertDialogDefaults.shape, tintAlpha = 0.55f),
             shape = AlertDialogDefaults.shape,
-            color = AlertDialogDefaults.containerColor,
-            tonalElevation = AlertDialogDefaults.TonalElevation,
+            color = Color.Transparent,
+            tonalElevation = 0.dp,
         ) {
             Column(
                 horizontalAlignment = horizontalAlignment,
@@ -166,10 +168,10 @@ fun AccountSettingsDialog(
                     Modifier
                         .fillMaxWidth()
                         .padding(top = 72.dp, start = 16.dp, end = 16.dp)
-                        .clip(RoundedCornerShape(28.dp)),
+                        .glass(RoundedCornerShape(28.dp), tintAlpha = 0.55f),
                 shape = MaterialTheme.shapes.large,
-                color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 8.dp,
+                color = Color.Transparent,
+                tonalElevation = 0.dp,
             ) {
                 AccountSettings(
                     navController = navController,
@@ -250,10 +252,10 @@ fun ListDialog(
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
         Surface(
-            modifier = Modifier.padding(24.dp),
+            modifier = Modifier.padding(24.dp).glass(AlertDialogDefaults.shape, tintAlpha = 0.55f),
             shape = AlertDialogDefaults.shape,
-            color = AlertDialogDefaults.containerColor,
-            tonalElevation = AlertDialogDefaults.TonalElevation,
+            color = Color.Transparent,
+            tonalElevation = 0.dp,
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,

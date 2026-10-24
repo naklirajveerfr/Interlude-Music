@@ -1,5 +1,6 @@
 package com.metrolist.music.ui.screens.settings
 
+import com.metrolist.music.ui.component.GlassTopAppBar
 import android.content.res.Configuration
 import android.os.Build
 import androidx.compose.animation.AnimatedVisibility
@@ -168,7 +169,7 @@ fun ThemeScreen(
         )
     }
 
-    TopAppBar(
+    GlassTopAppBar(
         title = { Text(stringResource(R.string.theme_colors)) },
         navigationIcon = {
             IconButton(onClick = { navController.navigateUp() }) {

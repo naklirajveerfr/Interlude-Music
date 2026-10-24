@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.component
 
+import com.metrolist.music.ui.theme.GlassBorderColor
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.basicMarquee
@@ -78,6 +80,7 @@ private fun NewActionButton(
         shape = RoundedCornerShape(16.dp),
         elevation =
             CardDefaults.cardElevation(),
+        border = BorderStroke(0.75.dp, GlassBorderColor),
     ) {
         Column(
             modifier =

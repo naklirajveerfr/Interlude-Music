@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.screens.artist
 
+import com.metrolist.music.ui.component.GlassTopAppBar
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -1012,7 +1013,7 @@ fun ArtistScreen(
         )
     }
 
-    TopAppBar(
+    GlassTopAppBar(
         title = { if (!transparentAppBar) Text(displayArtistName.orEmpty()) },
         navigationIcon = {
             IconButton(

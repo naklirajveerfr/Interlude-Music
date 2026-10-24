@@ -1,5 +1,8 @@
 package com.metrolist.music.ui.component
 
+import com.metrolist.music.ui.theme.glass
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -76,8 +79,12 @@ fun SongSelectDropdown(
         DropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
-            modifier = Modifier.width(with(density) { textFieldWidthPx.toDp() }),
-            properties = PopupProperties(focusable = false)
+            modifier = Modifier.width(with(density) { textFieldWidthPx.toDp() }).glass(RoundedCornerShape(16.dp), tintAlpha = 0.5f),
+            properties = PopupProperties(focusable = false),
+            shape = RoundedCornerShape(16.dp),
+            containerColor = Color.Transparent,
+            tonalElevation = 0.dp,
+            shadowElevation = 0.dp,
         ) {
             Column(
                 modifier = Modifier

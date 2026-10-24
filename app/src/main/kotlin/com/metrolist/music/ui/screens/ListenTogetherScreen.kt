@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.screens
 
+import com.metrolist.music.ui.component.GlassTopAppBar
+import androidx.compose.ui.graphics.Color
 import android.content.Context
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
@@ -239,7 +241,7 @@ fun ListenTogetherScreen(
         modifier =
             Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
+                .background(Color.Transparent)
                 .imePadding(),
         contentPadding =
             PaddingValues(
@@ -417,7 +419,7 @@ fun ListenTogetherScreen(
     }
 
     if (shouldShowTopBar) {
-        TopAppBar(
+        GlassTopAppBar(
             title = { Text(stringResource(R.string.together)) },
             navigationIcon = {
                 IconButton(
