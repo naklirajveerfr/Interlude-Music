@@ -6,6 +6,7 @@
 package com.metrolist.music.ui.theme
 
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.draw.drawWithContent
@@ -75,18 +76,35 @@ fun Modifier.fadingGlass(
     fadeTowardsBottom: Boolean,
     tintAlpha: Float = 0.5f,
     blur: Dp = 28.dp,
+    extend: Dp = 72.dp,
 ): Modifier {
     val haze = LocalGlassHaze.current
     val tint = MaterialTheme.colorScheme.surface
     val stops =
         if (fadeTowardsBottom) {
-            arrayOf(0f to Color.Black, 0.55f to Color.Black, 1f to Color.Transparent)
+            arrayOf(
+                0f to Color.Black,
+                0.3f to Color.Black,
+                0.65f to Color.Black.copy(alpha = 0.5f),
+                1f to Color.Transparent,
+            )
         } else {
-            arrayOf(0f to Color.Transparent, 0.45f to Color.Black, 1f to Color.Black)
+            arrayOf(
+                0f to Color.Transparent,
+                0.35f to Color.Black.copy(alpha = 0.5f),
+                0.7f to Color.Black,
+                1f to Color.Black,
+            )
         }
     val mask = Brush.verticalGradient(*stops)
     return this
-        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+        .layout { measurable, c ->
+            // Grow past the bar into the content so the fade has room to be tall.
+            val e = extend.roundToPx()
+            val h = c.maxHeight + e
+            val p = measurable.measure(c.copy(minHeight = h, maxHeight = h))
+            layout(p.width, c.maxHeight) { p.place(0, if (fadeTowardsBottom) 0 else -e) }
+        }.graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
         .drawWithContent {
             drawContent()
             drawRect(mask, blendMode = BlendMode.DstIn)
