@@ -61,14 +61,17 @@ fun Modifier.glass(
     return if (bordered) filled.border(0.75.dp, GlassBorderColor, shape) else filled
 }
 
-/** Soft colour wash drawn behind the whole app so the glass has something to blur. */
+/** Theme-coloured wash drawn behind every screen so the glass has something to blur. */
 @Composable
 fun GlassBackdrop(modifier: Modifier = Modifier) {
     val scheme = MaterialTheme.colorScheme
     val base = scheme.surface
     val primary = scheme.primary
-    val tertiary = scheme.tertiary
     val secondary = scheme.secondary
+    val tertiary = scheme.tertiary
+    val primaryContainer = scheme.primaryContainer
+    val secondaryContainer = scheme.secondaryContainer
+    val tertiaryContainer = scheme.tertiaryContainer
     Box(
         modifier
             .fillMaxSize()
@@ -78,24 +81,35 @@ fun GlassBackdrop(modifier: Modifier = Modifier) {
                 val h = size.height
                 val r = maxOf(w, h)
                 drawRect(
+                    Brush.linearGradient(
+                        listOf(
+                            primaryContainer.copy(alpha = 0.95f),
+                            secondaryContainer.copy(alpha = 0.55f),
+                            tertiaryContainer.copy(alpha = 0.95f),
+                        ),
+                        start = Offset(0f, 0f),
+                        end = Offset(w, h),
+                    ),
+                )
+                drawRect(
                     Brush.radialGradient(
-                        listOf(primary.copy(alpha = 0.38f), Color.Transparent),
-                        center = Offset(w * 0.1f, h * 0.08f),
+                        listOf(primary.copy(alpha = 0.5f), Color.Transparent),
+                        center = Offset(w * 0.1f, h * 0.1f),
+                        radius = r * 0.8f,
+                    ),
+                )
+                drawRect(
+                    Brush.radialGradient(
+                        listOf(tertiary.copy(alpha = 0.45f), Color.Transparent),
+                        center = Offset(w * 0.95f, h * 0.55f),
                         radius = r * 0.75f,
                     ),
                 )
                 drawRect(
                     Brush.radialGradient(
-                        listOf(tertiary.copy(alpha = 0.32f), Color.Transparent),
-                        center = Offset(w * 0.95f, h * 0.55f),
-                        radius = r * 0.7f,
-                    ),
-                )
-                drawRect(
-                    Brush.radialGradient(
-                        listOf(secondary.copy(alpha = 0.28f), Color.Transparent),
+                        listOf(secondary.copy(alpha = 0.4f), Color.Transparent),
                         center = Offset(w * 0.2f, h * 0.95f),
-                        radius = r * 0.7f,
+                        radius = r * 0.75f,
                     ),
                 )
             },
