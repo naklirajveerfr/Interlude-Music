@@ -1,5 +1,6 @@
 package com.metrolist.music.ui.screens.equalizer
 
+import com.metrolist.music.ui.component.FrostedDropdownMenu
 import com.metrolist.music.ui.component.GlassTopAppBar
 import com.metrolist.music.ui.theme.glass
 import androidx.compose.ui.graphics.Color
@@ -209,14 +210,9 @@ private fun EqScreenContent(
                                 contentDescription = stringResource(R.string.import_profile)
                             )
                         }
-                        DropdownMenu(
-                            modifier = Modifier.glass(RoundedCornerShape(16.dp), tintAlpha = 0.5f),
+                        FrostedDropdownMenu(
                             expanded = showAddMenu,
                             onDismissRequest = onAddMenuDismissed,
-                            shape = RoundedCornerShape(16.dp),
-                            containerColor = Color.Transparent,
-                            tonalElevation = 0.dp,
-                            shadowElevation = 0.dp,
                         ) {
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.eq_wizard)) },

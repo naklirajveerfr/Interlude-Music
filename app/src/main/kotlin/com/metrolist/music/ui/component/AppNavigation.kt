@@ -5,6 +5,8 @@
 
 package com.metrolist.music.ui.component
 
+import com.metrolist.music.ui.theme.LocalFrostedUi
+import androidx.compose.foundation.layout.RowScope
 import com.metrolist.music.ui.theme.fadingGlass
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Box
@@ -72,10 +74,18 @@ fun AppNavigationRail(
     val haptics = LocalHapticFeedback.current
     val viewConfiguration = LocalViewConfiguration.current
 
+    val frosted = LocalFrostedUi.current
     // The rail sits inside the haze source, so it uses a translucent fill instead of a blur.
     NavigationRail(
-        modifier = modifier.border(0.75.dp, GlassBorderColor),
-        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.45f)
+        modifier = if (frosted) modifier.border(0.75.dp, GlassBorderColor) else modifier,
+        containerColor =
+            if (frosted) {
+                MaterialTheme.colorScheme.surface.copy(alpha = 0.45f)
+            } else if (pureBlack) {
+                Color.Black
+            } else {
+                MaterialTheme.colorScheme.surfaceContainer
+            },
     ) {
         Spacer(modifier = Modifier.weight(1f))
 
@@ -158,13 +168,8 @@ fun AppNavigationBar(
     val selectedColor = if (pureBlack) Color.White else MaterialTheme.colorScheme.onSurface
     val unselectedColor = contentColor.copy(alpha = if (pureBlack) 0.6f else 1f)
 
-    Box(modifier = modifier) {
-    Box(Modifier.matchParentSize().fadingGlass(fadeTowardsBottom = false, tintAlpha = 0.55f))
-    NavigationBar(
-        modifier = Modifier.fillMaxSize(),
-        containerColor = Color.Transparent,
-        contentColor = contentColor
-    ) {
+    val frosted = LocalFrostedUi.current
+    val barContent: @Composable RowScope.() -> Unit = {
         navigationItems.forEach { screen ->
             val isSelected = remember(currentRoute, screen.route) {
                 isRouteSelected(currentRoute, screen.route, navigationItems)
@@ -238,5 +243,39 @@ fun AppNavigationBar(
             )
         }
     }
+
+    if (frosted) {
+        Box(modifier = modifier) {
+            Box(Modifier.matchParentSize().fadingGlass(fadeTowardsBottom = false, tintAlpha = 0.55f))
+            NavigationBar(
+                modifier = Modifier.fillMaxSize(),
+                containerColor = Color.Transparent,
+                contentColor = contentColor,
+                content = barContent,
+            )
+        }
+    } else {
+        val containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
+        val fadeHeight = 28.dp
+        NavigationBar(
+            modifier =
+                modifier.drawBehind {
+                    // Fade drawn above the bar: transparent at the top, the bar color at the bar's top edge
+                    val fade = fadeHeight.toPx()
+                    drawRect(
+                        brush =
+                            Brush.verticalGradient(
+                                colors = listOf(Color.Transparent, containerColor),
+                                startY = -fade,
+                                endY = 0f,
+                            ),
+                        topLeft = Offset(0f, -fade),
+                        size = Size(size.width, fade),
+                    )
+                },
+            containerColor = containerColor,
+            contentColor = contentColor,
+            content = barContent,
+        )
     }
 }

@@ -76,15 +76,11 @@ fun SongSelectDropdown(
             Spacer(modifier = Modifier.width(8.dp))
         }
 
-        DropdownMenu(
+        FrostedDropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
-            modifier = Modifier.width(with(density) { textFieldWidthPx.toDp() }).glass(RoundedCornerShape(16.dp), tintAlpha = 0.5f),
+            modifier = Modifier.width(with(density) { textFieldWidthPx.toDp() }),
             properties = PopupProperties(focusable = false),
-            shape = RoundedCornerShape(16.dp),
-            containerColor = Color.Transparent,
-            tonalElevation = 0.dp,
-            shadowElevation = 0.dp,
         ) {
             Column(
                 modifier = Modifier

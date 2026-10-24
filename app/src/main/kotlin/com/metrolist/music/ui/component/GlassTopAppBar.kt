@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.component
 
+import com.metrolist.music.ui.theme.LocalFrostedUi
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.systemBars
@@ -31,10 +32,14 @@ fun GlassTopAppBar(
     actions: @Composable RowScope.() -> Unit = {},
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
     colors: TopAppBarColors =
-        TopAppBarDefaults.topAppBarColors(
-            containerColor = Color.Transparent,
-            scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-        ),
+        if (LocalFrostedUi.current) {
+            TopAppBarDefaults.topAppBarColors(
+                containerColor = Color.Transparent,
+                scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+            )
+        } else {
+            TopAppBarDefaults.topAppBarColors()
+        },
     scrollBehavior: TopAppBarScrollBehavior? = null,
 ) {
     TopAppBar(

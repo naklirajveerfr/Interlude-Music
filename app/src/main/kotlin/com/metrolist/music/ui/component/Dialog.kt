@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.component
 
+import com.metrolist.music.ui.theme.LocalFrostedUi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -81,8 +82,8 @@ fun DefaultDialog(
         Surface(
             modifier = Modifier.padding(24.dp).glass(AlertDialogDefaults.shape, tintAlpha = 0.55f),
             shape = AlertDialogDefaults.shape,
-            color = Color.Transparent,
-            tonalElevation = 0.dp,
+            color = if (LocalFrostedUi.current) Color.Transparent else AlertDialogDefaults.containerColor,
+            tonalElevation = if (LocalFrostedUi.current) 0.dp else AlertDialogDefaults.TonalElevation,
         ) {
             Column(
                 horizontalAlignment = horizontalAlignment,
@@ -168,10 +169,11 @@ fun AccountSettingsDialog(
                     Modifier
                         .fillMaxWidth()
                         .padding(top = 72.dp, start = 16.dp, end = 16.dp)
+                        .clip(RoundedCornerShape(28.dp))
                         .glass(RoundedCornerShape(28.dp), tintAlpha = 0.55f),
                 shape = MaterialTheme.shapes.large,
-                color = Color.Transparent,
-                tonalElevation = 0.dp,
+                color = if (LocalFrostedUi.current) Color.Transparent else MaterialTheme.colorScheme.surface,
+                tonalElevation = if (LocalFrostedUi.current) 0.dp else 8.dp,
             ) {
                 AccountSettings(
                     navController = navController,
@@ -254,8 +256,8 @@ fun ListDialog(
         Surface(
             modifier = Modifier.padding(24.dp).glass(AlertDialogDefaults.shape, tintAlpha = 0.55f),
             shape = AlertDialogDefaults.shape,
-            color = Color.Transparent,
-            tonalElevation = 0.dp,
+            color = if (LocalFrostedUi.current) Color.Transparent else AlertDialogDefaults.containerColor,
+            tonalElevation = if (LocalFrostedUi.current) 0.dp else AlertDialogDefaults.TonalElevation,
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,

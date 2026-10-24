@@ -65,14 +65,10 @@ inline fun <reified T : Enum<T>> SortHeader(
                 }.padding(horizontal = 4.dp, vertical = 8.dp),
         )
 
-        DropdownMenu(
+        FrostedDropdownMenu(
             expanded = menuExpanded,
             onDismissRequest = { menuExpanded = false },
-            modifier = Modifier.widthIn(min = 172.dp).glass(RoundedCornerShape(16.dp), tintAlpha = 0.5f),
-            shape = RoundedCornerShape(16.dp),
-            containerColor = Color.Transparent,
-            tonalElevation = 0.dp,
-            shadowElevation = 0.dp,
+            modifier = Modifier.widthIn(min = 172.dp),
         ) {
             enumValues<T>().forEach { type ->
                 DropdownMenuItem(

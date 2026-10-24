@@ -32,6 +32,7 @@ fun MetrolistTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     pureBlack: Boolean = false,
     themeColor: Color = DefaultThemeColor,
+    frostedUi: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
@@ -62,7 +63,7 @@ fun MetrolistTheme(
     }
 
     MaterialTheme(
-        colorScheme = colorScheme.frosted(),
+        colorScheme = if (frostedUi) colorScheme.frosted() else colorScheme,
         content = content,
     )
 }

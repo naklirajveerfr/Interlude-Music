@@ -5,6 +5,12 @@
 
 package com.metrolist.music.ui.screens.settings
 
+import com.metrolist.music.constants.DefaultOpaqueMenuBlurLevel
+import com.metrolist.music.constants.DefaultFrostedMenuBlurLevel
+import com.metrolist.music.constants.DefaultFrostedGlassBlurLevel
+import com.metrolist.music.constants.DefaultFrostedGlassUi
+import com.metrolist.music.constants.FrostedGlassBlurLevelKey
+import com.metrolist.music.constants.FrostedGlassUiKey
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -224,11 +230,30 @@ fun AppearanceSettings(
     val (speedDialCarouselOutline, onSpeedDialCarouselOutlineChange) = rememberPreference(SpeedDialCarouselOutlineKey, defaultValue = false)
     val (iconRoundedness, onIconRoundednessChange) = rememberPreference(IconRoundednessKey, defaultValue = 3f)
     var showIconRoundednessDialog by rememberSaveable { mutableStateOf(false) }
-    val (menuBackgroundStyle, onMenuBackgroundStyleChange) = rememberEnumPreference(MenuBackgroundStyleKey, defaultValue = MenuBackgroundStyle.BLUR)
+    val (frostedUi, onFrostedUiChange) = rememberPreference(FrostedGlassUiKey, defaultValue = DefaultFrostedGlassUi)
+    val (frostedBlurLevel, onFrostedBlurLevelChange) = rememberPreference(FrostedGlassBlurLevelKey, defaultValue = DefaultFrostedGlassBlurLevel)
+    val (menuBackgroundStyle, onMenuBackgroundStyleChange) =
+        rememberEnumPreference(
+            MenuBackgroundStyleKey,
+            defaultValue = if (frostedUi) MenuBackgroundStyle.BLUR else MenuBackgroundStyle.OPAQUE,
+        )
     val (playerBlurLevel, onPlayerBlurLevelChange) = rememberPreference(PlayerBlurLevelKey, defaultValue = 40f)
     val (playerBlurOpacity, onPlayerBlurOpacityChange) = rememberPreference(PlayerBlurOpacityKey, defaultValue = 1f)
     var showPlayerBlurDialog by rememberSaveable { mutableStateOf(false) }
-    val (menuBlurLevel, onMenuBlurLevelChange) = rememberPreference(MenuBlurLevelKey, defaultValue = 40f)
+    val (menuBlurLevel, onMenuBlurLevelChange) =
+        rememberPreference(
+            MenuBlurLevelKey,
+            defaultValue = if (frostedUi) DefaultFrostedMenuBlurLevel else DefaultOpaqueMenuBlurLevel,
+        )
+    var showFrostedBlurLevelDialog by rememberSaveable { mutableStateOf(false) }
+    // Turning the option on also switches menus to frosted glass at the default menu blur level.
+    val onFrostedToggle: (Boolean) -> Unit = { on ->
+        onFrostedUiChange(on)
+        if (on) {
+            onMenuBackgroundStyleChange(MenuBackgroundStyle.BLUR)
+            onMenuBlurLevelChange(DefaultFrostedMenuBlurLevel)
+        }
+    }
     val (menuTransparencyLevel, onMenuTransparencyLevelChange) = rememberPreference(MenuTransparencyLevelKey, defaultValue = 0.85f)
     val (lyricsPosition, onLyricsPositionChange) =
         rememberEnumPreference(
@@ -738,7 +763,7 @@ fun AppearanceSettings(
                 showMenuBlurLevelDialog = false
             },
             buttons = {
-                TextButton(onClick = { tempBlurLevel = 40f }) {
+                TextButton(onClick = { tempBlurLevel = if (frostedUi) DefaultFrostedMenuBlurLevel else DefaultOpaqueMenuBlurLevel }) {
                     Text(stringResource(R.string.reset))
                 }
                 Spacer(modifier = Modifier.weight(1f))
@@ -774,6 +799,51 @@ fun AppearanceSettings(
                     value = tempBlurLevel,
                     onValueChange = { tempBlurLevel = it },
                     valueRange = 5f..100f,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+    }
+
+    if (showFrostedBlurLevelDialog) {
+        var tempGlobalBlur by remember { mutableFloatStateOf(frostedBlurLevel) }
+
+        DefaultDialog(
+            onDismiss = { showFrostedBlurLevelDialog = false },
+            buttons = {
+                TextButton(onClick = { tempGlobalBlur = DefaultFrostedGlassBlurLevel }) {
+                    Text(stringResource(R.string.reset))
+                }
+                Spacer(modifier = Modifier.weight(1f))
+                TextButton(onClick = { showFrostedBlurLevelDialog = false }) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+                TextButton(onClick = {
+                    onFrostedBlurLevelChange(tempGlobalBlur)
+                    showFrostedBlurLevelDialog = false
+                }) {
+                    Text(stringResource(android.R.string.ok))
+                }
+            },
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(16.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.global_frosted_glass_blur_level),
+                    style = MaterialTheme.typography.headlineSmall,
+                    modifier = Modifier.padding(bottom = 16.dp),
+                )
+                Text(
+                    text = "${tempGlobalBlur.roundToInt()} dp",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(bottom = 16.dp),
+                )
+                Slider(
+                    value = tempGlobalBlur,
+                    onValueChange = { tempGlobalBlur = it },
+                    valueRange = 0f..60f,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -1400,6 +1470,40 @@ fun AppearanceSettings(
                             onClick = { navController.navigate("settings/appearance/theme") },
                         ),
                     )
+                    add(
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.gradient),
+                            title = { Text(stringResource(R.string.frosted_glass_ui)) },
+                            description = { Text(stringResource(R.string.frosted_glass_ui_desc)) },
+                            trailingContent = {
+                                Switch(
+                                    checked = frostedUi,
+                                    onCheckedChange = onFrostedToggle,
+                                    thumbContent = {
+                                        Icon(
+                                            painter =
+                                                painterResource(
+                                                    id = if (frostedUi) R.drawable.check else R.drawable.close,
+                                                ),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(SwitchDefaults.IconSize),
+                                        )
+                                    },
+                                )
+                            },
+                            onClick = { onFrostedToggle(!frostedUi) },
+                        ),
+                    )
+                    if (frostedUi) {
+                        add(
+                            Material3SettingsItem(
+                                icon = painterResource(R.drawable.gradient),
+                                title = { Text(stringResource(R.string.global_frosted_glass_blur_level)) },
+                                description = { Text("${frostedBlurLevel.roundToInt()} dp") },
+                                onClick = { showFrostedBlurLevelDialog = true },
+                            ),
+                        )
+                    }
                     add(
                         Material3SettingsItem(
                             icon = painterResource(R.drawable.gradient),

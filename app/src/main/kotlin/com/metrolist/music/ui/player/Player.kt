@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.player
 
+import com.metrolist.music.ui.theme.LocalFrostedUi
 import com.metrolist.music.ui.theme.glass
 import androidx.activity.compose.BackHandler
 import android.content.ClipData
@@ -887,7 +888,13 @@ fun BottomSheetPlayer(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .glass(tint = bottomSheetBackgroundColor.copy(alpha = 1f), tintAlpha = 0.6f, blur = 48.dp, bordered = false, chrome = true),
+                        .then(
+                            if (LocalFrostedUi.current) {
+                                Modifier.glass(tint = bottomSheetBackgroundColor.copy(alpha = 1f), tintAlpha = 0.6f, bordered = false, chrome = true)
+                            } else {
+                                Modifier.background(bottomSheetBackgroundColor)
+                            },
+                        ),
             ) {
                 when (playerBackground) {
                     PlayerBackgroundStyle.BLUR -> {

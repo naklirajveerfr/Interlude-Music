@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.component
 
+import com.metrolist.music.ui.theme.LocalFrostedUi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -59,7 +60,7 @@ class BottomSheetPageState(
 fun BottomSheetPage(
     modifier: Modifier = Modifier,
     state: BottomSheetPageState,
-    background: Color = MaterialTheme.colorScheme.surface,
+    background: Color = MaterialTheme.colorScheme.surfaceColorAtElevation(NavigationBarDefaults.Elevation),
 ) {
     val focusManager = LocalFocusManager.current
     val sheetState = rememberMaterialBottomSheetState(initialValue = SheetValue.Hidden)
@@ -71,7 +72,7 @@ fun BottomSheetPage(
             state.isVisible = false
         },
         sheetState = sheetState,
-        containerColor = Color.Transparent,
+        containerColor = if (LocalFrostedUi.current) Color.Transparent else background,
         contentColor = MaterialTheme.colorScheme.onSurface,
         dragHandle = {
             Box(
@@ -87,7 +88,7 @@ fun BottomSheetPage(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .glass(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp), tint = background, tintAlpha = 0.5f, blur = 40.dp)
+                .glass(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp), tint = background, tintAlpha = 0.5f)
         ) {
             Column(
                 modifier = Modifier

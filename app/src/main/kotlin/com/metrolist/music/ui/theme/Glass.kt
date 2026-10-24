@@ -41,6 +41,12 @@ val LocalGlassHaze = staticCompositionLocalOf<HazeState?> { null }
  */
 val LocalGlassChromeHaze = staticCompositionLocalOf<HazeState?> { null }
 
+/** Whether the Frosted Glass UI option is on. Everything glass falls back to the stock look when false. */
+val LocalFrostedUi = staticCompositionLocalOf { false }
+
+/** Global blur radius used by every glass surface (not the menu sheet, which has its own level). */
+val LocalGlassBlur = staticCompositionLocalOf { 24.dp }
+
 val GlassBorderColor = Color.White.copy(alpha = 0.07f)
 
 /**
@@ -53,10 +59,11 @@ fun Modifier.glass(
     shape: Shape = RectangleShape,
     tint: Color = MaterialTheme.colorScheme.surface,
     tintAlpha: Float = 0.45f,
-    blur: Dp = 28.dp,
     bordered: Boolean = true,
     chrome: Boolean = false,
 ): Modifier {
+    if (!LocalFrostedUi.current) return this
+    val blur = LocalGlassBlur.current
     val haze = if (chrome) LocalGlassChromeHaze.current else LocalGlassHaze.current
     val filled =
         if (haze != null) {
@@ -83,10 +90,11 @@ fun Modifier.glass(
 fun Modifier.fadingGlass(
     fadeTowardsBottom: Boolean,
     tintAlpha: Float = 0.5f,
-    blur: Dp = 28.dp,
     extend: Dp = 72.dp,
     chrome: Boolean = true,
 ): Modifier {
+    if (!LocalFrostedUi.current) return this
+    val blur = LocalGlassBlur.current
     val haze = if (chrome) LocalGlassChromeHaze.current else LocalGlassHaze.current
     val tint = MaterialTheme.colorScheme.surface
     val stops =

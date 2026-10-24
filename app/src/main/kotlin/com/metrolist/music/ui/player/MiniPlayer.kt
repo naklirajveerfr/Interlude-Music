@@ -7,6 +7,7 @@
 
 package com.metrolist.music.ui.player
 
+import com.metrolist.music.ui.theme.LocalFrostedUi
 import com.metrolist.music.ui.theme.glass
 import android.content.res.Configuration
 import androidx.compose.animation.AnimatedVisibility
@@ -369,15 +370,15 @@ private fun NewMiniPlayer(
                     .offset { IntOffset(offsetXAnimatable.value.roundToInt(), 0) }
                     .clip(RoundedCornerShape(32.dp))
                     .then(
-                        if (miniPlayerBackground == MiniPlayerBackgroundStyle.DEFAULT) {
-                            Modifier.glass(RoundedCornerShape(32.dp), tintAlpha = 0.45f, blur = 24.dp, bordered = false, chrome = true)
+                        if (LocalFrostedUi.current && miniPlayerBackground == MiniPlayerBackgroundStyle.DEFAULT) {
+                            Modifier.glass(RoundedCornerShape(32.dp), tintAlpha = 0.45f, bordered = false, chrome = true)
                         } else {
                             Modifier.background(color = backgroundColor)
                         },
                     )
                     .border(
                         1.dp,
-                        outlineColor.copy(alpha = if (miniPlayerBackground == MiniPlayerBackgroundStyle.DEFAULT) 0.1f else 0.3f),
+                        outlineColor.copy(alpha = if (LocalFrostedUi.current && miniPlayerBackground == MiniPlayerBackgroundStyle.DEFAULT) 0.1f else 0.3f),
                         RoundedCornerShape(32.dp),
                     )
                     .clickable(

@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.screens
 
+import com.metrolist.music.ui.theme.LocalFrostedUi
 import com.metrolist.music.ui.component.GlassTopAppBar
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -252,7 +253,7 @@ fun HistoryScreen(
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
-                                    .background(MaterialTheme.colorScheme.background.copy(alpha = 0.6f)),
+                                    .background(MaterialTheme.colorScheme.background.copy(alpha = if (LocalFrostedUi.current) 0.6f else 1f)),
                         )
                     }
 

@@ -5,6 +5,14 @@
 
 package com.metrolist.music
 
+import com.metrolist.music.ui.theme.LocalGlassBlur
+import com.metrolist.music.ui.theme.LocalFrostedUi
+import com.metrolist.music.constants.DefaultOpaqueMenuBlurLevel
+import com.metrolist.music.constants.DefaultFrostedMenuBlurLevel
+import com.metrolist.music.constants.DefaultFrostedGlassBlurLevel
+import com.metrolist.music.constants.DefaultFrostedGlassUi
+import com.metrolist.music.constants.FrostedGlassBlurLevelKey
+import com.metrolist.music.constants.FrostedGlassUiKey
 import com.metrolist.music.ui.theme.LocalGlassChromeHaze
 import com.metrolist.music.ui.theme.fadingGlass
 import android.Manifest
@@ -633,6 +641,8 @@ class MainActivity : FragmentActivity() {
             remember(pureBlackEnabled, useDarkTheme) {
                 pureBlackEnabled && useDarkTheme
             }
+        val frostedUi by rememberPreference(FrostedGlassUiKey, defaultValue = DefaultFrostedGlassUi)
+        val frostedBlurLevel by rememberPreference(FrostedGlassBlurLevelKey, defaultValue = DefaultFrostedGlassBlurLevel)
 
         val (selectedThemeColorInt) = rememberPreference(SelectedThemeColorKey, defaultValue = DefaultThemeColor.toArgb())
         val selectedThemeColor = Color(selectedThemeColorInt)
@@ -701,6 +711,7 @@ class MainActivity : FragmentActivity() {
             darkTheme = useDarkTheme,
             pureBlack = pureBlack,
             themeColor = themeColor,
+            frostedUi = frostedUi,
         ) {
             val currentDensity = LocalDensity.current
             val windowInfo = LocalWindowInfo.current
@@ -1057,6 +1068,8 @@ class MainActivity : FragmentActivity() {
                 val contentHazeState = remember { HazeState() }
 
                 CompositionLocalProvider(
+                    LocalFrostedUi provides frostedUi,
+                    LocalGlassBlur provides frostedBlurLevel.dp,
                     LocalGlassHaze provides menuHazeState,
                     LocalGlassChromeHaze provides contentHazeState,
                     LocalDatabase provides database,
@@ -1076,7 +1089,7 @@ class MainActivity : FragmentActivity() {
                     }
 
                     Scaffold(
-                        containerColor = Color.Transparent,
+                        containerColor = if (frostedUi) Color.Transparent else MaterialTheme.colorScheme.background,
                         snackbarHost = { SnackbarHost(snackbarHostState) },
                         topBar = {
                             AnimatedVisibility(
@@ -1160,8 +1173,22 @@ class MainActivity : FragmentActivity() {
                                         scrollBehavior = topAppBarScrollBehavior,
                                         colors =
                                             TopAppBarDefaults.topAppBarColors(
-                                                containerColor = Color.Transparent,
-                                                scrolledContainerColor = Color.Transparent,
+                                                containerColor =
+                                                    if (frostedUi) {
+                                                        Color.Transparent
+                                                    } else if (pureBlack) {
+                                                        Color.Black
+                                                    } else {
+                                                        MaterialTheme.colorScheme.surfaceContainer
+                                                    },
+                                                scrolledContainerColor =
+                                                    if (frostedUi) {
+                                                        Color.Transparent
+                                                    } else if (pureBlack) {
+                                                        Color.Black
+                                                    } else {
+                                                        MaterialTheme.colorScheme.surfaceContainer
+                                                    },
                                                 titleContentColor = MaterialTheme.colorScheme.onSurface,
                                                 actionIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 navigationIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1288,7 +1315,9 @@ class MainActivity : FragmentActivity() {
                                                     // The glass fade reaches above the bar, so hide the whole
                                                     // bar while it is slid away or the player is open.
                                                     alpha =
-                                                        if (navBarHeightPx == 0f) {
+                                                        if (!frostedUi) {
+                                                            1f
+                                                        } else if (navBarHeightPx == 0f) {
                                                             0f
                                                         } else {
                                                             val shown = (navBarHeightPx / NavigationBarHeight.toPx()).coerceIn(0f, 1f)
@@ -1312,7 +1341,7 @@ class MainActivity : FragmentActivity() {
                                                         } else {
                                                             1f
                                                         }
-                                                },
+                                                }.then(if (frostedUi) Modifier else Modifier.background(baseBg)),
                                     )
                                 }
                             } else {
@@ -1337,7 +1366,7 @@ class MainActivity : FragmentActivity() {
                                                 val progress = playerBottomSheetState.progress
                                                 alpha =
                                                     if (progress > 0f || !shouldShowNavigationBar) 0f else 1f
-                                            },
+                                            }.then(if (frostedUi) Modifier else Modifier.background(baseBg)),
                                 )
                             }
                         },
@@ -1348,7 +1377,7 @@ class MainActivity : FragmentActivity() {
                                 .nestedScroll(topAppBarScrollBehavior.nestedScrollConnection),
                     ) {
                         Box(Modifier.fillMaxSize().hazeSource(contentHazeState)) {
-                        GlassBackdrop(pureBlack = pureBlack)
+                        if (frostedUi) GlassBackdrop(pureBlack = pureBlack)
                         Row(Modifier.fillMaxSize()) {
                             val onRailItemClick: (Screens, Boolean) -> Unit =
                                 remember(navController, coroutineScope, topAppBarScrollBehavior, playerBottomSheetState) {
@@ -1458,8 +1487,8 @@ class MainActivity : FragmentActivity() {
                         }
                     }
 
-                    val menuBackgroundStyle by rememberEnumPreference(MenuBackgroundStyleKey, MenuBackgroundStyle.BLUR)
-                    val menuBlurLevel by rememberPreference(MenuBlurLevelKey, defaultValue = 40f)
+                    val menuBackgroundStyle by rememberEnumPreference(MenuBackgroundStyleKey, if (frostedUi) MenuBackgroundStyle.BLUR else MenuBackgroundStyle.OPAQUE)
+                    val menuBlurLevel by rememberPreference(MenuBlurLevelKey, defaultValue = if (frostedUi) DefaultFrostedMenuBlurLevel else DefaultOpaqueMenuBlurLevel)
                     val menuTransparencyLevel by rememberPreference(MenuTransparencyLevelKey, defaultValue = 0.85f)
                     BottomSheetMenu(
                         state = LocalMenuState.current,
@@ -1499,8 +1528,8 @@ class MainActivity : FragmentActivity() {
                                 Surface(
                                     modifier = Modifier.padding(24.dp).glass(RoundedCornerShape(16.dp), tintAlpha = 0.55f),
                                     shape = RoundedCornerShape(16.dp),
-                                    color = Color.Transparent,
-                                    tonalElevation = 0.dp,
+                                    color = if (frostedUi) Color.Transparent else AlertDialogDefaults.containerColor,
+                                    tonalElevation = if (frostedUi) 0.dp else AlertDialogDefaults.TonalElevation,
                                 ) {
                                     Column(
                                         horizontalAlignment = Alignment.CenterHorizontally,
