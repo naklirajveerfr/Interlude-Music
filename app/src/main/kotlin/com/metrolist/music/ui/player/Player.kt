@@ -2098,6 +2098,7 @@ fun BottomSheetPlayer(
                     label = "bottomPadding",
                 )
                 if (useFullArtTest) {
+                    val fullArtLyrics by playerConnection.currentLyrics.collectAsStateWithLifecycle(initialValue = null)
                     FullArtPlayerContent(
                         artworkUrl = mediaMetadata?.thumbnailUrl,
                         title = mediaMetadata?.title ?: "",
@@ -2124,6 +2125,19 @@ fun BottomSheetPlayer(
                                          onMore = {
                             mediaMetadata?.let { md ->
                                 menuState.show {
+                                    if (showInlineLyrics) {
+                                        com.metrolist.music.ui.menu.LyricsMenu(
+                                            lyricsProvider = { fullArtLyrics },
+                                            songProvider = { currentSong?.song },
+                                            mediaMetadataProvider = { md },
+                                            onDismiss = menuState::dismiss,
+                                            onShowOffsetDialog = {
+                                                bottomSheetPageState.show {
+                                                    ShowOffsetDialog()
+                                                }
+                                            },
+                                        )
+                                    } else
                                     PlayerMenu(
                                         mediaMetadata = md,
                                         playerBottomSheetState = state,

@@ -124,17 +124,6 @@ fun PlayerMenu(
     val playerConnection = LocalPlayerConnection.current ?: return
     val currentSong by playerConnection.currentSong.collectAsStateWithLifecycle(initialValue = null)
     val playerVolume = playerConnection.service.playerVolume.collectAsStateWithLifecycle()
-    val lyricsProviderDialogState = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
-    if (lyricsProviderDialogState.value) {
-        com.metrolist.music.ui.menu.SongLyricsProviderDialog(
-            mediaId = mediaMetadata.id,
-            onDismiss = { lyricsProviderDialogState.value = false },
-            onDone = {
-                lyricsProviderDialogState.value = false
-                onDismiss()
-            },
-        )
-    }
 
     // Cast state for volume control - safely access castConnectionHandler to prevent crashes
     val castHandler =
@@ -786,42 +775,6 @@ fun PlayerMenu(
                                 onClick = {
                                     onShowDetailsDialog()
                                     onDismiss()
-                                },
-                            ),
-                        )
-                        add(
-                            Material3MenuItemData(
-                                title = { Text(text = "Choose different lyric provider") },
-                                description = { Text(text = "Applies only to this song") },
-                                icon = {
-                                    Icon(
-                                        painter = painterResource(R.drawable.lyrics),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(24.dp),
-                                    )
-                                },
-                                onClick = { lyricsProviderDialogState.value = true },
-                            ),
-                        )
-                        add(
-                            Material3MenuItemData(
-                                title = { Text(text = stringResource(R.string.lyrics_offset)) },
-                                description = {
-                                    val offset = currentSong?.song?.lyricsOffset ?: 0
-                                    Text(text = "${if (offset > 0) "+" else ""}${offset}ms")
-                                },
-                                icon = {
-                                    Icon(
-                                        painter = painterResource(R.drawable.fast_forward),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(24.dp),
-                                    )
-                                },
-                                onClick = {
-                                    onDismiss()
-                                    bottomSheetPageState.show {
-                                        ShowOffsetDialog()
-                                    }
                                 },
                             ),
                         )
