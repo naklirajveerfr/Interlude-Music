@@ -370,7 +370,7 @@ private fun NewMiniPlayer(
                     .clip(RoundedCornerShape(32.dp))
                     .then(
                         if (miniPlayerBackground == MiniPlayerBackgroundStyle.DEFAULT) {
-                            Modifier.glass(RoundedCornerShape(32.dp), tintAlpha = 0.45f, blur = 24.dp, bordered = false)
+                            Modifier.glass(RoundedCornerShape(32.dp), tintAlpha = 0.45f, blur = 24.dp, bordered = false, chrome = true)
                         } else {
                             Modifier.background(color = backgroundColor)
                         },

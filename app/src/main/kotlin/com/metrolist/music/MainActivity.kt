@@ -5,6 +5,7 @@
 
 package com.metrolist.music
 
+import com.metrolist.music.ui.theme.LocalGlassChromeHaze
 import com.metrolist.music.ui.theme.fadingGlass
 import android.Manifest
 import android.annotation.SuppressLint
@@ -1053,9 +1054,11 @@ class MainActivity : FragmentActivity() {
                 val artistNameAliases by ArtistNameAliases.aliases.collectAsStateWithLifecycle()
 
                 val menuHazeState = remember { HazeState() }
+                val contentHazeState = remember { HazeState() }
 
                 CompositionLocalProvider(
                     LocalGlassHaze provides menuHazeState,
+                    LocalGlassChromeHaze provides contentHazeState,
                     LocalDatabase provides database,
                     LocalNavController provides navController,
                     LocalContentColor provides if (pureBlack) Color.White else contentColorFor(MaterialTheme.colorScheme.surface),
@@ -1299,7 +1302,7 @@ class MainActivity : FragmentActivity() {
                                                         } else {
                                                             1f
                                                         }
-                                                }.glass(tintAlpha = 0.5f, bordered = false),
+                                                }.glass(tintAlpha = 0.5f, bordered = false, chrome = true),
                                     )
                                 }
                             } else {
@@ -1324,16 +1327,17 @@ class MainActivity : FragmentActivity() {
                                                 val progress = playerBottomSheetState.progress
                                                 alpha =
                                                     if (progress > 0f || !shouldShowNavigationBar) 0f else 1f
-                                            }.glass(tintAlpha = 0.5f, bordered = false),
+                                            }.glass(tintAlpha = 0.5f, bordered = false, chrome = true),
                                 )
                             }
                         },
                         modifier =
                             Modifier
                                 .fillMaxSize()
+                                .hazeSource(menuHazeState)
                                 .nestedScroll(topAppBarScrollBehavior.nestedScrollConnection),
                     ) {
-                        Box(Modifier.fillMaxSize().hazeSource(menuHazeState)) {
+                        Box(Modifier.fillMaxSize().hazeSource(contentHazeState)) {
                         GlassBackdrop(pureBlack = pureBlack)
                         Row(Modifier.fillMaxSize()) {
                             val onRailItemClick: (Screens, Boolean) -> Unit =

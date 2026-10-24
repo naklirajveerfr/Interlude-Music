@@ -34,6 +34,13 @@ import dev.chrisbanes.haze.hazeEffect
 /** Haze source shared by the app; glass surfaces blur whatever is drawn into it. */
 val LocalGlassHaze = staticCompositionLocalOf<HazeState?> { null }
 
+/**
+ * Haze source for chrome that lives inside the main Scaffold (bars, mini player, player). It only
+ * contains the screen content, so chrome never samples itself; overlays outside the Scaffold use
+ * [LocalGlassHaze], which also contains the chrome.
+ */
+val LocalGlassChromeHaze = staticCompositionLocalOf<HazeState?> { null }
+
 val GlassBorderColor = Color.White.copy(alpha = 0.18f)
 
 /**
@@ -48,8 +55,9 @@ fun Modifier.glass(
     tintAlpha: Float = 0.45f,
     blur: Dp = 28.dp,
     bordered: Boolean = true,
+    chrome: Boolean = false,
 ): Modifier {
-    val haze = LocalGlassHaze.current
+    val haze = if (chrome) LocalGlassChromeHaze.current else LocalGlassHaze.current
     val filled =
         if (haze != null) {
             this
@@ -77,8 +85,9 @@ fun Modifier.fadingGlass(
     tintAlpha: Float = 0.5f,
     blur: Dp = 28.dp,
     extend: Dp = 72.dp,
+    chrome: Boolean = true,
 ): Modifier {
-    val haze = LocalGlassHaze.current
+    val haze = if (chrome) LocalGlassChromeHaze.current else LocalGlassHaze.current
     val tint = MaterialTheme.colorScheme.surface
     val stops =
         if (fadeTowardsBottom) {
