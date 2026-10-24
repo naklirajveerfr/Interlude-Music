@@ -148,6 +148,8 @@ import com.metrolist.music.constants.HideStatusBarOnFullscreenKey
 import com.metrolist.music.constants.KeepScreenOn
 import com.metrolist.music.constants.PlayerBackgroundStyle
 import com.metrolist.music.constants.PlayerBackgroundStyleKey
+import com.metrolist.music.constants.PlayerBlurLevelKey
+import com.metrolist.music.constants.PlayerBlurOpacityKey
 import com.metrolist.music.constants.PlayerButtonsStyle
 import com.metrolist.music.constants.PlayerButtonsStyleKey
 import com.metrolist.music.constants.PlayerHorizontalPadding
@@ -248,6 +250,8 @@ fun BottomSheetPlayer(
     val (hidePlayerThumbnail, onHidePlayerThumbnailChange) = rememberPreference(HidePlayerThumbnailKey, false)
     val (hideStatusBarOnFullscreen) = rememberPreference(HideStatusBarOnFullscreenKey, false)
     var cropAlbumArt by rememberPreference(CropAlbumArtKey, false)
+    val (playerBlurLevel) = rememberPreference(PlayerBlurLevelKey, defaultValue = 40f)
+    val (playerBlurOpacity) = rememberPreference(PlayerBlurOpacityKey, defaultValue = 1f)
 
     var showInlineLyrics by rememberSaveable {
         mutableStateOf(false)
@@ -894,13 +898,13 @@ fun BottomSheetPlayer(
                             label = "blurBackground",
                         ) { thumbnailUrl ->
                             if (thumbnailUrl != null) {
-                                Box(modifier = Modifier.alpha(backgroundAlpha)) {
+                                Box(modifier = Modifier.alpha(backgroundAlpha * playerBlurOpacity)) {
                                     AsyncImage(
                                         model =
                                             ImageRequest
                                                 .Builder(context)
                                                 .data(thumbnailUrl)
-                                                .size(100, 100)
+                                                .size(300, 300)
                                                 .allowHardware(false)
                                                 .build(),
                                         contentDescription = null,
@@ -908,7 +912,7 @@ fun BottomSheetPlayer(
                                         modifier =
                                             Modifier
                                                 .fillMaxSize()
-                                                .blur(if (useDarkTheme) 150.dp else 100.dp),
+                                                .blur(playerBlurLevel.dp),
                                     )
                                     Box(
                                         modifier =

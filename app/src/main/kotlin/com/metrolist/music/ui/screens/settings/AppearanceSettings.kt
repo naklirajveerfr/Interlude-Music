@@ -93,6 +93,8 @@ import com.metrolist.music.constants.IconRoundednessKey
 import com.metrolist.music.constants.MenuBackgroundStyle
 import com.metrolist.music.constants.MenuBackgroundStyleKey
 import com.metrolist.music.constants.MenuBlurLevelKey
+import com.metrolist.music.constants.PlayerBlurLevelKey
+import com.metrolist.music.constants.PlayerBlurOpacityKey
 import com.metrolist.music.constants.MenuTransparencyLevelKey
 import androidx.compose.runtime.LaunchedEffect
 import com.metrolist.music.constants.PlayerButtonShapeKey
@@ -219,6 +221,9 @@ fun AppearanceSettings(
     val (iconRoundedness, onIconRoundednessChange) = rememberPreference(IconRoundednessKey, defaultValue = 3f)
     var showIconRoundednessDialog by rememberSaveable { mutableStateOf(false) }
     val (menuBackgroundStyle, onMenuBackgroundStyleChange) = rememberEnumPreference(MenuBackgroundStyleKey, defaultValue = MenuBackgroundStyle.OPAQUE)
+    val (playerBlurLevel, onPlayerBlurLevelChange) = rememberPreference(PlayerBlurLevelKey, defaultValue = 40f)
+    val (playerBlurOpacity, onPlayerBlurOpacityChange) = rememberPreference(PlayerBlurOpacityKey, defaultValue = 1f)
+    var showPlayerBlurDialog by rememberSaveable { mutableStateOf(false) }
     val (menuBlurLevel, onMenuBlurLevelChange) = rememberPreference(MenuBlurLevelKey, defaultValue = 40f)
     val (menuTransparencyLevel, onMenuTransparencyLevelChange) = rememberPreference(MenuTransparencyLevelKey, defaultValue = 0.85f)
     val (lyricsPosition, onLyricsPositionChange) =
@@ -765,6 +770,63 @@ fun AppearanceSettings(
                     value = tempBlurLevel,
                     onValueChange = { tempBlurLevel = it },
                     valueRange = 5f..100f,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+    }
+
+    if (showPlayerBlurDialog) {
+        var tempLevel by remember { mutableFloatStateOf(playerBlurLevel) }
+        var tempOpacity by remember { mutableFloatStateOf(playerBlurOpacity) }
+
+        DefaultDialog(
+            onDismiss = { showPlayerBlurDialog = false },
+            buttons = {
+                TextButton(onClick = {
+                    tempLevel = 40f
+                    tempOpacity = 1f
+                }) {
+                    Text(stringResource(R.string.reset))
+                }
+                Spacer(modifier = Modifier.weight(1f))
+                TextButton(onClick = { showPlayerBlurDialog = false }) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+                TextButton(onClick = {
+                    onPlayerBlurLevelChange(tempLevel)
+                    onPlayerBlurOpacityChange(tempOpacity)
+                    showPlayerBlurDialog = false
+                }) {
+                    Text(stringResource(android.R.string.ok))
+                }
+            },
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(16.dp),
+            ) {
+                Text(
+                    text = "Player blur",
+                    style = MaterialTheme.typography.headlineSmall,
+                    modifier = Modifier.padding(bottom = 16.dp),
+                )
+                Text(text = "Blur: ${tempLevel.roundToInt()} dp", style = MaterialTheme.typography.bodyLarge)
+                Slider(
+                    value = tempLevel,
+                    onValueChange = { tempLevel = it },
+                    valueRange = 0f..150f,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Text(
+                    text = "Opacity: ${(tempOpacity * 100).roundToInt()}%",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+                Slider(
+                    value = tempOpacity,
+                    onValueChange = { tempOpacity = it },
+                    valueRange = 0.1f..1f,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -1429,6 +1491,18 @@ fun AppearanceSettings(
                         onClick = { showPlayerBackgroundDialog = true },
                     enabled = !isFullArtStyle,
                 ),
+                    if (playerBackground == PlayerBackgroundStyle.BLUR && !isFullArtStyle) {
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.gradient),
+                            title = { Text("Player blur") },
+                            description = {
+                                Text("Blur ${playerBlurLevel.roundToInt()} dp · Opacity ${(playerBlurOpacity * 100).roundToInt()}%")
+                            },
+                            onClick = { showPlayerBlurDialog = true },
+                        )
+                    } else {
+                        null
+                    },
                     Material3SettingsItem(
                         icon = painterResource(R.drawable.hide_image),
                         title = { Text(stringResource(R.string.hide_player_thumbnail)) },
