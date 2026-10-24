@@ -1284,6 +1284,16 @@ class MainActivity : FragmentActivity() {
                                                                 totalHeightPx * (1 - navBarHeightPx / NavigationBarHeight.toPx())
                                                             slideOffset + hideOffset
                                                         }
+
+                                                    // The glass fade reaches above the bar, so hide the whole
+                                                    // bar while it is slid away or the player is open.
+                                                    alpha =
+                                                        if (navBarHeightPx == 0f) {
+                                                            0f
+                                                        } else {
+                                                            val shown = (navBarHeightPx / NavigationBarHeight.toPx()).coerceIn(0f, 1f)
+                                                            shown * (1f - playerBottomSheetState.progress.coerceIn(0f, 1f))
+                                                        }
                                                 },
                                     )
 

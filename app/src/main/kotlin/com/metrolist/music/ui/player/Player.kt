@@ -887,7 +887,6 @@ fun BottomSheetPlayer(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .alpha(backgroundAlpha)
                         .glass(tint = bottomSheetBackgroundColor.copy(alpha = 1f), tintAlpha = 0.6f, blur = 48.dp, bordered = false, chrome = true),
             ) {
                 when (playerBackground) {
