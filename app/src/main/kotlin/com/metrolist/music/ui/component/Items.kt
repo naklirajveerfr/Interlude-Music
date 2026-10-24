@@ -58,6 +58,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
@@ -266,10 +267,20 @@ inline fun ListItem(
                 .height(ListItemHeight)
                 .padding(horizontal = 8.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .background(
-                    color = // selected active
-                        if (isSelected == true) MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
-                        else MaterialTheme.colorScheme.secondaryContainer
+                .then(
+                    if (isSelected == true) {
+                        Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.4f))
+                    } else {
+                        val glow = MaterialTheme.colorScheme.primary
+                        Modifier.background(
+                            Brush.horizontalGradient(
+                                0f to glow.copy(alpha = 0.45f),
+                                0.35f to glow.copy(alpha = 0.22f),
+                                0.7f to glow.copy(alpha = 0.06f),
+                                1f to Color.Transparent,
+                            )
+                        )
+                    }
                 )
         } else if (isSelected == true) {
             modifier // inactive selected
