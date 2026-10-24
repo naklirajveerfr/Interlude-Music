@@ -8,9 +8,11 @@ package com.metrolist.music.utils
 import com.metrolist.music.BuildConfig
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
 
 data class ReleaseInfo(
     val tagName: String,
@@ -38,7 +40,9 @@ object Updater {
     private const val CHECK_INTERVAL_MILLIS = 2 * 60 * 60 * 1000L // 2 hours
     private const val VERSION_URL =
         "https://www.interludemusic.online/vrsn.txt"
-    const val DOWNLOAD_URL = "https://github.com/naklirajveerfr/Interlude-Music/releases/"
+    private const val RELEASES_URL =
+        "https://api.github.com/repos/naklirajveerfr/Interlude-Music/releases?per_page=50"
+    const val DOWNLOAD_URL ="https://github.com/naklirajveerfr/Interlude-Music/releases/"
 
     private val versionRegex = Regex("""v?\d+(\.\d+)*""")
 
@@ -103,11 +107,39 @@ object Updater {
             }
         }
 
+    private var cachedReleases: List<ReleaseInfo>? = null
+
     /**
-     * Interlude Music has no release history to list.
+     * Fetch the release history from the GitHub releases of Interlude Music.
      */
     suspend fun getAllReleases(forceRefresh: Boolean = false): Result<List<ReleaseInfo>> =
-        Result.success(emptyList())
+        withContext(Dispatchers.IO) {
+            runCatching {
+                cachedReleases?.takeIf { !forceRefresh }?.let { return@runCatching it }
+
+                val body = client.get(RELEASES_URL) {
+                    header("Accept", "application/vnd.github+json")
+                }.bodyAsText()
+                val array = JSONArray(body)
+                val releases = (0 until array.length())
+                    .map { array.getJSONObject(it) }
+                    .filter { !it.optBoolean("draft") && !it.optBoolean("prerelease") }
+                    .map {
+                        val tag = it.getString("tag_name")
+                        ReleaseInfo(
+                            tagName = tag,
+                            versionName = tag.removePrefix("v"),
+                            description = it.optString("body"),
+                            releaseDate = it.optString("published_at"),
+                            assets = emptyList()
+                        )
+                    }
+                    .sortedWith { a, b -> compareVersions(b.tagName, a.tagName) }
+
+                cachedReleases = releases
+                releases
+            }
+        }
 
     /**
      * The Metrolist KMP upgrade prompt is not used.
