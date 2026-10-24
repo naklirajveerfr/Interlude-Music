@@ -1077,6 +1077,19 @@ fun Queue(
             }
         }
 
+        val bottomBarColor =
+            if (blurArtworkUrl != null || pureBlack) {
+                Color.Black
+            } else {
+                MaterialTheme.colorScheme.secondaryContainer
+            }
+        val bottomBarTintAlpha =
+            when {
+                blurArtworkUrl != null -> 0.35f
+                pureBlack -> 0.85f
+                else -> 0.6f
+            }
+
         Column(
             modifier =
                 Modifier
@@ -1084,17 +1097,10 @@ fun Queue(
                         indication = null,
                         interactionSource = remember { MutableInteractionSource() },
                     ) { }
-                    .background(
-                        if (blurArtworkUrl != null) {
-                            Color.Transparent
-                        } else if (pureBlack) {
-                            Color.Black
-                        } else {
-                            MaterialTheme.colorScheme
-                                .secondaryContainer
-                                .copy(alpha = 0.90f)
-                        },
-                    ).windowInsetsPadding(
+                    .hazeEffect(hazeState) {
+                        blurRadius = 24.dp
+                        tints = listOf(HazeTint(bottomBarColor.copy(alpha = bottomBarTintAlpha)))
+                    }.windowInsetsPadding(
                         WindowInsets.systemBars
                             .only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
                     ),
@@ -1237,19 +1243,6 @@ fun Queue(
         }
 
         val shuffleModeEnabled by playerConnection.shuffleModeEnabled.collectAsStateWithLifecycle()
-
-        val bottomBarColor =
-            if (blurArtworkUrl != null || pureBlack) {
-                Color.Black
-            } else {
-                MaterialTheme.colorScheme.secondaryContainer
-            }
-        val bottomBarTintAlpha =
-            when {
-                blurArtworkUrl != null -> 0.35f
-                pureBlack -> 0.85f
-                else -> 0.6f
-            }
 
         Box(
             modifier =
