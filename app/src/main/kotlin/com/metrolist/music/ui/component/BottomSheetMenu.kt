@@ -40,11 +40,11 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.draw.blur
 import androidx.compose.foundation.layout.fillMaxSize
-import coil3.compose.AsyncImage
-import androidx.compose.ui.layout.ContentScale
 import com.metrolist.music.constants.MenuBackgroundStyle
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeTint
+import dev.chrisbanes.haze.hazeEffect
 
 val LocalMenuState = compositionLocalOf { MenuState() }
 
@@ -130,7 +130,7 @@ fun BottomSheetMenu(
     menuBackgroundStyle: MenuBackgroundStyle = MenuBackgroundStyle.OPAQUE,
     menuBlurLevel: Float = 40f,
     menuTransparencyLevel: Float = 0.85f,
-    blurArtworkUrl: String? = null,
+    hazeState: HazeState? = null,
 ) {
     val focusManager = LocalFocusManager.current
     val sheetState = rememberMaterialBottomSheetState(initialValue = SheetValue.Hidden)
@@ -165,18 +165,20 @@ fun BottomSheetMenu(
                 .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
         ) {
             if (menuBackgroundStyle == MenuBackgroundStyle.BLUR) {
-                if (blurArtworkUrl != null) {
-                    AsyncImage(
-                        model = blurArtworkUrl,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        alpha = 0.35f,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .blur(radius = menuBlurLevel.dp, edgeTreatment = androidx.compose.ui.draw.BlurredEdgeTreatment.Unbounded),
-                    )
-                }
-                Box(Modifier.fillMaxSize().background(background.copy(alpha = 0.15f)))
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .then(
+                            if (hazeState != null) {
+                                Modifier.hazeEffect(hazeState) {
+                                    blurRadius = menuBlurLevel.dp
+                                    tints = listOf(HazeTint(background.copy(alpha = 0.45f)))
+                                }
+                            } else {
+                                Modifier.background(background.copy(alpha = 0.85f))
+                            },
+                        ),
+                )
             }
             val effectiveColorScheme = if (menuBackgroundStyle != MenuBackgroundStyle.OPAQUE) {
                 MaterialTheme.colorScheme.copy(

@@ -712,7 +712,7 @@ fun AppearanceSettings(
             values = MenuBackgroundStyle.values().toList(),
             valueText = {
                 when (it) {
-                    MenuBackgroundStyle.BLUR -> "Blur"
+                    MenuBackgroundStyle.BLUR -> "Frosted glass"
                     MenuBackgroundStyle.TRANSPARENT -> "Transparent"
                     MenuBackgroundStyle.OPAQUE -> "Opaque"
                 }
@@ -752,7 +752,7 @@ fun AppearanceSettings(
                 modifier = Modifier.padding(16.dp),
             ) {
                 Text(
-                    text = "Menu blur level",
+                    text = "Frosted glass blur level",
                     style = MaterialTheme.typography.headlineSmall,
                     modifier = Modifier.padding(bottom = 16.dp),
                 )
@@ -1340,7 +1340,7 @@ fun AppearanceSettings(
                             description = {
                                 Text(
                                     when (menuBackgroundStyle) {
-                                        MenuBackgroundStyle.BLUR -> "Blur"
+                                        MenuBackgroundStyle.BLUR -> "Frosted glass"
                                         MenuBackgroundStyle.TRANSPARENT -> "Transparent"
                                         MenuBackgroundStyle.OPAQUE -> "Opaque"
                                     },
@@ -1353,7 +1353,7 @@ fun AppearanceSettings(
                         add(
                             Material3SettingsItem(
                                 icon = painterResource(R.drawable.gradient),
-                                title = { Text("Menu blur level") },
+                                title = { Text("Frosted glass blur level") },
                                 description = { Text("${menuBlurLevel.roundToInt()} dp") },
                                 onClick = { showMenuBlurLevelDialog = true },
                             ),

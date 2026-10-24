@@ -104,6 +104,8 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import androidx.compose.ui.util.fastAny
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -1063,6 +1065,8 @@ class MainActivity : FragmentActivity() {
                         ChangelogScreen(onDismiss = { showChangelog.value = false })
                     }
 
+                    val menuHazeState = remember { HazeState() }
+
                     Scaffold(
                         snackbarHost = { SnackbarHost(snackbarHostState) },
                         topBar = {
@@ -1318,6 +1322,7 @@ class MainActivity : FragmentActivity() {
                         modifier =
                             Modifier
                                 .fillMaxSize()
+                                .hazeSource(menuHazeState)
                                 .nestedScroll(topAppBarScrollBehavior.nestedScrollConnection),
                     ) {
                         Row(Modifier.fillMaxSize()) {
@@ -1431,15 +1436,13 @@ class MainActivity : FragmentActivity() {
                     val menuBackgroundStyle by rememberEnumPreference(MenuBackgroundStyleKey, MenuBackgroundStyle.OPAQUE)
                     val menuBlurLevel by rememberPreference(MenuBlurLevelKey, defaultValue = 40f)
                     val menuTransparencyLevel by rememberPreference(MenuTransparencyLevelKey, defaultValue = 0.85f)
-                    val menuBlurArtworkUrl = LocalPlayerConnection.current?.mediaMetadata?.collectAsStateWithLifecycle(initialValue = null)?.value?.thumbnailUrl
-
                     BottomSheetMenu(
                         state = LocalMenuState.current,
                         modifier = Modifier.align(Alignment.BottomCenter),
                         menuBackgroundStyle = menuBackgroundStyle,
                         menuBlurLevel = menuBlurLevel,
                         menuTransparencyLevel = menuTransparencyLevel,
-                        blurArtworkUrl = menuBlurArtworkUrl,
+                        hazeState = menuHazeState,
                     )
 
                     BottomSheetPage(
