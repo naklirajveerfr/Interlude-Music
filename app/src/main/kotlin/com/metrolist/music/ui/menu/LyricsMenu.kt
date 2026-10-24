@@ -145,6 +145,20 @@ fun LyricsMenu(
         )
     }
 
+    var showProviderDialog by rememberSaveable {
+        mutableStateOf(false)
+    }
+    if (showProviderDialog) {
+        SongLyricsProviderDialog(
+            mediaId = mediaMetadataProvider().id,
+            onDismiss = { showProviderDialog = false },
+            onDone = {
+                showProviderDialog = false
+                onDismiss()
+            },
+        )
+    }
+
     var showSearchDialog by rememberSaveable {
         mutableStateOf(false)
     }
@@ -615,6 +629,20 @@ fun LyricsMenu(
                         )
                     )
                     
+                    add(
+                        Material3MenuItemData(
+                            title = { Text(text = "Choose different lyric provider") },
+                            description = { Text(text = "Applies only to this song") },
+                            icon = {
+                                Icon(
+                                    painter = painterResource(R.drawable.lyrics),
+                                    contentDescription = null,
+                                )
+                            },
+                            onClick = { showProviderDialog = true },
+                        )
+                    )
+
                     add(
                         Material3MenuItemData(
                             title = { Text(stringResource(R.string.lyrics_offset)) },
