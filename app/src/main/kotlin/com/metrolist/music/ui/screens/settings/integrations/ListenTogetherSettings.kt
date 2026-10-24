@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.screens.settings.integrations
 
+import androidx.compose.foundation.layout.asPaddingValues
 import com.metrolist.music.ui.component.GlassTopAppBar
 import android.widget.Toast
 import androidx.compose.animation.animateContentSize
@@ -351,8 +352,9 @@ fun ListenTogetherSettings(navController: NavController) {
 
     Column(
         Modifier
-            .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
-            .verticalScroll(rememberScrollState()),
+            .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal))
+            .verticalScroll(rememberScrollState())
+            .padding(bottom = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding()),
     ) {
         Spacer(
             Modifier.windowInsetsPadding(

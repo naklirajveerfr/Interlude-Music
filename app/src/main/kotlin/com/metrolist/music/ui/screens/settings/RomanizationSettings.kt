@@ -5,6 +5,9 @@
 
 package com.metrolist.music.ui.screens.settings
 
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.WindowInsetsSides
 import com.metrolist.music.ui.component.GlassTopAppBar
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -100,8 +103,9 @@ fun RomanizationSettings(
 
     Column(
         Modifier
-            .windowInsetsPadding(LocalPlayerAwareWindowInsets.current)
+            .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top))
             .verticalScroll(rememberScrollState())
+            .padding(bottom = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding())
             .padding(horizontal = 16.dp)
     ) {
         Material3SettingsGroup(

@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.screens.settings
 
+import androidx.compose.foundation.layout.asPaddingValues
 import com.metrolist.music.ui.component.GlassTopAppBar
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -95,11 +96,10 @@ fun UpdaterScreen(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .windowInsetsPadding(
-                    LocalPlayerAwareWindowInsets.current.only(
-                        WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
-                    ),
-                ).verticalScroll(rememberScrollState())
+                .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(
+                        WindowInsetsSides.Horizontal,
+                    ),).verticalScroll(rememberScrollState())
+.padding(bottom = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding())
                 .padding(horizontal = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {

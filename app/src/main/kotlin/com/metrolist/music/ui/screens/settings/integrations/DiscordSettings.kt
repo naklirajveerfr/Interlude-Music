@@ -1,5 +1,6 @@
 package com.metrolist.music.ui.screens.settings.integrations
 
+import androidx.compose.foundation.layout.asPaddingValues
 import com.metrolist.music.ui.component.GlassTopAppBar
 import android.app.Activity
 import android.content.Intent
@@ -237,11 +238,10 @@ fun DiscordSettings(
     Column(
         modifier =
             Modifier
-                .windowInsetsPadding(
-                    LocalPlayerAwareWindowInsets.current.only(
-                        WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
-                    ),
-                ).verticalScroll(rememberScrollState())
+                .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(
+                        WindowInsetsSides.Horizontal,
+                    ),).verticalScroll(rememberScrollState())
+.padding(bottom = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding())
                 .padding(horizontal = 16.dp),
     ) {
         Spacer(

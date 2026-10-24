@@ -5,6 +5,7 @@
 
 package com.metrolist.music.ui.screens.settings
 
+import androidx.compose.foundation.layout.asPaddingValues
 import com.metrolist.music.ui.component.GlassTopAppBar
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -163,8 +164,9 @@ fun BackupAndRestore(
 
     Column(
         Modifier
-            .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
+            .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal))
             .verticalScroll(rememberScrollState())
+            .padding(bottom = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding())
             .padding(horizontal = 16.dp),
     ) {
         Spacer(
