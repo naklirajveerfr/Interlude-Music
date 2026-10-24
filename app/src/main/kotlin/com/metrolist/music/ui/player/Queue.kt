@@ -95,6 +95,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeTint
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.hazeSource
 import androidx.compose.ui.unit.sp
 import androidx.datastore.preferences.core.edit
 import androidx.media3.common.Player
@@ -710,6 +714,7 @@ fun Queue(
 
         val headerItems = 1
         val lazyListState = rememberLazyListState()
+        val hazeState = remember { HazeState() }
         var dragInfo by remember { mutableStateOf<Pair<Int, Int>?>(null) }
 
         val currentPlayingUid =
@@ -801,7 +806,10 @@ fun Queue(
                                 bottom = ListItemHeight + 8.dp,
                             ),
                         ).asPaddingValues(),
-                modifier = Modifier.nestedScroll(state.preUpPostDownNestedScrollConnection),
+                modifier =
+                    Modifier
+                        .hazeSource(hazeState)
+                        .nestedScroll(state.preUpPostDownNestedScrollConnection),
             ) {
                 item(key = "queue_top_spacer") {
                     Spacer(
@@ -1230,18 +1238,24 @@ fun Queue(
 
         val shuffleModeEnabled by playerConnection.shuffleModeEnabled.collectAsStateWithLifecycle()
 
+        val bottomBarColor =
+            if (pureBlack) {
+                Color.Black
+            } else {
+                MaterialTheme.colorScheme.secondaryContainer
+            }
+
         Box(
             modifier =
                 Modifier
-                    .background(
+                    .then(
                         if (blurArtworkUrl != null) {
-                            Color.Transparent
-                        } else if (pureBlack) {
-                            Color.Black
+                            Modifier
                         } else {
-                            MaterialTheme.colorScheme
-                                .secondaryContainer
-                                .copy(alpha = 0.90f)
+                            Modifier.hazeEffect(hazeState) {
+                                blurRadius = 24.dp
+                                tints = listOf(HazeTint(bottomBarColor.copy(alpha = if (pureBlack) 0.85f else 0.6f)))
+                            }
                         },
                     ).fillMaxWidth()
                     .height(

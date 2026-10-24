@@ -17,6 +17,7 @@ hilt = "2.60.1"
 ktor = "3.6.0"
 ksp = "2.3.12"
 coil = "3.6.3"
+haze = "1.6.10"
 ucrop = "2.2.11"
 guava = "33.7.1-jre"
 coroutinesGuava = "1.11.0"
@@ -65,6 +66,7 @@ robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectr
 androidx-test-core = { module = "androidx.test:core", version.ref = "androidxTestCore" }
 
 coil = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
+haze = { module = "dev.chrisbanes.haze:haze", version.ref = "haze" }
 coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version.ref = "coil" }
 ucrop = { module = "com.github.yalantis:ucrop", version.ref = "ucrop" }
 
