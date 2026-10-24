@@ -13,6 +13,7 @@ import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
+import org.json.JSONObject
 
 data class ReleaseInfo(
     val tagName: String,
@@ -38,11 +39,11 @@ object Updater {
     private var cachedReleaseInfo: ReleaseInfo? = null
 
     private const val CHECK_INTERVAL_MILLIS = 2 * 60 * 60 * 1000L // 2 hours
-    private const val VERSION_URL =
-        "https://www.interludemusic.online/vrsn.txt"
+    private const val LATEST_URL =
+        "https://api.github.com/repos/naklirajveerfr/Interlude-Music/releases/latest"
     private const val RELEASES_URL =
         "https://api.github.com/repos/naklirajveerfr/Interlude-Music/releases?per_page=50"
-    const val DOWNLOAD_URL ="https://github.com/naklirajveerfr/Interlude-Music/releases/"
+    const val DOWNLOAD_URL = "https://github.com/naklirajveerfr/Interlude-Music/releases/"
 
     private val versionRegex = Regex("""v?\d+(\.\d+)*""")
 
@@ -75,13 +76,13 @@ object Updater {
     }
 
     /**
-     * Returns the version from the text of vrsn.txt, or null if it isn't a plain version number.
+     * Returns the version from a release tag, or null if it isn't a plain version number.
      */
     internal fun parseVersion(text: String): String? =
         text.trim().takeIf { versionRegex.matches(it) }?.removePrefix("v")
 
     /**
-     * Fetch the latest version from vrsn.txt on interludemusic.online
+     * Fetch the latest version from the latest GitHub release tag
      */
     suspend fun getLatestRelease(forceRefresh: Boolean = false): Result<ReleaseInfo> =
         withContext(Dispatchers.IO) {
@@ -90,14 +91,19 @@ object Updater {
                     return@runCatching cachedReleaseInfo!!
                 }
 
-                val version = parseVersion(client.get(VERSION_URL).bodyAsText())
-                    ?: throw IllegalStateException("vrsn.txt does not contain a valid version")
+                val release = JSONObject(
+                    client.get(LATEST_URL) {
+                        header("Accept", "application/vnd.github+json")
+                    }.bodyAsText()
+                )
+                val version = parseVersion(release.optString("tag_name"))
+                    ?: throw IllegalStateException("Latest GitHub release has no valid version tag")
 
                 val releaseInfo = ReleaseInfo(
                     tagName = version,
                     versionName = version,
-                    description = "",
-                    releaseDate = "",
+                    description = release.optString("body"),
+                    releaseDate = release.optString("published_at"),
                     assets = emptyList()
                 )
 
