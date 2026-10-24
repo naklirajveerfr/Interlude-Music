@@ -1330,7 +1330,7 @@ class MainActivity : FragmentActivity() {
                                 .nestedScroll(topAppBarScrollBehavior.nestedScrollConnection),
                     ) {
                         Box(Modifier.fillMaxSize().hazeSource(menuHazeState)) {
-                        GlassBackdrop()
+                        GlassBackdrop(pureBlack = pureBlack)
                         Row(Modifier.fillMaxSize()) {
                             val onRailItemClick: (Screens, Boolean) -> Unit =
                                 remember(navController, coroutineScope, topAppBarScrollBehavior, playerBottomSheetState) {
