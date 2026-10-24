@@ -41,7 +41,7 @@ val LocalGlassHaze = staticCompositionLocalOf<HazeState?> { null }
  */
 val LocalGlassChromeHaze = staticCompositionLocalOf<HazeState?> { null }
 
-val GlassBorderColor = Color.White.copy(alpha = 0.18f)
+val GlassBorderColor = Color.White.copy(alpha = 0.07f)
 
 /**
  * Frosted glass surface: blurs the content behind it, adds a tint and a thin light edge.

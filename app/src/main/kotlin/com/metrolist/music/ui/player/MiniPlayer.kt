@@ -375,7 +375,11 @@ private fun NewMiniPlayer(
                             Modifier.background(color = backgroundColor)
                         },
                     )
-                    .border(1.dp, outlineColor.copy(alpha = 0.3f), RoundedCornerShape(32.dp))
+                    .border(
+                        1.dp,
+                        outlineColor.copy(alpha = if (miniPlayerBackground == MiniPlayerBackgroundStyle.DEFAULT) 0.1f else 0.3f),
+                        RoundedCornerShape(32.dp),
+                    )
                     .clickable(
                         interactionSource = interactionSource,
                         indication = LocalIndication.current,
