@@ -1239,25 +1239,25 @@ fun Queue(
         val shuffleModeEnabled by playerConnection.shuffleModeEnabled.collectAsStateWithLifecycle()
 
         val bottomBarColor =
-            if (pureBlack) {
+            if (blurArtworkUrl != null || pureBlack) {
                 Color.Black
             } else {
                 MaterialTheme.colorScheme.secondaryContainer
+            }
+        val bottomBarTintAlpha =
+            when {
+                blurArtworkUrl != null -> 0.35f
+                pureBlack -> 0.85f
+                else -> 0.6f
             }
 
         Box(
             modifier =
                 Modifier
-                    .then(
-                        if (blurArtworkUrl != null) {
-                            Modifier
-                        } else {
-                            Modifier.hazeEffect(hazeState) {
-                                blurRadius = 24.dp
-                                tints = listOf(HazeTint(bottomBarColor.copy(alpha = if (pureBlack) 0.85f else 0.6f)))
-                            }
-                        },
-                    ).fillMaxWidth()
+                    .hazeEffect(hazeState) {
+                        blurRadius = 24.dp
+                        tints = listOf(HazeTint(bottomBarColor.copy(alpha = bottomBarTintAlpha)))
+                    }.fillMaxWidth()
                     .height(
                         ListItemHeight +
                             WindowInsets.systemBars
