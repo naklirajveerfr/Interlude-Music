@@ -1487,8 +1487,11 @@ class MainActivity : FragmentActivity() {
                         }
                     }
 
-                    val menuBackgroundStyle by rememberEnumPreference(MenuBackgroundStyleKey, if (frostedUi) MenuBackgroundStyle.BLUR else MenuBackgroundStyle.OPAQUE)
-                    val menuBlurLevel by rememberPreference(MenuBlurLevelKey, defaultValue = if (frostedUi) DefaultFrostedMenuBlurLevel else DefaultOpaqueMenuBlurLevel)
+                    val storedMenuBackgroundStyle by rememberEnumPreference(MenuBackgroundStyleKey, if (frostedUi) MenuBackgroundStyle.BLUR else MenuBackgroundStyle.OPAQUE)
+                    val storedMenuBlurLevel by rememberPreference(MenuBlurLevelKey, defaultValue = if (frostedUi) DefaultFrostedMenuBlurLevel else DefaultOpaqueMenuBlurLevel)
+                    // With frosted glass UI on, menus are always frosted glass at the global blur level.
+                    val menuBackgroundStyle = if (frostedUi) MenuBackgroundStyle.BLUR else storedMenuBackgroundStyle
+                    val menuBlurLevel = if (frostedUi) frostedBlurLevel else storedMenuBlurLevel
                     val menuTransparencyLevel by rememberPreference(MenuTransparencyLevelKey, defaultValue = 0.85f)
                     BottomSheetMenu(
                         state = LocalMenuState.current,

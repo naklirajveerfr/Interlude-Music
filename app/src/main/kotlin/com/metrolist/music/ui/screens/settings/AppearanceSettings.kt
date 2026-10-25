@@ -246,14 +246,9 @@ fun AppearanceSettings(
             defaultValue = if (frostedUi) DefaultFrostedMenuBlurLevel else DefaultOpaqueMenuBlurLevel,
         )
     var showFrostedBlurLevelDialog by rememberSaveable { mutableStateOf(false) }
-    // Turning the option on also switches menus to frosted glass at the default menu blur level.
-    val onFrostedToggle: (Boolean) -> Unit = { on ->
-        onFrostedUiChange(on)
-        if (on) {
-            onMenuBackgroundStyleChange(MenuBackgroundStyle.BLUR)
-            onMenuBlurLevelChange(DefaultFrostedMenuBlurLevel)
-        }
-    }
+    // While frosted glass UI is on, menus are locked to frosted glass at the global blur level,
+    // so the stored menu background settings are left untouched and come back when it is turned off.
+    val onFrostedToggle: (Boolean) -> Unit = { on -> onFrostedUiChange(on) }
     val (menuTransparencyLevel, onMenuTransparencyLevelChange) = rememberPreference(MenuTransparencyLevelKey, defaultValue = 0.85f)
     val (lyricsPosition, onLyricsPositionChange) =
         rememberEnumPreference(
@@ -1510,17 +1505,22 @@ fun AppearanceSettings(
                             title = { Text("Menu background") },
                             description = {
                                 Text(
-                                    when (menuBackgroundStyle) {
-                                        MenuBackgroundStyle.BLUR -> "Frosted glass"
-                                        MenuBackgroundStyle.TRANSPARENT -> "Transparent"
-                                        MenuBackgroundStyle.OPAQUE -> "Opaque"
+                                    if (frostedUi) {
+                                        "Frosted glass (follows global blur level)"
+                                    } else {
+                                        when (menuBackgroundStyle) {
+                                            MenuBackgroundStyle.BLUR -> "Frosted glass"
+                                            MenuBackgroundStyle.TRANSPARENT -> "Transparent"
+                                            MenuBackgroundStyle.OPAQUE -> "Opaque"
+                                        }
                                     },
                                 )
                             },
+                            enabled = !frostedUi,
                             onClick = { showMenuBackgroundStyleDialog = true },
                         ),
                     )
-                    if (menuBackgroundStyle == MenuBackgroundStyle.BLUR) {
+                    if (!frostedUi && menuBackgroundStyle == MenuBackgroundStyle.BLUR) {
                         add(
                             Material3SettingsItem(
                                 icon = painterResource(R.drawable.gradient),
@@ -1530,7 +1530,7 @@ fun AppearanceSettings(
                             ),
                         )
                     }
-                    if (menuBackgroundStyle == MenuBackgroundStyle.TRANSPARENT) {
+                    if (!frostedUi && menuBackgroundStyle == MenuBackgroundStyle.TRANSPARENT) {
                         add(
                             Material3SettingsItem(
                                 icon = painterResource(R.drawable.gradient),
