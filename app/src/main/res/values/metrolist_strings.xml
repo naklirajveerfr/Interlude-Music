@@ -776,6 +776,7 @@
     <string name="recognize_music">Recognize music</string>
     <string name="tap_to_recognize">Tap to recognize</string>
     <string name="listening">Listening…</string>
+    <string name="continuous_listening">Keep listening until a match</string>
     <string name="processing">Processing…</string>
     <string name="no_match_found">No match found</string>
     <string name="recognition_error">Recognition error</string>

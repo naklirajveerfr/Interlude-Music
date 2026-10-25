@@ -755,6 +755,7 @@ val AutomixProviderKey = androidx.datastore.preferences.core.stringPreferencesKe
 val AutomixApiKeyKey = androidx.datastore.preferences.core.stringPreferencesKey("automixApiKey")
 val AutomixModelKey = androidx.datastore.preferences.core.stringPreferencesKey("automixModel")
 val AutomixSendAudioKey = androidx.datastore.preferences.core.booleanPreferencesKey("automixSendAudio")
+val ContinuousRecognitionKey = androidx.datastore.preferences.core.booleanPreferencesKey("continuousRecognition")
 
 val PlayerBlurLevelKey = androidx.datastore.preferences.core.floatPreferencesKey("playerBlurLevel")
 val PlayerBlurOpacityKey = androidx.datastore.preferences.core.floatPreferencesKey("playerBlurOpacity")

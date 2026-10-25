@@ -7,22 +7,28 @@ package com.metrolist.music.ui.screens.recognition
 
 import com.metrolist.music.ui.component.GlassTopAppBar
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -52,6 +58,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -66,9 +73,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -77,23 +88,36 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
+import androidx.palette.graphics.Palette
 import coil3.compose.AsyncImage
+import coil3.imageLoader
+import coil3.request.ImageRequest
+import coil3.request.allowHardware
+import coil3.toBitmap
 import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
+import com.metrolist.music.constants.ContinuousRecognitionKey
 import com.metrolist.music.db.entities.RecognitionHistory
+import com.metrolist.music.recognition.MusicRecognitionService
 import com.metrolist.music.recognition.RecognitionPlayback
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.SearchRoutes
+import com.metrolist.music.utils.rememberPreference
 import com.metrolist.shazamkit.models.RecognitionResult
 import com.metrolist.shazamkit.models.RecognitionStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.LocalDateTime
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -140,6 +164,23 @@ fun RecognitionScreen(
         }
     }
 
+    val continuousListening = rememberPreference(ContinuousRecognitionKey, defaultValue = true)
+
+    // On a match, tint the whole screen with the album's colour.
+    val successResult = (recognitionStatus as? RecognitionStatus.Success)?.result
+    var albumAccent by remember { mutableStateOf<Color?>(null) }
+    LaunchedEffect(successResult) {
+        albumAccent =
+            successResult?.let { extractAlbumAccent(context, it.coverArtHqUrl ?: it.coverArtUrl) }
+    }
+    val glowColor by animateColorAsState(
+        targetValue =
+            (albumAccent ?: MaterialTheme.colorScheme.primary)
+                .copy(alpha = if (albumAccent != null) 0.4f else 0f),
+        animationSpec = tween(900),
+        label = "albumGlow",
+    )
+
     var hasPermission by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
@@ -155,7 +196,7 @@ fun RecognitionScreen(
             if (isGranted) {
                 coroutineScope.launch {
                     com.metrolist.music.recognition.MusicRecognitionService
-                        .recognize(context)
+                        .recognize(context, continuous = continuousListening.value)
                 }
             }
         }
@@ -164,7 +205,7 @@ fun RecognitionScreen(
         if (hasPermission) {
             coroutineScope.launch {
                 com.metrolist.music.recognition.MusicRecognitionService
-                    .recognize(context)
+                    .recognize(context, continuous = continuousListening.value)
             }
         } else {
             permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
@@ -244,7 +285,15 @@ fun RecognitionScreen(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
+                    .drawBehind {
+                        drawRect(
+                            Brush.radialGradient(
+                                colors = listOf(glowColor, Color.Transparent),
+                                center = Offset(size.width / 2f, size.height * 0.35f),
+                                radius = size.maxDimension * 0.8f,
+                            ),
+                        )
+                    }.padding(paddingValues)
                     .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
@@ -258,7 +307,11 @@ fun RecognitionScreen(
             ) { status ->
                 when (status) {
                     is RecognitionStatus.Ready -> {
-                        ReadyState(onStartRecognition = ::startRecognition)
+                        ReadyState(
+                            onStartRecognition = ::startRecognition,
+                            continuousListening = continuousListening.value,
+                            onContinuousListeningChange = { continuousListening.value = it },
+                        )
                     }
 
                     is RecognitionStatus.Listening -> {
@@ -314,7 +367,11 @@ fun RecognitionScreen(
 }
 
 @Composable
-private fun ReadyState(onStartRecognition: () -> Unit) {
+private fun ReadyState(
+    onStartRecognition: () -> Unit,
+    continuousListening: Boolean,
+    onContinuousListeningChange: (Boolean) -> Unit,
+) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(24.dp),
@@ -358,59 +415,101 @@ private fun ReadyState(onStartRecognition: () -> Unit) {
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurface,
         )
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.continuous_listening),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Switch(
+                checked = continuousListening,
+                onCheckedChange = onContinuousListeningChange,
+            )
+        }
     }
 }
 
 @Composable
 private fun ListeningState(onCancel: () -> Unit) {
-    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-    val scale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.2f,
-        animationSpec =
-            infiniteRepeatable(
-                animation = tween(1000, easing = LinearEasing),
-                repeatMode = RepeatMode.Reverse,
-            ),
-        label = "scale",
+    val level by MusicRecognitionService.audioLevel.collectAsStateWithLifecycle()
+    val smoothLevel by animateFloatAsState(
+        targetValue = level,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium),
+        label = "audioLevel",
+    )
+    val primary = MaterialTheme.colorScheme.primary
+
+    val infiniteTransition = rememberInfiniteTransition(label = "listening")
+    val phase by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = (2 * PI).toFloat(),
+        animationSpec = infiniteRepeatable(animation = tween(2400, easing = LinearEasing)),
+        label = "phase",
+    )
+    val ripple by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(animation = tween(2200, easing = LinearEasing)),
+        label = "ripple",
     )
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
-        // Container large enough for scaled animation (200dp * 1.2 = 240dp)
         Box(
-            modifier = Modifier.size(260.dp),
+            modifier = Modifier.size(280.dp),
             contentAlignment = Alignment.Center,
         ) {
-            // Outer pulsing ring
-            Box(
-                modifier =
-                    Modifier
-                        .size(200.dp)
-                        .scale(scale)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
-            )
+            // Ripples and a ring of bars that swell with the loudness of the music.
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val center = Offset(size.width / 2f, size.height / 2f)
+                val buttonRadius = 80.dp.toPx()
+                val barBase = buttonRadius + 12.dp.toPx()
+                val barMax = 42.dp.toPx()
+                val barCount = 56
+                val loudness = smoothLevel.coerceIn(0f, 1f)
 
-            // Inner pulsing ring
-            Box(
-                modifier =
-                    Modifier
-                        .size(180.dp)
-                        .scale(scale * 0.9f)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
-            )
+                for (k in 0..1) {
+                    val progress = (ripple + k * 0.5f) % 1f
+                    drawCircle(
+                        color = primary.copy(alpha = (1f - progress) * (0.12f + 0.3f * loudness)),
+                        radius = buttonRadius + progress * 56.dp.toPx(),
+                        center = center,
+                        style = Stroke(width = 2.dp.toPx()),
+                    )
+                }
 
-            // Main button
+                for (i in 0 until barCount) {
+                    val angle = (2 * PI * i / barCount).toFloat()
+                    val wave = 0.5f + 0.5f * sin(phase * 3f + i * 0.6f)
+                    val length = 4.dp.toPx() + barMax * loudness * wave
+                    val direction = Offset(cos(angle), sin(angle))
+                    drawLine(
+                        color = primary.copy(alpha = 0.3f + 0.7f * loudness),
+                        start = center + direction * barBase,
+                        end = center + direction * (barBase + length),
+                        strokeWidth = 3.dp.toPx(),
+                        cap = StrokeCap.Round,
+                    )
+                }
+            }
+
+            // Main button, gently pumping with the music
             Box(
                 modifier =
                     Modifier
                         .size(160.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary)
+                        .graphicsLayer {
+                            val s = 1f + 0.08f * smoothLevel.coerceIn(0f, 1f)
+                            scaleX = s
+                            scaleY = s
+                        }.clip(CircleShape)
+                        .background(primary)
                         .clickable { onCancel() },
                 contentAlignment = Alignment.Center,
             ) {
@@ -507,6 +606,21 @@ private fun SuccessState(
         onSaveToHistory(result)
     }
 
+    // Reveal: the art pops out of a circle into its card, then the details slide in.
+    val reveal = remember(result) { Animatable(0f) }
+    LaunchedEffect(result) {
+        reveal.animateTo(
+            1f,
+            spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+        )
+    }
+    val infoModifier =
+        Modifier.graphicsLayer {
+            val t = ((reveal.value - 0.3f) / 0.7f).coerceIn(0f, 1f)
+            alpha = t
+            translationY = (1f - t) * 24.dp.toPx()
+        }
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -517,8 +631,21 @@ private fun SuccessState(
             modifier =
                 Modifier
                     .size(180.dp)
-                    .aspectRatio(1f),
-            shape = RoundedCornerShape(com.metrolist.music.constants.ThumbnailCornerRadius),
+                    .aspectRatio(1f)
+                    .graphicsLayer {
+                        val s = 0.5f + 0.5f * reveal.value
+                        scaleX = s
+                        scaleY = s
+                        alpha = (reveal.value * 3f).coerceIn(0f, 1f)
+                    },
+            shape =
+                RoundedCornerShape(
+                    lerp(
+                        90.dp,
+                        com.metrolist.music.constants.ThumbnailCornerRadius,
+                        reveal.value.coerceIn(0f, 1f),
+                    ),
+                ),
             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
         ) {
             AsyncImage(
@@ -534,6 +661,7 @@ private fun SuccessState(
         // Track info
         Text(
             text = result.title,
+            modifier = infoModifier,
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
@@ -543,6 +671,7 @@ private fun SuccessState(
 
         Text(
             text = result.artist,
+            modifier = infoModifier,
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
@@ -553,6 +682,7 @@ private fun SuccessState(
         result.album?.let { album ->
             Text(
                 text = album,
+                modifier = infoModifier,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 textAlign = TextAlign.Center,
@@ -566,7 +696,7 @@ private fun SuccessState(
         // Action buttons - stacked vertically
         Column(
             verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().then(infoModifier),
         ) {
             Button(
                 onClick = { onPlayOnApp(result) },
@@ -710,5 +840,26 @@ private fun ErrorState(
             Spacer(modifier = Modifier.width(8.dp))
             Text(stringResource(R.string.try_again))
         }
+    }
+}
+
+private suspend fun extractAlbumAccent(
+    context: Context,
+    url: String?,
+): Color? {
+    if (url == null) return null
+    return withContext(Dispatchers.IO) {
+        val request =
+            ImageRequest
+                .Builder(context)
+                .data(url)
+                .size(100, 100)
+                .allowHardware(false)
+                .build()
+        val bitmap =
+            runCatching { context.imageLoader.execute(request) }.getOrNull()?.image?.toBitmap()
+                ?: return@withContext null
+        val palette = Palette.from(bitmap).generate()
+        (palette.vibrantSwatch ?: palette.dominantSwatch)?.let { Color(it.rgb) }
     }
 }
