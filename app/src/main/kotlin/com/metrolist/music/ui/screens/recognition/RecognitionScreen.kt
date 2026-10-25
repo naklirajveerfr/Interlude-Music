@@ -82,8 +82,10 @@ import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.metrolist.music.LocalDatabase
+import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.db.entities.RecognitionHistory
+import com.metrolist.music.recognition.RecognitionPlayback
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.SearchRoutes
@@ -125,6 +127,18 @@ fun RecognitionScreen(
     // Observe recognition status from service for real-time updates (Listening -> Processing -> Result)
     val recognitionStatus by com.metrolist.music.recognition.MusicRecognitionService.recognitionStatus
         .collectAsStateWithLifecycle()
+
+    // Once a song is recognized, start playing it at the point the original has reached.
+    val playerConnection = LocalPlayerConnection.current
+    LaunchedEffect(recognitionStatus) {
+        val status = recognitionStatus
+        if (status is RecognitionStatus.Success &&
+            com.metrolist.music.recognition.MusicRecognitionService
+                .takePendingPlayback()
+        ) {
+            playerConnection?.let { RecognitionPlayback.playInSync(it, status.result) }
+        }
+    }
 
     var hasPermission by remember {
         mutableStateOf(

@@ -16,6 +16,7 @@ import android.content.pm.PackageManager
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import android.os.SystemClock
 import androidx.core.content.ContextCompat
 import com.metrolist.shazamkit.Shazam
 import com.metrolist.shazamkit.models.RecognitionResult
@@ -56,7 +57,23 @@ object MusicRecognitionService {
      * Reset to false by [reset].
      */
     var resultSavedExternally: Boolean = false
-    
+
+    @Volatile
+    private var recordingStartElapsedMs: Long = 0L
+
+    @Volatile
+    private var playbackPending = false
+
+    /**
+     * Returns true once per successful recognition, so the screen starts the synced playback
+     * only a single time even if it is recomposed or recreated.
+     */
+    fun takePendingPlayback(): Boolean {
+        val pending = playbackPending
+        playbackPending = false
+        return pending
+    }
+
     fun hasRecordPermission(context: Context): Boolean {
         return ContextCompat.checkSelfPermission(
             context, 
@@ -131,8 +148,17 @@ object MusicRecognitionService {
             
             result.fold(
                 onSuccess = { recognitionResult ->
-                    Timber.tag(TAG).i("Recognition successful: '%s' by %s", recognitionResult.title, recognitionResult.artist)
-                    _recognitionStatus.value = RecognitionStatus.Success(recognitionResult)
+                    Timber.tag(TAG).i(
+                        "Recognition successful: '%s' by %s (matchOffsetMs=%s)",
+                        recognitionResult.title,
+                        recognitionResult.artist,
+                        recognitionResult.matchOffsetMs,
+                    )
+                    playbackPending = true
+                    _recognitionStatus.value =
+                        RecognitionStatus.Success(
+                            recognitionResult.copy(sampleStartElapsedMs = recordingStartElapsedMs),
+                        )
                 },
                 onFailure = { error ->
                     val message = error.message ?: "Unknown error"
@@ -178,6 +204,7 @@ object MusicRecognitionService {
         
         try {
             audioRecord.startRecording()
+            recordingStartElapsedMs = SystemClock.elapsedRealtime()
             Timber.tag(TAG).d("AudioRecord started, recording for %dms", RECORDING_DURATION_MS)
 
             while (System.currentTimeMillis() - startTime < RECORDING_DURATION_MS && isActive) {
@@ -200,5 +227,6 @@ object MusicRecognitionService {
         Timber.tag(TAG).d("Recognition state reset")
         _recognitionStatus.value = RecognitionStatus.Ready
         resultSavedExternally = false
+        playbackPending = false
     }
 }

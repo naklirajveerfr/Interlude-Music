@@ -304,7 +304,11 @@ data class RecognitionResult(
     val appleMusicUrl: String?,
     val spotifyUrl: String?,
     val isrc: String?,
-    val youtubeVideoId: String? = null
+    val youtubeVideoId: String? = null,
+    /** Position in the track, in ms, where the recorded sample started (Shazam's match offset). */
+    val matchOffsetMs: Long? = null,
+    /** SystemClock.elapsedRealtime() at the moment the recorded sample started. */
+    val sampleStartElapsedMs: Long? = null,
 )
 
 sealed class RecognitionStatus {

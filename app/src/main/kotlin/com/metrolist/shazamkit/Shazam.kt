@@ -327,6 +327,7 @@ object Shazam {
             spotifyUrl = spotifyProvider?.actions?.firstOrNull()?.uri,
             isrc = track.isrc,
             youtubeVideoId = youtubeVideoId,
+            matchOffsetMs = matches?.firstOrNull()?.offset?.let { (it * 1000).toLong() },
         )
     }
 
