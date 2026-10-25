@@ -36,6 +36,7 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         maven { setUrl("https://jitpack.io") }
+        maven { setUrl("https://maven.aliyun.com/repository/public") } // only source of com.github.promeG:tinypinyin (JCenter is gone)
     }
 }
 
