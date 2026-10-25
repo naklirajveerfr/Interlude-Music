@@ -104,15 +104,18 @@ private fun parseExcluded(raw: String?, now: Long): Map<String, Long> =
         parts[1].toLongOrNull()?.takeIf { it > now }?.let { parts[0] to it }
     }.toMap()
 
+internal const val SPEED_DIAL_SIZE = 27
+
 internal fun buildSpeedDialItems(
     pinned: List<YTItem>,
     keepListening: List<YTItem>,
     quickPicks: List<YTItem>,
     home: List<YTItem>,
+    limit: Int = SPEED_DIAL_SIZE,
 ): List<YTItem> =
     (pinned + keepListening + quickPicks + home)
         .distinctBy { it.id }
-        .take(27)
+        .take(limit)
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
@@ -161,7 +164,8 @@ class HomeViewModel @Inject constructor(
             .map { parseExcluded(it[HomeExcludedItemsKey], System.currentTimeMillis()).keys }
             .distinctUntilChanged()
 
-    val speedDialItems: StateFlow<List<YTItem>> =
+    /** Every speed dial candidate in priority order; [homeFeed] trims it after removing items shown elsewhere. */
+    private val speedDialPool: StateFlow<List<YTItem>> =
         combine(
             database.speedDialDao.getAll(),
             keepListening,
@@ -214,8 +218,53 @@ class HomeViewModel @Inject constructor(
                         )
                     }.filterNot { it.id in excluded },
                 home = home?.sections.orEmpty().flatMap { it.items }.filterNot { it.id in excluded },
+                limit = Int.MAX_VALUE,
             )
         }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    private data class ListSources(
+        val quickPicks: List<Song>?,
+        val dailyDiscover: List<DailyDiscoverItem>?,
+        val keepListening: List<LocalItem>?,
+        val forgottenFavorites: List<Song>?,
+        val similarRecommendations: List<SimilarRecommendation>?,
+    )
+
+    private data class OtherSources(
+        val genreRecommendations: List<GenreRecommendation>?,
+        val homePage: HomePage?,
+        val chipActive: Boolean,
+        val speedDialPool: List<YTItem>,
+        val pinnedIds: Set<String>,
+    )
+
+    /** What the home screen shows, with every item appearing in only one section. */
+    val homeFeed: StateFlow<HomeFeed> =
+        combine(
+            combine(quickPicks, dailyDiscover, keepListening, forgottenFavorites, similarRecommendations) {
+                    quick, daily, keep, forgotten, similar,
+                ->
+                ListSources(quick, daily, keep, forgotten, similar)
+            },
+            combine(genreRecommendations, homePage, selectedChip, speedDialPool, pinnedSpeedDialItems) {
+                    genre, home, chip, pool, pinned,
+                ->
+                OtherSources(genre, home, chip != null, pool, pinned.map { it.id }.toSet())
+            },
+        ) { lists, others ->
+            dedupeHomeFeed(
+                pinnedIds = others.pinnedIds,
+                quickPicks = lists.quickPicks,
+                dailyDiscover = lists.dailyDiscover,
+                keepListening = lists.keepListening,
+                forgottenFavorites = lists.forgottenFavorites,
+                genreRecommendations = others.genreRecommendations,
+                similarRecommendations = lists.similarRecommendations,
+                speedDialPool = others.speedDialPool,
+                homePage = others.homePage,
+                chipActive = others.chipActive,
+            )
+        }.stateIn(viewModelScope, SharingStarted.Lazily, HomeFeed())
 
     suspend fun getRandomItem(): YTItem? {
         try {
@@ -877,9 +926,10 @@ class HomeViewModel @Inject constructor(
         if (isRefreshing.value) return
         viewModelScope.launch(Dispatchers.IO) {
             val pinnedIds = database.speedDialDao.getAll().first().map { it.id }.toSet()
+            val shownFeed = homeFeed.value
             val shownIds =
-                quickPicks.value.orEmpty().map { it.id } +
-                    speedDialItems.value.map { it.id }.filterNot { it in pinnedIds }
+                shownFeed.quickPicks.orEmpty().map { it.id } +
+                    shownFeed.speedDialItems.map { it.id }.filterNot { it in pinnedIds }
             val now = System.currentTimeMillis()
             context.safeDataStoreEdit { prefs ->
                 val active = parseExcluded(prefs[HomeExcludedItemsKey], now).toMutableMap()

@@ -754,20 +754,22 @@ fun HomeScreen(
     val isPlaying by playerConnection.isEffectivelyPlaying.collectAsStateWithLifecycle()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
 
-    val quickPicks by viewModel.quickPicks.collectAsStateWithLifecycle()
-    val forgottenFavorites by viewModel.forgottenFavorites.collectAsStateWithLifecycle()
-    val keepListening by viewModel.keepListening.collectAsStateWithLifecycle()
-    val similarRecommendations by viewModel.similarRecommendations.collectAsStateWithLifecycle()
-    val genreRecommendations by viewModel.genreRecommendations.collectAsStateWithLifecycle()
+    // Every song appears in only one section; HomeViewModel.homeFeed decides which section keeps it.
+    val homeFeed by viewModel.homeFeed.collectAsStateWithLifecycle()
+    val quickPicks = homeFeed.quickPicks
+    val forgottenFavorites = homeFeed.forgottenFavorites
+    val keepListening = homeFeed.keepListening
+    val similarRecommendations = homeFeed.similarRecommendations
+    val genreRecommendations = homeFeed.genreRecommendations
     val accountPlaylists by viewModel.accountPlaylists.collectAsStateWithLifecycle()
-    val homePage by viewModel.homePage.collectAsStateWithLifecycle()
+    val homePage = homeFeed.homePage
     val explorePage by viewModel.explorePage.collectAsStateWithLifecycle()
-    val dailyDiscover by viewModel.dailyDiscover.collectAsStateWithLifecycle()
+    val dailyDiscover = homeFeed.dailyDiscover
     val communityPlaylists by viewModel.communityPlaylists.collectAsStateWithLifecycle()
 
     val allLocalItems by viewModel.allLocalItems.collectAsStateWithLifecycle()
     val allYtItems by viewModel.allYtItems.collectAsStateWithLifecycle()
-    val speedDialItems by viewModel.speedDialItems.collectAsStateWithLifecycle()
+    val speedDialItems = homeFeed.speedDialItems
     val pinnedSpeedDialItems by viewModel.pinnedSpeedDialItems.collectAsStateWithLifecycle()
     val selectedChip by viewModel.selectedChip.collectAsStateWithLifecycle()
 
