@@ -239,7 +239,10 @@ class PlayerConnection(
         Timber.tag(TAG).d("Attached to new player instance: $newPlayer")
     }
 
-    fun playQueue(queue: Queue) {
+    fun playQueue(
+        queue: Queue,
+        playWhenReady: Boolean = true,
+    ) {
         // Block if Listen Together guest (unless internal sync)
         if (!allowInternalSync && shouldBlockPlaybackChanges?.invoke() == true) {
             Timber.tag("PlayerConnection").d("playQueue blocked - Listen Together guest")
@@ -249,7 +252,7 @@ class PlayerConnection(
             Timber.tag(TAG).w("playQueue called before player ready; delegating to service")
         }
         try {
-            service.playQueue(queue)
+            service.playQueue(queue, playWhenReady)
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Error in playQueue")
             throw e
