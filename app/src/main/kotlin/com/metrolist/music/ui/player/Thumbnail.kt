@@ -613,6 +613,16 @@ private fun ThumbnailItem(
                     artworkUri = artworkUriToUse,
                     cropArtwork = cropAlbumArt
                 )
+
+                if (item.mediaId == currentMediaId) {
+                    val canvasIsPlaying by playerConnection.isPlaying.collectAsState()
+                    CanvasArtworkOverlay(
+                        title = item.mediaMetadata.title?.toString().orEmpty(),
+                        artist = item.mediaMetadata.artist?.toString().orEmpty(),
+                        isPlaying = canvasIsPlaying,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
             }
             
             // Cast button at top-right corner of thumbnail

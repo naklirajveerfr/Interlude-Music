@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.blur
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -71,7 +72,14 @@ private fun RoundFilled(res: Int, container: Color, content: Color, boxSize: Dp,
 }
 
 @Composable
-private fun BoxScope.FullArtBackdrop(artworkUrl: String?, fadeStyle: PlayerFadeStyle) {
+private fun BoxScope.FullArtBackdrop(
+    artworkUrl: String?,
+    fadeStyle: PlayerFadeStyle,
+    title: String,
+    artist: String,
+    isPlaying: Boolean,
+    showCanvas: Boolean = true,
+) {
     if (fadeStyle == PlayerFadeStyle.TRANSLUCENT) {
         AsyncImage(
             model = artworkUrl, contentDescription = null,
@@ -80,13 +88,12 @@ private fun BoxScope.FullArtBackdrop(artworkUrl: String?, fadeStyle: PlayerFadeS
         )
         Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.35f)))
     }
-    AsyncImage(
-        model = artworkUrl, contentDescription = null,
-        contentScale = ContentScale.Crop,
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .fillMaxHeight(0.72f)
             .align(Alignment.TopCenter)
+            .clipToBounds()
             .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
             .drawWithContent {
                 drawContent()
@@ -95,7 +102,22 @@ private fun BoxScope.FullArtBackdrop(artworkUrl: String?, fadeStyle: PlayerFadeS
                     blendMode = BlendMode.DstIn,
                 )
             },
-    )
+    ) {
+        AsyncImage(
+            model = artworkUrl, contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
+        )
+        if (showCanvas) {
+            CanvasArtworkOverlay(
+                title = title,
+                artist = artist,
+                isPlaying = isPlaying,
+                modifier = Modifier.fillMaxSize(),
+                crop = true,
+            )
+        }
+    }
 }
 
 @Composable
@@ -154,10 +176,10 @@ fun FullArtPlayerContent(
 
     Box(modifier.fillMaxSize()) {
         if (showArt) {
-            FullArtBackdrop(artworkUrl, fadeStyle)
+            FullArtBackdrop(artworkUrl, fadeStyle, title, artist, isPlaying)
             if (fadeFromArt != null && !artFadeDone) {
                 Box(Modifier.fillMaxSize().graphicsLayer { alpha = artFadeAlpha.value }) {
-                    FullArtBackdrop(fadeFromArt, fadeStyle)
+                    FullArtBackdrop(fadeFromArt, fadeStyle, title, artist, isPlaying, showCanvas = false)
                 }
             }
         }

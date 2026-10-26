@@ -759,3 +759,6 @@ val ContinuousRecognitionKey = androidx.datastore.preferences.core.booleanPrefer
 
 val PlayerBlurLevelKey = androidx.datastore.preferences.core.floatPreferencesKey("playerBlurLevel")
 val PlayerBlurOpacityKey = androidx.datastore.preferences.core.floatPreferencesKey("playerBlurOpacity")
+
+val CanvasEnabledKey = androidx.datastore.preferences.core.booleanPreferencesKey("canvasEnabled")
+val CanvasSourceKey = androidx.datastore.preferences.core.stringPreferencesKey("canvasSource")
