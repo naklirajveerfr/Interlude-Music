@@ -2192,7 +2192,7 @@ fun BottomSheetPlayer(
                                         ),
                                     ) {
                                         val lyricsHeightFraction by animateFloatAsState(
-                                            targetValue = if (isFullScreen) 0.84f else 0.72f,
+                                            targetValue = if (isFullScreen) 0.76f else 0.72f,
                                             label = "fullArtLyricsHeight",
                                         )
                                         Box(

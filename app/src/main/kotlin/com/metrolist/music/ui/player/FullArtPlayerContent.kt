@@ -240,9 +240,6 @@ fun FullArtPlayerContent(
                 }
             }
 
-            // Fullscreen lyrics: hide everything under the title row.
-            AnimatedVisibility(visible = !isFullScreen) {
-            Column {
             Spacer(Modifier.height(12.dp))
             seekBar()
             Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp)) {
@@ -251,6 +248,9 @@ fun FullArtPlayerContent(
                 Text("-" + fmt(total - position), color = textColor.copy(alpha = 0.6f), style = MaterialTheme.typography.labelSmall)
             }
 
+            // Fullscreen lyrics: hide the transport buttons and bottom row, keep title and seek bar.
+            AnimatedVisibility(visible = !isFullScreen) {
+            Column {
             when (buttonShape) {
                 PlayerButtonShape.PILL -> {
                     val backSource = remember { MutableInteractionSource() }
