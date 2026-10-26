@@ -150,7 +150,7 @@ fun CanvasArtworkOverlay(
     modifier: Modifier = Modifier,
     crop: Boolean = false,
 ) {
-    val canvasEnabled by rememberPreference(CanvasEnabledKey, false)
+    val canvasEnabled by rememberPreference(CanvasEnabledKey, true)
     if (!canvasEnabled) return
 
     val sourcePref by rememberPreference(CanvasSourceKey, CanvasSource.ALL.name)

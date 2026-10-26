@@ -100,7 +100,7 @@ import com.metrolist.music.ui.utils.getLoudnessLevelLabel
 fun PlayerSettings(
     navController: NavController
 ) {
-    val (canvasEnabled, onCanvasEnabledChange) = rememberPreference(CanvasEnabledKey, defaultValue = false)
+    val (canvasEnabled, onCanvasEnabledChange) = rememberPreference(CanvasEnabledKey, defaultValue = true)
     val (canvasSource, onCanvasSourceChange) = rememberEnumPreference(CanvasSourceKey, defaultValue = CanvasSource.ALL)
     var showCanvasSourceDialog by remember { mutableStateOf(false) }
 
