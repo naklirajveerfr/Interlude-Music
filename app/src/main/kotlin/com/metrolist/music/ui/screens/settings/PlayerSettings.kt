@@ -254,6 +254,7 @@ fun PlayerSettings(
             valueText = {
                 when (it) {
                     CanvasSource.BETTER_LYRICS -> stringResource(R.string.canvas_source_better_lyrics)
+                    CanvasSource.APPLE_MUSIC -> stringResource(R.string.canvas_source_apple_music)
                     CanvasSource.TIDAL -> stringResource(R.string.canvas_source_tidal)
                     CanvasSource.ALL -> stringResource(R.string.canvas_source_all)
                 }
@@ -838,7 +839,8 @@ fun PlayerSettings(
                                 Text(
                                     when (canvasSource) {
                                         CanvasSource.BETTER_LYRICS -> stringResource(R.string.canvas_source_better_lyrics)
-                                        CanvasSource.TIDAL -> stringResource(R.string.canvas_source_tidal)
+                                        CanvasSource.APPLE_MUSIC -> stringResource(R.string.canvas_source_apple_music)
+                    CanvasSource.TIDAL -> stringResource(R.string.canvas_source_tidal)
                                         CanvasSource.ALL -> stringResource(R.string.canvas_source_desc)
                                     }
                                 )

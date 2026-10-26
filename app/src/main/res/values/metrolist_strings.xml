@@ -1084,8 +1084,9 @@
     <string name="use_canvas">Use canvas</string>
     <string name="use_canvas_desc">Animate album artwork while playing</string>
     <string name="canvas_source">Canvas source</string>
-    <string name="canvas_source_desc">Try BetterLyrics, then TIDAL</string>
+    <string name="canvas_source_desc">Try BetterLyrics, Apple Music, then TIDAL</string>
     <string name="canvas_source_better_lyrics">BetterLyrics</string>
+    <string name="canvas_source_apple_music">Apple Music</string>
     <string name="canvas_source_tidal">TIDAL</string>
     <string name="canvas_source_all">All</string>
 </resources>

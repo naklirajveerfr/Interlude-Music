@@ -12,6 +12,7 @@ import java.util.Locale
 
 enum class CanvasSource {
     BETTER_LYRICS,
+    APPLE_MUSIC,
     TIDAL,
     ALL;
 

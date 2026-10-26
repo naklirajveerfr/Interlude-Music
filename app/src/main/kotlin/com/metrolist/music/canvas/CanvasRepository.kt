@@ -31,7 +31,7 @@ import java.util.Locale
 object CanvasRepository {
     private const val TAG = "Canvas"
     private const val MAX_CACHE = 200
-    private val providers = listOf(CanvasSource.BETTER_LYRICS, CanvasSource.TIDAL)
+    private val providers = listOf(CanvasSource.BETTER_LYRICS, CanvasSource.APPLE_MUSIC, CanvasSource.TIDAL)
 
     private val cache = object : LinkedHashMap<String, CanvasArtwork?>(MAX_CACHE, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, CanvasArtwork?>?) = size > MAX_CACHE
@@ -68,6 +68,7 @@ object CanvasRepository {
                 withTimeoutOrNull(20_000L) {
                     when (provider) {
                         CanvasSource.BETTER_LYRICS -> betterLyrics(cleanTitle, cleanArtist)
+                        CanvasSource.APPLE_MUSIC -> AppleMusicCanvas.getBySongArtist(cleanTitle, cleanArtist)
                         CanvasSource.TIDAL -> tidal(cleanTitle, cleanArtist)
                         CanvasSource.ALL -> null
                     }
