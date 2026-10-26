@@ -14,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -28,7 +29,13 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.VideoSize
 import androidx.media3.exoplayer.ExoPlayer
+import com.metrolist.music.canvas.CanvasRepository
+import com.metrolist.music.canvas.CanvasSource
+import com.metrolist.music.constants.CanvasEnabledKey
+import com.metrolist.music.constants.CanvasSourceKey
+import com.metrolist.music.utils.rememberPreference
 import timber.log.Timber
 import java.util.Locale
 
@@ -41,10 +48,12 @@ fun CanvasVideo(
     url: String,
     isPlaying: Boolean,
     modifier: Modifier = Modifier,
+    crop: Boolean = false,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     var firstFrameRendered by remember(url) { mutableStateOf(false) }
+    val textureView = remember(url) { TextureView(context) }
 
     val exoPlayer = remember(url) {
         ExoPlayer.Builder(context).build().apply {
@@ -63,6 +72,10 @@ fun CanvasVideo(
         val listener = object : Player.Listener {
             override fun onRenderedFirstFrame() {
                 firstFrameRendered = true
+            }
+
+            override fun onVideoSizeChanged(videoSize: VideoSize) {
+                if (crop) textureView.centerCrop(videoSize)
             }
 
             override fun onPlayerError(error: PlaybackException) {
@@ -97,9 +110,56 @@ fun CanvasVideo(
     )
 
     AndroidView(
-        factory = { TextureView(it) },
-        update = { exoPlayer.setVideoTextureView(it) },
+        factory = { textureView },
+        update = {
+            exoPlayer.setVideoTextureView(it)
+            if (crop) it.centerCrop(exoPlayer.videoSize)
+        },
         onRelease = { exoPlayer.clearVideoTextureView(it) },
         modifier = modifier.alpha(alpha),
     )
+}
+
+/** TextureView stretches video to its bounds; scale it so the video fills the view without distortion. */
+private fun TextureView.centerCrop(videoSize: VideoSize) {
+    if (videoSize.width == 0 || videoSize.height == 0) return
+    val apply = {
+        if (width > 0 && height > 0) {
+            val videoAspect = videoSize.width.toFloat() * videoSize.pixelWidthHeightRatio / videoSize.height
+            val viewAspect = width.toFloat() / height
+            // The view is stretched to the video, so undo that stretch, then scale up to cover.
+            val fitX = if (videoAspect > viewAspect) 1f else videoAspect / viewAspect
+            val fitY = if (videoAspect > viewAspect) viewAspect / videoAspect else 1f
+            val cover = 1f / minOf(fitX, fitY).coerceAtLeast(0.0001f)
+            scaleX = fitX * cover
+            scaleY = fitY * cover
+        }
+    }
+    if (width > 0 && height > 0) apply() else post(apply)
+}
+
+/**
+ * Animated artwork for the current song, shown over the static cover when "Use canvas" is on.
+ * Draws nothing until a source returns a video.
+ */
+@Composable
+fun CanvasArtworkOverlay(
+    title: String,
+    artist: String,
+    isPlaying: Boolean,
+    modifier: Modifier = Modifier,
+    crop: Boolean = false,
+) {
+    val canvasEnabled by rememberPreference(CanvasEnabledKey, false)
+    if (!canvasEnabled) return
+
+    val sourcePref by rememberPreference(CanvasSourceKey, CanvasSource.ALL.name)
+    val videoUrl by produceState<String?>(initialValue = null, title, artist, sourcePref) {
+        value = null
+        value = CanvasRepository.resolve(title, artist, CanvasSource.fromPreference(sourcePref))
+    }
+
+    videoUrl?.let { url ->
+        CanvasVideo(url = url, isPlaying = isPlaying, modifier = modifier, crop = crop)
+    }
 }
