@@ -1080,4 +1080,12 @@
     <string name="frosted_glass_ui">Frosted Glass UI</string>
     <string name="frosted_glass_ui_desc">Frosted glass bars, menus, dialogs and player. Turn off for the default look</string>
     <string name="global_frosted_glass_blur_level">Global frosted glass blur level</string>
+    <string name="canvas">Canvas</string>
+    <string name="use_canvas">Use canvas</string>
+    <string name="use_canvas_desc">Animate album artwork while playing</string>
+    <string name="canvas_source">Canvas source</string>
+    <string name="canvas_source_desc">Try BetterLyrics, then TIDAL</string>
+    <string name="canvas_source_better_lyrics">BetterLyrics</string>
+    <string name="canvas_source_tidal">TIDAL</string>
+    <string name="canvas_source_all">All</string>
 </resources>

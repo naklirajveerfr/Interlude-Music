@@ -46,6 +46,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -75,6 +76,10 @@ import coil3.request.ImageRequest
 import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
+import com.metrolist.music.canvas.CanvasRepository
+import com.metrolist.music.canvas.CanvasSource
+import com.metrolist.music.constants.CanvasEnabledKey
+import com.metrolist.music.constants.CanvasSourceKey
 import com.metrolist.music.constants.CropAlbumArtKey
 import com.metrolist.music.constants.HidePlayerThumbnailKey
 import com.metrolist.music.constants.PlayerBackgroundStyle
@@ -613,6 +618,14 @@ private fun ThumbnailItem(
                     artworkUri = artworkUriToUse,
                     cropArtwork = cropAlbumArt
                 )
+
+                if (item.mediaId == currentMediaId) {
+                    CanvasArtworkOverlay(
+                        title = item.mediaMetadata.title?.toString().orEmpty(),
+                        artist = item.mediaMetadata.artist?.toString().orEmpty(),
+                        playerConnection = playerConnection,
+                    )
+                }
             }
             
             // Cast button at top-right corner of thumbnail
@@ -645,6 +658,34 @@ private fun HiddenThumbnailPlaceholder(
             contentDescription = stringResource(R.string.hide_player_thumbnail),
             tint = textBackgroundColor.copy(alpha = 0.7f),
             modifier = Modifier.size(120.dp)
+        )
+    }
+}
+
+/**
+ * Animated artwork drawn over the static cover when "Use canvas" is on and a source has a video.
+ */
+@Composable
+private fun CanvasArtworkOverlay(
+    title: String,
+    artist: String,
+    playerConnection: com.metrolist.music.playback.PlayerConnection,
+) {
+    val canvasEnabled by rememberPreference(CanvasEnabledKey, false)
+    if (!canvasEnabled) return
+
+    val sourcePref by rememberPreference(CanvasSourceKey, CanvasSource.ALL.name)
+    val isPlaying by playerConnection.isPlaying.collectAsState()
+    val videoUrl by produceState<String?>(initialValue = null, title, artist, sourcePref) {
+        value = null
+        value = CanvasRepository.resolve(title, artist, CanvasSource.fromPreference(sourcePref))
+    }
+
+    videoUrl?.let { url ->
+        CanvasVideo(
+            url = url,
+            isPlaying = isPlaying,
+            modifier = Modifier.fillMaxSize(),
         )
     }
 }
