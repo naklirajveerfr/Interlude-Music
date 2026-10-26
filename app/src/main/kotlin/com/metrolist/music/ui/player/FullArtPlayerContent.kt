@@ -21,6 +21,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.animation.core.tween
 import coil3.compose.AsyncImage
 import com.metrolist.music.R
@@ -226,31 +230,55 @@ fun FullArtPlayerContent(
             }
 
             when (buttonShape) {
-                PlayerButtonShape.PILL -> Row(
-                    Modifier.fillMaxWidth().padding(vertical = 12.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    FilledIconButton(
-                        onClick = onPrevious,
-                        shape = RoundedCornerShape(50),
-                        colors = IconButtonDefaults.filledIconButtonColors(containerColor = sideButtonColor, contentColor = sideIconColor),
-                        modifier = Modifier.height(68.dp).weight(0.45f),
-                    ) { Icon(painterResource(R.drawable.nm_skip_previous), null, modifier = Modifier.size(32.dp)) }
-                    Spacer(Modifier.width(8.dp))
-                    FilledIconButton(
-                        onClick = onPlayPause,
-                        shape = RoundedCornerShape(50),
-                        colors = IconButtonDefaults.filledIconButtonColors(containerColor = buttonColor, contentColor = iconColor),
-                        modifier = Modifier.height(68.dp).weight(1.3f),
-                    ) { Icon(painterResource(playRes), null, modifier = Modifier.size(32.dp)) }
-                    Spacer(Modifier.width(8.dp))
-                    FilledIconButton(
-                        onClick = onNext,
-                        shape = RoundedCornerShape(50),
-                        colors = IconButtonDefaults.filledIconButtonColors(containerColor = sideButtonColor, contentColor = sideIconColor),
-                        modifier = Modifier.height(68.dp).weight(0.45f).smoothSkipOnHold(),
-                    ) { Icon(painterResource(R.drawable.nm_skip_next), null, modifier = Modifier.size(32.dp)) }
+                PlayerButtonShape.PILL -> {
+                    val backSource = remember { MutableInteractionSource() }
+                    val playSource = remember { MutableInteractionSource() }
+                    val nextSource = remember { MutableInteractionSource() }
+                    val backPressed by backSource.collectIsPressedAsState()
+                    val playPressed by playSource.collectIsPressedAsState()
+                    val nextPressed by nextSource.collectIsPressedAsState()
+                    val pillSpring = spring<Float>(dampingRatio = 0.6f, stiffness = 500f)
+                    val playWeight by animateFloatAsState(
+                        targetValue = if (playPressed) 1.9f else if (backPressed || nextPressed) 1.1f else 1.3f,
+                        animationSpec = pillSpring, label = "playPauseWeight",
+                    )
+                    val backWeight by animateFloatAsState(
+                        targetValue = if (backPressed) 0.65f else if (playPressed) 0.35f else 0.45f,
+                        animationSpec = pillSpring, label = "backButtonWeight",
+                    )
+                    val nextWeight by animateFloatAsState(
+                        targetValue = if (nextPressed) 0.65f else if (playPressed) 0.35f else 0.45f,
+                        animationSpec = pillSpring, label = "nextButtonWeight",
+                    )
+                    Row(
+                        Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        FilledIconButton(
+                            onClick = onPrevious,
+                            shape = RoundedCornerShape(50),
+                            interactionSource = backSource,
+                            colors = IconButtonDefaults.filledIconButtonColors(containerColor = sideButtonColor, contentColor = sideIconColor),
+                            modifier = Modifier.height(68.dp).weight(backWeight),
+                        ) { Icon(painterResource(R.drawable.nm_skip_previous), null, modifier = Modifier.size(32.dp)) }
+                        Spacer(Modifier.width(8.dp))
+                        FilledIconButton(
+                            onClick = onPlayPause,
+                            shape = RoundedCornerShape(50),
+                            interactionSource = playSource,
+                            colors = IconButtonDefaults.filledIconButtonColors(containerColor = buttonColor, contentColor = iconColor),
+                            modifier = Modifier.height(68.dp).weight(playWeight),
+                        ) { Icon(painterResource(playRes), null, modifier = Modifier.size(32.dp)) }
+                        Spacer(Modifier.width(8.dp))
+                        FilledIconButton(
+                            onClick = onNext,
+                            shape = RoundedCornerShape(50),
+                            interactionSource = nextSource,
+                            colors = IconButtonDefaults.filledIconButtonColors(containerColor = sideButtonColor, contentColor = sideIconColor),
+                            modifier = Modifier.height(68.dp).weight(nextWeight).smoothSkipOnHold(),
+                        ) { Icon(painterResource(R.drawable.nm_skip_next), null, modifier = Modifier.size(32.dp)) }
+                    }
                 }
 
                 PlayerButtonShape.ROUND -> Row(
