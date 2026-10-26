@@ -2107,6 +2107,7 @@ fun BottomSheetPlayer(
                 )
                 if (useFullArtTest) {
                     val fullArtLyrics by playerConnection.currentLyrics.collectAsStateWithLifecycle(initialValue = null)
+                    LaunchedEffect(showInlineLyrics) { if (!showInlineLyrics) isFullScreen = false }
                     FullArtPlayerContent(
                         artworkUrl = mediaMetadata?.thumbnailUrl,
                         title = mediaMetadata?.title ?: "",
@@ -2190,10 +2191,14 @@ fun BottomSheetPlayer(
                                             animationSpec = androidx.compose.animation.core.tween((lyricsFadeOutDuration * 0.75f).roundToInt()),
                                         ),
                                     ) {
+                                        val lyricsHeightFraction by animateFloatAsState(
+                                            targetValue = if (isFullScreen) 0.84f else 0.72f,
+                                            label = "fullArtLyricsHeight",
+                                        )
                                         Box(
                                             Modifier
                                                 .fillMaxWidth()
-                                                .fillMaxHeight(0.72f)
+                                                .fillMaxHeight(lyricsHeightFraction)
                                                 .align(Alignment.TopCenter)
                                                 .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
                                                 .drawWithContent {
@@ -2228,6 +2233,9 @@ fun BottomSheetPlayer(
                         buttonColor = textButtonColor,
                         iconColor = iconButtonColor,
                         showArt = !hidePlayerThumbnail,
+                        showLyrics = showInlineLyrics,
+                        isFullScreen = isFullScreen,
+                        onFullScreen = { isFullScreen = !isFullScreen },
                         buttonShape = playerButtonShape,
                         appleButtonColor = if (playerButtonsStyle == PlayerButtonsStyle.DEFAULT) Color.Unspecified else textButtonColor,
                         fadeStyle = playerFadeStyle,

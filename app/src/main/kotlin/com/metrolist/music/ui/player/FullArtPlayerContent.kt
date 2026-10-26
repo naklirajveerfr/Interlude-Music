@@ -20,6 +20,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -154,6 +156,9 @@ fun FullArtPlayerContent(
     sideIconColor: Color,
     seekBar: @Composable () -> Unit,
     showArt: Boolean = true,
+    showLyrics: Boolean = false,
+    isFullScreen: Boolean = false,
+    onFullScreen: () -> Unit = {},
     modifier: Modifier = Modifier,
     overlay: @Composable BoxScope.() -> Unit = {},
 ) {
@@ -211,23 +216,33 @@ fun FullArtPlayerContent(
                         style = MaterialTheme.typography.titleMedium,
                     )
                 }
+                // Like button; while lyrics are showing it quickly fades into a fullscreen toggle.
+                Crossfade(targetState = showLyrics, animationSpec = tween(150), label = "favOrFullscreen") { lyricsOn ->
+                    val res = when {
+                        !lyricsOn -> favRes
+                        isFullScreen -> R.drawable.fullscreen_exit
+                        else -> R.drawable.fullscreen
+                    }
+                    val click = if (lyricsOn) onFullScreen else onFavorite
+                    when (buttonShape) {
+                        PlayerButtonShape.APPLE -> BareButton(res, appleTint(textColor, appleButtonColor), 26.dp, 44.dp, click)
+                        PlayerButtonShape.PILL -> BareButton(res, textColor, 26.dp, 44.dp, click)
+                        PlayerButtonShape.ROUND -> FilledSmall(res, buttonColor, iconColor, click)
+                    }
+                }
                 when (buttonShape) {
-                    PlayerButtonShape.APPLE -> {
-                        BareButton(favRes, appleTint(textColor, appleButtonColor), 26.dp, 44.dp, onFavorite)
-                        BareButton(R.drawable.more_horiz, appleTint(textColor, appleButtonColor), 26.dp, 44.dp, onMore)
-                    }
-                    PlayerButtonShape.PILL -> {
-                        BareButton(favRes, textColor, 26.dp, 44.dp, onFavorite)
-                        BareButton(R.drawable.more_horiz, textColor, 26.dp, 44.dp, onMore)
-                    }
+                    PlayerButtonShape.APPLE -> BareButton(R.drawable.more_horiz, appleTint(textColor, appleButtonColor), 26.dp, 44.dp, onMore)
+                    PlayerButtonShape.PILL -> BareButton(R.drawable.more_horiz, textColor, 26.dp, 44.dp, onMore)
                     PlayerButtonShape.ROUND -> {
-                        FilledSmall(favRes, buttonColor, iconColor, onFavorite)
                         Spacer(Modifier.width(8.dp))
                         FilledSmall(R.drawable.more_horiz, buttonColor, iconColor, onMore)
                     }
                 }
             }
 
+            // Fullscreen lyrics: hide everything under the title row.
+            AnimatedVisibility(visible = !isFullScreen) {
+            Column {
             Spacer(Modifier.height(12.dp))
             seekBar()
             Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp)) {
@@ -317,6 +332,8 @@ fun FullArtPlayerContent(
             ) {
                 SmallIcon(R.drawable.lyrics, textColor, 0.8f, onLyrics)
                 SmallIcon(R.drawable.queue_music, textColor, 0.8f, onQueue)
+            }
+            }
             }
         }
     }
