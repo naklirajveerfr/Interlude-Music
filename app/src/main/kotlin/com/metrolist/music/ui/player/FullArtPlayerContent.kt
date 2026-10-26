@@ -211,13 +211,20 @@ fun FullArtPlayerContent(
                         style = MaterialTheme.typography.titleMedium,
                     )
                 }
-                if (buttonShape == PlayerButtonShape.APPLE) {
-                    BareButton(favRes, appleTint(textColor, appleButtonColor), 26.dp, 44.dp, onFavorite)
-                    BareButton(R.drawable.more_horiz, appleTint(textColor, appleButtonColor), 26.dp, 44.dp, onMore)
-                } else {
-                    FilledSmall(favRes, buttonColor, iconColor, onFavorite)
-                    Spacer(Modifier.width(8.dp))
-                    FilledSmall(R.drawable.more_horiz, buttonColor, iconColor, onMore)
+                when (buttonShape) {
+                    PlayerButtonShape.APPLE -> {
+                        BareButton(favRes, appleTint(textColor, appleButtonColor), 26.dp, 44.dp, onFavorite)
+                        BareButton(R.drawable.more_horiz, appleTint(textColor, appleButtonColor), 26.dp, 44.dp, onMore)
+                    }
+                    PlayerButtonShape.PILL -> {
+                        BareButton(favRes, textColor, 26.dp, 44.dp, onFavorite)
+                        BareButton(R.drawable.more_horiz, textColor, 26.dp, 44.dp, onMore)
+                    }
+                    PlayerButtonShape.ROUND -> {
+                        FilledSmall(favRes, buttonColor, iconColor, onFavorite)
+                        Spacer(Modifier.width(8.dp))
+                        FilledSmall(R.drawable.more_horiz, buttonColor, iconColor, onMore)
+                    }
                 }
             }
 
