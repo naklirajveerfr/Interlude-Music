@@ -16,31 +16,32 @@ An unofficial, ad-free YouTube Music client for Android, built with **Material 3
 Interlude is a fork of [Metrolist](https://github.com/MetrolistGroup/Metrolist). It is a personal project that is actively evolving, so some features may still have rough edges. Interlude is Actively getting updates and fixes to make it better for users
 
 
+
 ## Showcase
 
 <div align="center">
 
 <table>
   <tr>
-    <td align="center" width="33%">
-      <img src="assets/screenshots/home.jpeg" alt="Home Screen" width="300">
+    <td align="center">
+      <img src="assets/screenshots/home.jpeg" height="450" alt="Home">
     </td>
-    <td align="center" width="33%">
-      <img src="assets/screenshots/lyrics.gif" alt="Animated Lyrics" width="300">
+    <td align="center">
+      <img src="assets/screenshots/lyrics.gif" height="450" alt="Lyrics">
     </td>
-    <td align="center" width="33%">
-      <img src="assets/screenshots/now-playing.gif" alt="Now Playing" width="300">
+    <td align="center">
+      <img src="assets/screenshots/now-playing.gif" height="450" alt="Now Playing">
     </td>
   </tr>
   <tr>
     <td align="center">
-      <img src="assets/screenshots/player-pill.jpeg" alt="Pill Player" width="300">
+      <img src="assets/screenshots/player-pill.jpeg" height="450" alt="Player">
     </td>
     <td align="center">
-      <img src="assets/screenshots/search-screen.jpeg" alt="Search Screen" width="300">
+      <img src="assets/screenshots/search-screen.jpeg" height="450" alt="Search">
     </td>
     <td align="center">
-      <img src="assets/screenshots/stats.jpeg" alt="Listening Statistics" width="300">
+      <img src="assets/screenshots/stats.jpeg" height="450" alt="Statistics">
     </td>
   </tr>
 </table>
@@ -48,6 +49,7 @@ Interlude is a fork of [Metrolist](https://github.com/MetrolistGroup/Metrolist).
 <i>Experience Interlude — designed with Material 3 Expressive.</i>
 
 </div>
+
 
 
 ## Features
