@@ -419,6 +419,17 @@
     <string name="integrations">Integrations</string>
     <string name="interlude_title">Interlude</string>
     <string name="import_label">Import</string>
+    <string name="spotify_integration">Spotify</string>
+    <string name="spotify_connect">Connect Spotify</string>
+    <string name="spotify_disconnect">Disconnect</string>
+    <string name="spotify_connected_as">Connected as %1$s</string>
+    <string name="spotify_not_configured">Spotify is not set up in this build. Add SPOTIFY_CLIENT_ID to local.properties and rebuild.</string>
+    <string name="spotify_your_playlists">Your playlists</string>
+    <string name="spotify_add_playlist">Add</string>
+    <string name="spotify_playlist_added">Added</string>
+    <string name="spotify_playlist_meta">%1$s • %2$d songs</string>
+    <string name="spotify_login_failed">Spotify login failed: %1$s</string>
+    <string name="spotify_load_failed">Could not load your Spotify playlists</string>
     <string name="spotify_import_title">Import Spotify playlist</string>
     <string name="spotify_playlist_url">Spotify playlist URL</string>
     <string name="spotify_import_invalid_url">Enter a valid Spotify playlist link</string>
