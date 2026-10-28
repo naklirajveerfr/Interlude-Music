@@ -14,7 +14,6 @@ import androidx.datastore.preferences.core.edit
 import com.metrolist.music.BuildConfig
 import com.metrolist.music.constants.SpotifyAccessTokenKey
 import com.metrolist.music.constants.SpotifyAuthStateKey
-import com.metrolist.music.constants.SpotifyClientIdKey
 import com.metrolist.music.constants.SpotifyCodeVerifierKey
 import com.metrolist.music.constants.SpotifyDisplayNameKey
 import com.metrolist.music.constants.SpotifyRefreshTokenKey
@@ -45,10 +44,7 @@ object SpotifyAuth {
         .build()
     private val refreshMutex = Mutex()
 
-    /** The Client ID the user entered on the Spotify page, falling back to a build-time one. */
-    suspend fun clientId(context: Context): String =
-        context.dataStore.data.first()[SpotifyClientIdKey]?.trim().orEmpty()
-            .ifBlank { BuildConfig.SPOTIFY_CLIENT_ID }
+    val isConfigured: Boolean get() = BuildConfig.SPOTIFY_CLIENT_ID.isNotBlank()
 
     private fun randomUrlSafe(bytes: Int): String {
         val buffer = ByteArray(bytes)
@@ -58,7 +54,6 @@ object SpotifyAuth {
 
     /** Opens Spotify's login page in the browser; the result returns through [handleCallback]. */
     suspend fun startLogin(context: Context) {
-        val clientId = clientId(context)
         val verifier = randomUrlSafe(64)
         val state = randomUrlSafe(16)
         val challenge = Base64.encodeToString(
@@ -71,7 +66,7 @@ object SpotifyAuth {
         }
         val url = Uri.Builder()
             .scheme("https").authority("accounts.spotify.com").path("authorize")
-            .appendQueryParameter("client_id", clientId)
+            .appendQueryParameter("client_id", BuildConfig.SPOTIFY_CLIENT_ID)
             .appendQueryParameter("response_type", "code")
             .appendQueryParameter("redirect_uri", REDIRECT_URI)
             .appendQueryParameter("scope", SCOPES)
@@ -97,7 +92,7 @@ object SpotifyAuth {
                 .add("grant_type", "authorization_code")
                 .add("code", code)
                 .add("redirect_uri", REDIRECT_URI)
-                .add("client_id", clientId(context))
+                .add("client_id", BuildConfig.SPOTIFY_CLIENT_ID)
                 .add("code_verifier", verifier)
                 .build()
             saveTokens(context, requestTokens(body))
@@ -141,7 +136,7 @@ object SpotifyAuth {
                 val body = FormBody.Builder()
                     .add("grant_type", "refresh_token")
                     .add("refresh_token", refresh)
-                    .add("client_id", clientId(context))
+                    .add("client_id", BuildConfig.SPOTIFY_CLIENT_ID)
                     .build()
                 val json = requestTokens(body)
                 saveTokens(context, json)
