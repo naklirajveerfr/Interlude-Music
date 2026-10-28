@@ -88,16 +88,6 @@
                 <data android:pathPrefix="/listen" />
             </intent-filter>
 
-            <!-- Spotify login callback -->
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-
-                <data android:scheme="interlude" android:host="spotify-callback" />
-            </intent-filter>
-
             <!-- Youtube filter -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />

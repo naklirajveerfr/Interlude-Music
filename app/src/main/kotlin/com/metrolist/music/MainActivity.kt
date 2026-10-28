@@ -7,7 +7,6 @@ package com.metrolist.music
 
 import com.metrolist.music.ui.theme.LocalGlassBlur
 import com.metrolist.music.ui.theme.LocalFrostedUi
-import com.metrolist.music.api.SpotifyAuth
 import com.metrolist.music.constants.DefaultOpaqueMenuBlurLevel
 import com.metrolist.music.constants.DefaultFrostedMenuBlurLevel
 import com.metrolist.music.constants.DefaultFrostedGlassBlurLevel
@@ -1696,20 +1695,6 @@ class MainActivity : FragmentActivity() {
         intent.data = null
         intent.removeExtra(Intent.EXTRA_TEXT)
         val coroutineScope = lifecycle.coroutineScope
-
-        if (SpotifyAuth.isCallback(uri)) {
-            coroutineScope.launch(Dispatchers.IO) {
-                val error = SpotifyAuth.handleCallback(this@MainActivity, uri)
-                withContext(Dispatchers.Main) {
-                    if (error != null) {
-                        Toast.makeText(this@MainActivity, getString(R.string.spotify_login_failed, error), Toast.LENGTH_LONG).show()
-                    } else {
-                        navController.navigate("settings/integrations/spotify")
-                    }
-                }
-            }
-            return
-        }
 
         val listenCode =
             uri.getQueryParameter("code")
