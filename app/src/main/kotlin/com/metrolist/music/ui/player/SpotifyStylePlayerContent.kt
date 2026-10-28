@@ -5,6 +5,11 @@
 
 package com.metrolist.music.ui.player
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -402,7 +407,17 @@ private fun LiveLyricLine(mediaMetadata: MediaMetadata?, positionProvider: () ->
 private fun rememberBluetoothOutputName(): String? {
     val context = LocalContext.current
     var name by remember { mutableStateOf<String?>(null) }
-    DisposableEffect(context) {
+    // From Android 12 the real Bluetooth device name is only readable with this permission.
+    fun granted() = Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+        ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
+    var hasPermission by remember { mutableStateOf(granted()) }
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        hasPermission = it
+    }
+    LaunchedEffect(Unit) {
+        if (!hasPermission) permissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT)
+    }
+    DisposableEffect(context, hasPermission) {
         val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
         fun isBluetooth(device: AudioDeviceInfo): Boolean =
             device.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
@@ -412,7 +427,9 @@ private fun rememberBluetoothOutputName(): String? {
         fun refresh() {
             name = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
                 .firstOrNull(::isBluetooth)
-                ?.let { it.productName?.toString()?.takeIf { n -> n.isNotBlank() } ?: "Bluetooth" }
+                ?.let { device ->
+                    if (hasPermission) device.productName?.toString()?.takeIf { n -> n.isNotBlank() } ?: "Bluetooth" else "Bluetooth"
+                }
         }
         val callback = object : AudioDeviceCallback() {
             override fun onAudioDevicesAdded(addedDevices: Array<out AudioDeviceInfo>?) = refresh()
