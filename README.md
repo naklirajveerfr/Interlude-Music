@@ -6,6 +6,7 @@
 
 ### A YouTube Music client for Android
 
+<img src="assets/logo.jpeg" alt="Interlude app icon" width="200" />
 </div>
 
 An unofficial, ad-free YouTube Music client for Android, built with **Material 3 Expressive**.
