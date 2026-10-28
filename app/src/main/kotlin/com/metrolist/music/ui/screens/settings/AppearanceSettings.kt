@@ -967,6 +967,7 @@ fun AppearanceSettings(
                 when (it) {
                     PlayerStyle.DEFAULT -> "Default"
                     PlayerStyle.FULLART -> "Full Art"
+                    PlayerStyle.SPOTIFY -> "Spotify"
                 }
             },
         )
@@ -1695,6 +1696,8 @@ fun AppearanceSettings(
                                 when (playerStyle) {
                                     PlayerStyle.DEFAULT -> "Default"
                                     PlayerStyle.FULLART -> "Full Art"
+                                    PlayerStyle.SPOTIFY -> "Spotify"
+                    PlayerStyle.SPOTIFY -> "Spotify"
                                 },
                             )
                         },

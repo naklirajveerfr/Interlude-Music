@@ -239,6 +239,9 @@ fun BottomSheetPlayer(
     val useFullArtTest =
         playerStyle == PlayerStyle.FULLART &&
             LocalConfiguration.current.orientation != Configuration.ORIENTATION_LANDSCAPE
+    val useSpotifyStyle =
+        playerStyle == PlayerStyle.SPOTIFY &&
+            LocalConfiguration.current.orientation != Configuration.ORIENTATION_LANDSCAPE
     val playerFadeStyle by rememberEnumPreference(PlayerFadeStyleKey, PlayerFadeStyle.TRANSLUCENT)
     val lyricsFadeInDuration by rememberPreference(LyricsFadeInDurationKey, defaultValue = 350f)
     val lyricsFadeOutDuration by rememberPreference(LyricsFadeOutDurationKey, defaultValue = 200f)
@@ -2105,7 +2108,73 @@ fun BottomSheetPlayer(
                     targetValue = if (isFullScreen) 0.dp else queueSheetState.collapsedBound,
                     label = "bottomPadding",
                 )
-                if (useFullArtTest) {
+                if (useSpotifyStyle) {
+                    SpotifyStylePlayerContent(
+                        mediaMetadata = mediaMetadata,
+                        isPlaying = effectiveIsPlaying,
+                        isFavorite = currentSong?.song?.liked == true,
+                        position = sliderPosition ?: displayPosition,
+                        duration = duration,
+                        shuffleOn = shuffleModeEnabled,
+                        repeatMode = repeatMode,
+                        positionProvider = { effectivePosition },
+                        onBack = state::collapseSoft,
+                        onMore = {
+                            mediaMetadata?.let { md ->
+                                menuState.show {
+                                    PlayerMenu(
+                                        mediaMetadata = md,
+                                        playerBottomSheetState = state,
+                                        onShowDetailsDialog = {
+                                            bottomSheetPageState.show {
+                                                ShowMediaInfo(md.id)
+                                            }
+                                        },
+                                        onDismiss = menuState::dismiss,
+                                    )
+                                }
+                            }
+                        },
+                        onPlayPause = {
+                            if (isListenTogetherGuest) {
+                                playerConnection.toggleMute()
+                            } else if (isCasting) {
+                                if (castIsPlaying) castHandler?.pause() else castHandler?.play()
+                            } else if (playbackState == STATE_ENDED) {
+                                playerConnection.player.seekTo(0, 0)
+                                playerConnection.player.playWhenReady = true
+                            } else {
+                                playerConnection.togglePlayPause()
+                            }
+                        },
+                        onPrevious = playerConnection::seekToPrevious,
+                        onNext = playerConnection::seekToNext,
+                        onFavorite = playerConnection::toggleLike,
+                        onShuffle = { playerConnection.player.shuffleModeEnabled = !shuffleModeEnabled },
+                        onRepeat = { playerConnection.player.toggleRepeatMode() },
+                        onShare = {
+                            mediaMetadata?.let { md ->
+                                val send = Intent(Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(Intent.EXTRA_TEXT, "https://music.youtube.com/watch?v=${md.id}")
+                                }
+                                context.startActivity(Intent.createChooser(send, null))
+                            }
+                        },
+                        onQueue = { queueSheetState.expandSoft() },
+                        onSeek = {
+                            if (!isListenTogetherGuest) {
+                                if (isCasting) {
+                                    castHandler?.seekTo(it)
+                                    lastManualSeekTime = System.currentTimeMillis()
+                                } else {
+                                    playerConnection.player.seekTo(it)
+                                }
+                                position = it
+                            }
+                        },
+                    )
+                } else if (useFullArtTest) {
                     val fullArtLyrics by playerConnection.currentLyrics.collectAsStateWithLifecycle(initialValue = null)
                     LaunchedEffect(showInlineLyrics) { if (!showInlineLyrics) isFullScreen = false }
                     FullArtPlayerContent(
@@ -2433,7 +2502,7 @@ when (sliderStyle) {
                 showInlineLyrics = showInlineLyrics,
                 playerBackground = playerBackground,
                 blurArtworkUrl = mediaMetadata?.thumbnailUrl,
-                hideCollapsedBar = useFullArtTest,
+                hideCollapsedBar = useFullArtTest || useSpotifyStyle,
                 onToggleLyrics = {
                     showInlineLyrics = !showInlineLyrics
                 },
