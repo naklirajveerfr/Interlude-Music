@@ -64,6 +64,9 @@ import androidx.navigation.NavController
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
 import com.metrolist.music.constants.ChipSortTypeKey
+import com.metrolist.music.canvas.CanvasSource
+import com.metrolist.music.constants.CanvasEnabledKey
+import com.metrolist.music.constants.CanvasSourceKey
 import com.metrolist.music.constants.CropAlbumArtKey
 import com.metrolist.music.constants.DefaultOpenTabKey
 import com.metrolist.music.constants.DensityScale
@@ -228,6 +231,9 @@ fun AppearanceSettings(
         )
     val isFullArtStyle = playerStyle == PlayerStyle.FULLART
     val isImmersiveStyle = playerStyle == PlayerStyle.SPOTIFY
+    val (canvasEnabled, onCanvasEnabledChange) = rememberPreference(CanvasEnabledKey, defaultValue = true)
+    val (canvasSource, onCanvasSourceChange) = rememberEnumPreference(CanvasSourceKey, defaultValue = CanvasSource.ALL)
+    var showCanvasSourceDialog by rememberSaveable { mutableStateOf(false) }
     val (speedDialCarouselOutline, onSpeedDialCarouselOutlineChange) = rememberPreference(SpeedDialCarouselOutlineKey, defaultValue = false)
     val (iconRoundedness, onIconRoundednessChange) = rememberPreference(IconRoundednessKey, defaultValue = 3f)
     var showIconRoundednessDialog by rememberSaveable { mutableStateOf(false) }
@@ -952,6 +958,27 @@ fun AppearanceSettings(
                 )
             }
         }
+    }
+
+    if (showCanvasSourceDialog) {
+        EnumDialog(
+            onDismiss = { showCanvasSourceDialog = false },
+            onSelect = {
+                onCanvasSourceChange(it)
+                showCanvasSourceDialog = false
+            },
+            title = stringResource(R.string.canvas_source),
+            current = canvasSource,
+            values = CanvasSource.values().toList(),
+            valueText = {
+                when (it) {
+                    CanvasSource.BETTER_LYRICS -> stringResource(R.string.canvas_source_better_lyrics)
+                    CanvasSource.APPLE_MUSIC -> stringResource(R.string.canvas_source_apple_music)
+                    CanvasSource.TIDAL -> stringResource(R.string.canvas_source_tidal)
+                    CanvasSource.ALL -> stringResource(R.string.canvas_source_all)
+                }
+            }
+        )
     }
 
     if (showPlayerStyleDialog) {
@@ -1843,6 +1870,56 @@ fun AppearanceSettings(
                 }
             }
         }
+
+        Spacer(modifier = Modifier.height(27.dp))
+
+        Material3SettingsGroup(
+            title = stringResource(R.string.canvas),
+            items = buildList {
+                add(
+                    Material3SettingsItem(
+                        icon = painterResource(R.drawable.slow_motion_video),
+                        title = { Text(stringResource(R.string.use_canvas)) },
+                        description = { Text(stringResource(R.string.use_canvas_desc)) },
+                        trailingContent = {
+                            Switch(
+                                checked = canvasEnabled,
+                                onCheckedChange = onCanvasEnabledChange,
+                                thumbContent = {
+                                    Icon(
+                                        painter = painterResource(
+                                            id = if (canvasEnabled) R.drawable.check else R.drawable.close
+                                        ),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(SwitchDefaults.IconSize)
+                                    )
+                                }
+                            )
+                        },
+                        onClick = { onCanvasEnabledChange(!canvasEnabled) }
+                    )
+                )
+                if (canvasEnabled) {
+                    add(
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.music_note),
+                            title = { Text(stringResource(R.string.canvas_source)) },
+                            description = {
+                                Text(
+                                    when (canvasSource) {
+                                        CanvasSource.BETTER_LYRICS -> stringResource(R.string.canvas_source_better_lyrics)
+                                        CanvasSource.APPLE_MUSIC -> stringResource(R.string.canvas_source_apple_music)
+                                        CanvasSource.TIDAL -> stringResource(R.string.canvas_source_tidal)
+                                        CanvasSource.ALL -> stringResource(R.string.canvas_source_desc)
+                                    }
+                                )
+                            },
+                            onClick = { showCanvasSourceDialog = true }
+                        )
+                    )
+                }
+            }
+        )
 
         Spacer(modifier = Modifier.height(27.dp))
 
