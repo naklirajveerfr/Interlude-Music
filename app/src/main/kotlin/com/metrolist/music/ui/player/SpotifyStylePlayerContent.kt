@@ -360,16 +360,28 @@ private fun LiveLyricLine(mediaMetadata: MediaMetadata?, positionProvider: () ->
         }
     }
 
+    // A line that has stayed the same for 5 seconds fades away until the next one arrives.
+    var lineVisible by remember { mutableStateOf(true) }
+    LaunchedEffect(lineText) {
+        lineVisible = true
+        delay(5_000)
+        lineVisible = false
+    }
+
     // Fixed height so the controls below do not jump when a line is empty or wraps.
     Box(
         Modifier.fillMaxWidth().height(48.dp).clipToBounds().clickable(onClick = onClick),
         contentAlignment = Alignment.CenterStart,
     ) {
         AnimatedContent(
-            targetState = lineText.orEmpty(),
+            targetState = if (lineVisible) lineText.orEmpty() else "",
             transitionSpec = {
-                (slideInVertically(tween(350)) { it } + fadeIn(tween(350))) togetherWith
-                    (slideOutVertically(tween(350)) { -it } + fadeOut(tween(250)))
+                if (targetState.isEmpty()) {
+                    fadeIn(tween(1)) togetherWith fadeOut(tween(600))
+                } else {
+                    (slideInVertically(tween(350)) { it } + fadeIn(tween(350))) togetherWith
+                        (slideOutVertically(tween(350)) { -it } + fadeOut(tween(250)))
+                }
             },
             label = "liveLyricLine",
         ) { text ->
