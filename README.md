@@ -23,11 +23,11 @@ Interlude is a fork of [Metrolist](https://github.com/MetrolistGroup/Metrolist).
 
 ### Playback
 
-* **Crossfade** between songs, with an optional gapless mode for songs on the same album.
 * **Seamless transition (beta):** analyzes the BPM of the ending and upcoming songs on your device, gradually matching their tempos before the mix. The next song begins after any silent intro, with the transition timed around fade-outs.
 * Listening cache and downloads.
 * Built-in equalizer.
 * Sleep timer.
+  
 
 ### Lyrics
 
@@ -39,7 +39,8 @@ Interlude is a fork of [Metrolist](https://github.com/MetrolistGroup/Metrolist).
 ### Look and Feel
 
 * **Material 3 Expressive** design with wavy progress components.
-* Two player styles: **Default** and **Full Art**.
+* **Frosted Glass UI**
+* Three player styles: **Default**,**Full Art**. and Immersive
 * **Player button shapes:** Round, Pill, or Apple Music style.
 * Custom player button colours.
 * Customizable backgrounds for the player, mini player, and menus:
@@ -59,7 +60,6 @@ Interlude also includes features from Metrolist, including:
 * Listen Together
 * Discord Rich Presence
 * Last.fm scrobbling
-* Google Cast
 * And more
 
 See the in-app settings for the complete list of features and options.
@@ -98,7 +98,8 @@ Interlude is actively being developed.
 
 * **Seamless Transition** is currently in beta.
 * **Musixmatch** lyrics are currently in beta.
-* Tempo detection works with songs cached on the device. Songs that have not been cached yet fall back to standard crossfade behavior.
+
+
   
 
 ## Credits
