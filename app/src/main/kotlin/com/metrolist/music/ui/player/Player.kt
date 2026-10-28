@@ -2168,7 +2168,7 @@ fun BottomSheetPlayer(
                                         contentScale = ContentScale.Crop,
                                         modifier = Modifier.fillMaxSize().blur(40.dp),
                                     )
-                                    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f)))
+                                    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.2f)))
                                     Box(
                                         Modifier
                                             .fillMaxWidth()
