@@ -6,7 +6,6 @@
 
 ### A YouTube Music client for Android
 
-<img src="assets/logo.jpeg" alt="Interlude app icon" width="200" />
 </div>
 
 An unofficial, ad-free YouTube Music client for Android, built with **Material 3 Expressive**.
@@ -16,9 +15,26 @@ An unofficial, ad-free YouTube Music client for Android, built with **Material 3
 
 Interlude is a fork of [Metrolist](https://github.com/MetrolistGroup/Metrolist). It is a personal project that is actively evolving, so some features may still have rough edges. Interlude is Actively getting updates and fixes to make it better for users
 
-<!-- Add screenshots here, for example: -->
+## Showcase
 
-<!-- ![Home](assets/screenshot-home.png) -->
+<div align="center">
+
+<table>
+  <tr>
+    <td align="center"><img src="assets/screenshots/1.png" alt="Interlude Screenshot 1" width="220"></td>
+    <td align="center"><img src="assets/screenshots/2.png" alt="Interlude Screenshot 2" width="220"></td>
+    <td align="center"><img src="assets/screenshots/3.png" alt="Interlude Screenshot 3" width="220"></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="assets/screenshots/4.png" alt="Interlude Screenshot 4" width="220"></td>
+    <td align="center"><img src="assets/screenshots/5.png" alt="Interlude Screenshot 5" width="220"></td>
+    <td align="center"><img src="assets/screenshots/6.png" alt="Interlude Screenshot 6" width="220"></td>
+  </tr>
+</table>
+
+*Experience Interlude — designed with Material 3 Expressive.*
+
+</div>
 
 ## Features
 
