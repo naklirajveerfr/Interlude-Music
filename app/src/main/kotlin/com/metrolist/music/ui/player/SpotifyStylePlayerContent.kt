@@ -69,7 +69,10 @@ import coil3.compose.AsyncImage
 import android.content.Context
 import android.media.AudioDeviceCallback
 import android.media.AudioDeviceInfo
+import android.bluetooth.BluetoothManager
+import android.bluetooth.BluetoothProfile
 import android.media.AudioManager
+import android.provider.Settings
 import android.os.Build
 import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalPlayerConnection
@@ -272,31 +275,27 @@ fun SpotifyStylePlayerContent(
                 }
             }
 
-            val bluetoothName = rememberBluetoothOutputName()
+            val output = rememberAudioOutput()
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                if (bluetoothName != null) {
-                    Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            painterResource(R.drawable.bluetooth),
-                            null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(18.dp),
-                        )
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            bluetoothName,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontSize = 12.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                } else {
-                    Spacer(Modifier.weight(1f))
+                Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        painterResource(if (output.isBluetooth) R.drawable.bluetooth else R.drawable.smartphone),
+                        null,
+                        tint = Color.White,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        output.name,
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
                 IconButton(onClick = onToggleLyrics) {
                     Icon(
@@ -402,12 +401,12 @@ private fun LiveLyricLine(mediaMetadata: MediaMetadata?, positionProvider: () ->
     }
 }
 
-/** Name of the Bluetooth audio device currently connected for output, or null when there is none. */
+private data class AudioOutput(val isBluetooth: Boolean, val name: String)
+
+/** Where the sound is going: the connected Bluetooth device's name, otherwise this phone's name. */
 @Composable
-private fun rememberBluetoothOutputName(): String? {
+private fun rememberAudioOutput(): AudioOutput {
     val context = LocalContext.current
-    var name by remember { mutableStateOf<String?>(null) }
-    // From Android 12 the real Bluetooth device name is only readable with this permission.
     fun granted() = Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
         ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
     var hasPermission by remember { mutableStateOf(granted()) }
@@ -417,27 +416,64 @@ private fun rememberBluetoothOutputName(): String? {
     LaunchedEffect(Unit) {
         if (!hasPermission) permissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT)
     }
+
+    val phoneName = remember {
+        Settings.Global.getString(context.contentResolver, "device_name")?.takeIf { it.isNotBlank() } ?: Build.MODEL
+    }
+    var output by remember { mutableStateOf(AudioOutput(false, phoneName)) }
+
     DisposableEffect(context, hasPermission) {
         val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        val adapter = (context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager)?.adapter
+        var a2dp: BluetoothProfile? = null
+
         fun isBluetooth(device: AudioDeviceInfo): Boolean =
             device.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
                 device.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
                 (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
                     (device.type == AudioDeviceInfo.TYPE_BLE_HEADSET || device.type == AudioDeviceInfo.TYPE_BLE_SPEAKER))
+
         fun refresh() {
-            name = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
-                .firstOrNull(::isBluetooth)
-                ?.let { device ->
-                    if (hasPermission) device.productName?.toString()?.takeIf { n -> n.isNotBlank() } ?: "Bluetooth" else "Bluetooth"
+            val audioDevice = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS).firstOrNull(::isBluetooth)
+            output = if (audioDevice == null) {
+                AudioOutput(false, phoneName)
+            } else {
+                // The audio route only says "a Bluetooth device"; the profile service knows its real name.
+                val realName = if (hasPermission) {
+                    runCatching {
+                        a2dp?.connectedDevices?.firstOrNull()?.name
+                    }.getOrNull()?.takeIf { it.isNotBlank() }
+                } else {
+                    null
                 }
+                AudioOutput(true, realName ?: audioDevice.productName?.toString()?.takeIf { it.isNotBlank() } ?: "Bluetooth")
+            }
         }
+
         val callback = object : AudioDeviceCallback() {
             override fun onAudioDevicesAdded(addedDevices: Array<out AudioDeviceInfo>?) = refresh()
             override fun onAudioDevicesRemoved(removedDevices: Array<out AudioDeviceInfo>?) = refresh()
         }
+        val listener = object : BluetoothProfile.ServiceListener {
+            override fun onServiceConnected(profile: Int, proxy: BluetoothProfile) {
+                a2dp = proxy
+                refresh()
+            }
+
+            override fun onServiceDisconnected(profile: Int) {
+                a2dp = null
+                refresh()
+            }
+        }
+        if (hasPermission) {
+            runCatching { adapter?.getProfileProxy(context, listener, BluetoothProfile.A2DP) }
+        }
         refresh()
         audioManager.registerAudioDeviceCallback(callback, null)
-        onDispose { audioManager.unregisterAudioDeviceCallback(callback) }
+        onDispose {
+            audioManager.unregisterAudioDeviceCallback(callback)
+            a2dp?.let { runCatching { adapter?.closeProfileProxy(BluetoothProfile.A2DP, it) } }
+        }
     }
-    return name
+    return output
 }
