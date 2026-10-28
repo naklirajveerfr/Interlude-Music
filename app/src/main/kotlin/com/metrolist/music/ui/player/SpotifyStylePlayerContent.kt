@@ -5,7 +5,15 @@
 
 package com.metrolist.music.ui.player
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -37,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -86,6 +95,9 @@ fun SpotifyStylePlayerContent(
     onShare: () -> Unit,
     onQueue: () -> Unit,
     onSeek: (Long) -> Unit,
+    showLyrics: Boolean = false,
+    onToggleLyrics: () -> Unit = {},
+    overlay: @Composable BoxScope.() -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val title = mediaMetadata?.title.orEmpty()
@@ -116,6 +128,8 @@ fun SpotifyStylePlayerContent(
             Modifier.fillMaxWidth().height(380.dp).align(Alignment.BottomCenter)
                 .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.8f)))),
         )
+
+        overlay()
 
         Row(
             Modifier.align(Alignment.TopCenter).fillMaxWidth().statusBarsPadding().padding(horizontal = 8.dp, vertical = 4.dp),
@@ -150,7 +164,9 @@ fun SpotifyStylePlayerContent(
         Column(
             Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding().padding(horizontal = 18.dp, vertical = 12.dp),
         ) {
-            LiveLyricLine(mediaMetadata, positionProvider)
+            if (!showLyrics) {
+                LiveLyricLine(mediaMetadata, positionProvider, onClick = onToggleLyrics)
+            }
             Spacer(Modifier.height(20.dp))
 
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -246,6 +262,13 @@ fun SpotifyStylePlayerContent(
             }
 
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                IconButton(onClick = onToggleLyrics) {
+                    Icon(
+                        painterResource(R.drawable.lyrics),
+                        null,
+                        tint = if (showLyrics) MaterialTheme.colorScheme.primary else Color.White,
+                    )
+                }
                 IconButton(onClick = onShare) {
                     Icon(painterResource(R.drawable.share), null, tint = Color.White)
                 }
@@ -262,9 +285,9 @@ private fun formatTime(ms: Long): String {
     return "%d:%02d".format(seconds / 60, seconds % 60)
 }
 
-/** The line being sung right now, with a small "LIVE LYRICS" label. Shows nothing when there are no synced lyrics. */
+/** The line being sung right now, sliding up on each change. Tapping it opens the full lyrics. Empty without synced lyrics. */
 @Composable
-private fun LiveLyricLine(mediaMetadata: MediaMetadata?, positionProvider: () -> Long) {
+private fun LiveLyricLine(mediaMetadata: MediaMetadata?, positionProvider: () -> Long, onClick: () -> Unit) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val context = LocalContext.current
     val database = LocalDatabase.current
@@ -303,16 +326,19 @@ private fun LiveLyricLine(mediaMetadata: MediaMetadata?, positionProvider: () ->
         }
     }
 
-    lineText?.let { text ->
-        Column(Modifier.fillMaxWidth()) {
-            Text(
-                stringResource(R.string.live_lyrics),
-                color = Color.White,
-                fontSize = 11.sp,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Spacer(Modifier.height(10.dp))
+    // Fixed height so the controls below do not jump when a line is empty or wraps.
+    Box(
+        Modifier.fillMaxWidth().height(48.dp).clipToBounds().clickable(onClick = onClick),
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        AnimatedContent(
+            targetState = lineText.orEmpty(),
+            transitionSpec = {
+                (slideInVertically(tween(350)) { it } + fadeIn(tween(350))) togetherWith
+                    (slideOutVertically(tween(350)) { -it } + fadeOut(tween(250)))
+            },
+            label = "liveLyricLine",
+        ) { text ->
             Text(
                 text,
                 color = Color.White,

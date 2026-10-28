@@ -2162,6 +2162,51 @@ fun BottomSheetPlayer(
                             }
                         },
                         onQueue = { queueSheetState.expandSoft() },
+                        showLyrics = showInlineLyrics,
+                        onToggleLyrics = { showInlineLyrics = !showInlineLyrics },
+                        overlay = {
+                            androidx.compose.animation.AnimatedVisibility(
+                                visible = showInlineLyrics,
+                                enter = androidx.compose.animation.fadeIn(),
+                                exit = androidx.compose.animation.fadeOut(),
+                            ) {
+                                Box(Modifier.fillMaxSize()) {
+                                    coil3.compose.AsyncImage(
+                                        model = mediaMetadata?.thumbnailUrl,
+                                        contentDescription = null,
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize().blur(40.dp),
+                                    )
+                                    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f)))
+                                    Box(
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .fillMaxHeight(0.7f)
+                                            .align(Alignment.TopCenter)
+                                            .padding(top = 72.dp)
+                                            .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                                            .drawWithContent {
+                                                drawContent()
+                                                drawRect(
+                                                    brush = Brush.verticalGradient(
+                                                        0f to Color.Transparent,
+                                                        0.1f to Color.Black,
+                                                        0.9f to Color.Black,
+                                                        1f to Color.Transparent,
+                                                    ),
+                                                    blendMode = BlendMode.DstIn,
+                                                )
+                                            },
+                                    ) {
+                                        InlineLyricsView(
+                                            mediaMetadata = mediaMetadata,
+                                            showLyrics = true,
+                                            positionProvider = { effectivePosition },
+                                        )
+                                    }
+                                }
+                            }
+                        },
                         onSeek = {
                             if (!isListenTogetherGuest) {
                                 if (isCasting) {
