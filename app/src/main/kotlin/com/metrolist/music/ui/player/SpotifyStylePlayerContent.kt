@@ -238,7 +238,7 @@ fun SpotifyStylePlayerContent(
             ) {
                 IconButton(onClick = onShuffle) {
                     Icon(
-                        painterResource(if (shuffleOn) R.drawable.shuffle_on else R.drawable.shuffle),
+                        painterResource(R.drawable.shuffle),
                         null,
                         tint = if (shuffleOn) MaterialTheme.colorScheme.primary else Color.White,
                     )
@@ -264,8 +264,7 @@ fun SpotifyStylePlayerContent(
                     Icon(
                         painterResource(
                             when (repeatMode) {
-                                1 -> R.drawable.repeat_one_on
-                                2 -> R.drawable.repeat_on
+                                1 -> R.drawable.repeat_one
                                 else -> R.drawable.repeat
                             },
                         ),
