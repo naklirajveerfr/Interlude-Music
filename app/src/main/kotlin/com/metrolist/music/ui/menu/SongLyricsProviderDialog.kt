@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -67,24 +68,28 @@ fun SongLyricsProviderDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Lyric provider for this song") },
+        title = { Text("Lyric provider", style = MaterialTheme.typography.titleMedium) },
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                Text("Only the chosen provider is used when this song plays.")
+                Text(
+                    "Applies only to this song",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 Row(
-                    modifier = Modifier.fillMaxWidth().clickable { choose(null) }.padding(vertical = 8.dp),
+                    modifier = Modifier.fillMaxWidth().clickable { choose(null) }.padding(vertical = 0.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     RadioButton(selected = current == null, onClick = { choose(null) })
-                    Text("Automatic (your normal order)")
+                    Text("Automatic", style = MaterialTheme.typography.bodyMedium)
                 }
                 LyricsProviderRegistry.providerNames.forEach { name ->
                     Row(
-                        modifier = Modifier.fillMaxWidth().clickable { choose(name) }.padding(vertical = 8.dp),
+                        modifier = Modifier.fillMaxWidth().clickable { choose(name) }.padding(vertical = 0.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         RadioButton(selected = current == name, onClick = { choose(name) })
-                        Text(providerLabels[name] ?: name)
+                        Text(providerLabels[name] ?: name, style = MaterialTheme.typography.bodyMedium)
                     }
                 }
             }
