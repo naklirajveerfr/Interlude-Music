@@ -2166,12 +2166,9 @@ fun BottomSheetPlayer(
                                         model = mediaMetadata?.thumbnailUrl,
                                         contentDescription = null,
                                         contentScale = ContentScale.Crop,
-                                        colorFilter = androidx.compose.ui.graphics.ColorFilter.colorMatrix(
-                                            androidx.compose.ui.graphics.ColorMatrix().apply { setToSaturation(1.8f) },
-                                        ),
-                                        modifier = Modifier.fillMaxSize().blur(40.dp),
+                                        modifier = Modifier.fillMaxSize().blur(20.dp),
                                     )
-                                    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.3f)))
+                                    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f)))
                                     Box(
                                         Modifier
                                             .fillMaxWidth()
