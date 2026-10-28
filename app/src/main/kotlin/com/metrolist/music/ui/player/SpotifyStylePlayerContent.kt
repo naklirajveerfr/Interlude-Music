@@ -257,7 +257,7 @@ fun SpotifyStylePlayerContent(
                         modifier = Modifier.size(36.dp),
                     )
                 }
-                IconButton(onClick = onNext) {
+                IconButton(onClick = onNext, modifier = Modifier.smoothSkipOnHold()) {
                     Icon(painterResource(R.drawable.nm_skip_next), null, tint = Color.White, modifier = Modifier.size(36.dp))
                 }
                 IconButton(onClick = onRepeat) {

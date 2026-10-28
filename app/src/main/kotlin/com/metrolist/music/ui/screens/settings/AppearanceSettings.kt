@@ -227,6 +227,7 @@ fun AppearanceSettings(
             defaultValue = PlayerStyle.DEFAULT,
         )
     val isFullArtStyle = playerStyle == PlayerStyle.FULLART
+    val isImmersiveStyle = playerStyle == PlayerStyle.SPOTIFY
     val (speedDialCarouselOutline, onSpeedDialCarouselOutlineChange) = rememberPreference(SpeedDialCarouselOutlineKey, defaultValue = false)
     val (iconRoundedness, onIconRoundednessChange) = rememberPreference(IconRoundednessKey, defaultValue = 3f)
     var showIconRoundednessDialog by rememberSaveable { mutableStateOf(false) }
@@ -1599,9 +1600,9 @@ fun AppearanceSettings(
                             )
                         },
                         onClick = { showPlayerBackgroundDialog = true },
-                    enabled = !isFullArtStyle,
+                    enabled = !isFullArtStyle && !isImmersiveStyle,
                 ),
-                    if (playerBackground == PlayerBackgroundStyle.BLUR && !isFullArtStyle) {
+                    if (playerBackground == PlayerBackgroundStyle.BLUR && !isFullArtStyle && !isImmersiveStyle) {
                         Material3SettingsItem(
                             icon = painterResource(R.drawable.gradient),
                             title = { Text("Player blur") },
@@ -1643,7 +1644,7 @@ fun AppearanceSettings(
                             Switch(
                                 checked = cropAlbumArt,
                                 onCheckedChange = onCropAlbumArtChange,
-                                enabled = !isFullArtStyle,
+                                enabled = !isFullArtStyle && !isImmersiveStyle,
                                 thumbContent = {
                                     Icon(
                                         painter =
@@ -1657,7 +1658,7 @@ fun AppearanceSettings(
                             )
                         },
                         onClick = { onCropAlbumArtChange(!cropAlbumArt) },
-                    enabled = !isFullArtStyle,
+                    enabled = !isFullArtStyle && !isImmersiveStyle,
                 ),
                     Material3SettingsItem(
                         icon = painterResource(R.drawable.palette),
@@ -1672,6 +1673,7 @@ fun AppearanceSettings(
                             )
                         },
                         onClick = { showPlayerButtonsStyleDialog = true },
+                        enabled = !isImmersiveStyle,
                     ),
                     Material3SettingsItem(
                         icon = painterResource(R.drawable.palette),
@@ -1686,6 +1688,7 @@ fun AppearanceSettings(
                             )
                         },
                         onClick = { showPlayerButtonShapeDialog = true },
+                        enabled = !isImmersiveStyle,
                     ),
 
                     Material3SettingsItem(
@@ -1729,6 +1732,7 @@ fun AppearanceSettings(
                             )
                         },
                         onClick = { showSliderOptionDialog = true },
+                        enabled = !isImmersiveStyle,
                     ),
                     Material3SettingsItem(
                         icon = painterResource(R.drawable.swipe),
