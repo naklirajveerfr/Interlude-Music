@@ -69,8 +69,8 @@ See the in-app settings for the complete list of features and options.
 You need a JDK and the Android SDK. Android Studio can install and configure both for you.
 
 ```bash
-git clone https://github.com/naklirajveerfr/NakliMusic.git
-cd NakliMusic
+git clone https://github.com/naklirajveerfr/Interlude-Music.git
+cd Interlude-Music
 ./gradlew assembleFossDebug
 ```
 
