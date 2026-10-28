@@ -280,6 +280,9 @@ fun SpotifyStylePlayerContent(
     }
 }
 
+/** Parenthesised adlibs such as "(yeah)" or "(ooh)" are not part of the main sentence. */
+private val AdlibRegex = Regex("""\s*[(\[][^)\]]*[)\]]""")
+
 private fun formatTime(ms: Long): String {
     val seconds = (ms / 1000).coerceAtLeast(0)
     return "%d:%02d".format(seconds / 60, seconds % 60)
@@ -316,7 +319,10 @@ private fun LiveLyricLine(mediaMetadata: MediaMetadata?, positionProvider: () ->
         if (raw.isNullOrBlank() || raw == LyricsEntity.LYRICS_NOT_FOUND) {
             emptyList()
         } else {
-            LyricsUtils.parseLyrics(raw).filter { it.text.isNotBlank() }
+            LyricsUtils.parseLyrics(raw)
+                .filterNot { it.isBackground }
+                .map { it.copy(text = it.text.replace(AdlibRegex, "").replace("  ", " ").trim()) }
+                .filter { it.text.isNotBlank() }
         }
     }
     val synced = lines.any { it.time > 0L }
