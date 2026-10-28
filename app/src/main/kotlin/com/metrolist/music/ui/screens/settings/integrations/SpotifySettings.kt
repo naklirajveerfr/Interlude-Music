@@ -29,6 +29,7 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -57,6 +58,7 @@ import com.metrolist.music.api.SpotifyAuth
 import com.metrolist.music.api.SpotifyImporter
 import com.metrolist.music.api.SpotifyUserPlaylist
 import com.metrolist.music.constants.SpotifyAccessTokenKey
+import com.metrolist.music.constants.SpotifyClientIdKey
 import com.metrolist.music.constants.SpotifyDisplayNameKey
 import com.metrolist.music.ui.component.GlassTopAppBar
 import com.metrolist.music.ui.component.IconButton
@@ -74,6 +76,7 @@ fun SpotifySettings(navController: NavController) {
 
     val accessToken by rememberPreference(SpotifyAccessTokenKey, "")
     val displayName by rememberPreference(SpotifyDisplayNameKey, "")
+    var clientId by rememberPreference(SpotifyClientIdKey, "")
     val isLoggedIn = accessToken.isNotEmpty()
 
     var playlists by remember { mutableStateOf<List<SpotifyUserPlaylist>?>(null) }
@@ -122,13 +125,6 @@ fun SpotifySettings(navController: NavController) {
                         },
                         style = MaterialTheme.typography.titleMedium,
                     )
-                    if (!isLoggedIn && !SpotifyAuth.isConfigured) {
-                        Text(
-                            text = stringResource(R.string.spotify_not_configured),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
                 }
                 if (isLoggedIn) {
                     OutlinedButton(onClick = { scope.launch { SpotifyAuth.logout(context) } }) {
@@ -136,11 +132,30 @@ fun SpotifySettings(navController: NavController) {
                     }
                 } else {
                     Button(
-                        enabled = SpotifyAuth.isConfigured,
+                        enabled = clientId.isNotBlank(),
                         onClick = { scope.launch { SpotifyAuth.startLogin(context) } },
                     ) {
                         Text(stringResource(R.string.spotify_connect))
                     }
+                }
+            }
+        }
+
+        if (!isLoggedIn) {
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = clientId,
+                        onValueChange = { clientId = it.trim() },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        label = { Text(stringResource(R.string.spotify_client_id)) },
+                    )
+                    Text(
+                        text = stringResource(R.string.spotify_client_id_help, SpotifyAuth.REDIRECT_URI),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
         }

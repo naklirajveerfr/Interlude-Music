@@ -206,6 +206,7 @@ val ListenTogetherUserIdKey = stringPreferencesKey("listenTogetherUserId")
 val ListenTogetherIsHostKey = booleanPreferencesKey("listenTogetherIsHost")
 val ListenTogetherSessionTimestampKey = longPreferencesKey("listenTogetherSessionTimestamp")
 
+val SpotifyClientIdKey = stringPreferencesKey("spotifyClientId")
 val SpotifyAccessTokenKey = stringPreferencesKey("spotifyAccessToken")
 val SpotifyRefreshTokenKey = stringPreferencesKey("spotifyRefreshToken")
 val SpotifyTokenExpiryKey = longPreferencesKey("spotifyTokenExpiry")

@@ -423,7 +423,8 @@
     <string name="spotify_connect">Connect Spotify</string>
     <string name="spotify_disconnect">Disconnect</string>
     <string name="spotify_connected_as">Connected as %1$s</string>
-    <string name="spotify_not_configured">Spotify is not set up in this build. Add SPOTIFY_CLIENT_ID to local.properties and rebuild.</string>
+    <string name="spotify_client_id">Spotify Client ID</string>
+    <string name="spotify_client_id_help">Create a free app at developer.spotify.com/dashboard, add %1$s as a Redirect URI, then paste its Client ID here. Add your own Spotify account under User Management.</string>
     <string name="spotify_your_playlists">Your playlists</string>
     <string name="spotify_add_playlist">Add</string>
     <string name="spotify_playlist_added">Added</string>
