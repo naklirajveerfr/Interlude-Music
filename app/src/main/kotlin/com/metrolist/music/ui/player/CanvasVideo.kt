@@ -59,6 +59,8 @@ fun CanvasVideo(
         ExoPlayer.Builder(context).build().apply {
             trackSelectionParameters = trackSelectionParameters.buildUpon()
                 .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, true)
+                .setForceHighestSupportedBitrate(true)
+                .setMaxVideoSize(Int.MAX_VALUE, Int.MAX_VALUE)
                 .build()
             volume = 0f
             repeatMode = Player.REPEAT_MODE_ONE
