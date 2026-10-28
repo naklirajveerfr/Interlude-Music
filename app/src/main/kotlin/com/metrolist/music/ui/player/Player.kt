@@ -2152,15 +2152,6 @@ fun BottomSheetPlayer(
                         onFavorite = playerConnection::toggleLike,
                         onShuffle = { playerConnection.player.shuffleModeEnabled = !shuffleModeEnabled },
                         onRepeat = { playerConnection.player.toggleRepeatMode() },
-                        onShare = {
-                            mediaMetadata?.let { md ->
-                                val send = Intent(Intent.ACTION_SEND).apply {
-                                    type = "text/plain"
-                                    putExtra(Intent.EXTRA_TEXT, "https://music.youtube.com/watch?v=${md.id}")
-                                }
-                                context.startActivity(Intent.createChooser(send, null))
-                            }
-                        },
                         onQueue = { queueSheetState.expandSoft() },
                         showLyrics = showInlineLyrics,
                         onToggleLyrics = { showInlineLyrics = !showInlineLyrics },

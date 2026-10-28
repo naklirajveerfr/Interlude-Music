@@ -92,7 +92,6 @@ fun SpotifyStylePlayerContent(
     onFavorite: () -> Unit,
     onShuffle: () -> Unit,
     onRepeat: () -> Unit,
-    onShare: () -> Unit,
     onQueue: () -> Unit,
     onSeek: (Long) -> Unit,
     showLyrics: Boolean = false,
@@ -268,9 +267,6 @@ fun SpotifyStylePlayerContent(
                         null,
                         tint = if (showLyrics) MaterialTheme.colorScheme.primary else Color.White,
                     )
-                }
-                IconButton(onClick = onShare) {
-                    Icon(painterResource(R.drawable.share), null, tint = Color.White)
                 }
                 IconButton(onClick = onQueue) {
                     Icon(painterResource(R.drawable.queue_music), null, tint = Color.White)
