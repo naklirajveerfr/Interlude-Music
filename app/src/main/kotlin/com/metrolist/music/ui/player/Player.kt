@@ -2424,14 +2424,7 @@ when (sliderStyle) {
             Queue(
                 state = queueSheetState,
                 playerBottomSheetState = state,
-                background =
-                if (useFullArtTest) {
-                    Color.Transparent
-                } else if (useBlackBackground) {
-                    Color.Black
-                } else {
-                    MaterialTheme.colorScheme.surfaceContainer
-                },
+                background = Color.Transparent,
                 onBackgroundColor = onBackgroundColor,
                 TextBackgroundColor = TextBackgroundColor,
                 textButtonColor = textButtonColor,
@@ -2439,7 +2432,7 @@ when (sliderStyle) {
                 pureBlack = pureBlack,
                 showInlineLyrics = showInlineLyrics,
                 playerBackground = playerBackground,
-                blurArtworkUrl = if (useFullArtTest) mediaMetadata?.thumbnailUrl else null,
+                blurArtworkUrl = mediaMetadata?.thumbnailUrl,
                 hideCollapsedBar = useFullArtTest,
                 onToggleLyrics = {
                     showInlineLyrics = !showInlineLyrics
