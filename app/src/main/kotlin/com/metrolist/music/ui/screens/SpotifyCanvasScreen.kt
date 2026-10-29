@@ -16,10 +16,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -60,6 +62,10 @@ fun SpotifyCanvasScreen(navController: NavController) {
     var status by remember { mutableStateOf("Loading Spotify…") }
     var loading by remember { mutableStateOf(true) }
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
+    var showCookieDialog by remember { mutableStateOf(false) }
+    var cookieText by remember { mutableStateOf("") }
+    var cookieBusy by remember { mutableStateOf(false) }
+    var cookieError by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
@@ -140,7 +146,7 @@ fun SpotifyCanvasScreen(navController: NavController) {
                                 return null
                             }
                         }
-                        loadUrl("https://accounts.spotify.com/login?continue=https%3A%2F%2Fopen.spotify.com%2F")
+                        loadUrl("https://open.spotify.com/")
                     }
                 },
             )
@@ -171,15 +177,66 @@ fun SpotifyCanvasScreen(navController: NavController) {
                     "example" to "https://example.com/",
                     "player" to "https://open.spotify.com/",
                     "login" to "https://accounts.spotify.com/login?continue=https%3A%2F%2Fopen.spotify.com%2F",
-                ).forEach { (label, url) ->
+                ).drop(1).forEach { (label, url) ->
                     TextButton(onClick = { loading = true; status = "Loading $label…"; webViewRef?.loadUrl(url) }) {
                         Text(label)
                     }
                 }
+                TextButton(onClick = { cookieError = false; showCookieDialog = true }) { Text("Paste cookie") }
             }
             }
             }
             }
+        }
+
+        if (showCookieDialog) {
+            AlertDialog(
+                onDismissRequest = { if (!cookieBusy) showCookieDialog = false },
+                title = { Text("Paste sp_dc cookie") },
+                text = {
+                    Column {
+                        Text(
+                            "On a computer, log in at open.spotify.com, open DevTools → Application → Cookies → open.spotify.com, and copy the value of sp_dc.",
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        OutlinedTextField(
+                            value = cookieText,
+                            onValueChange = { cookieText = it },
+                            singleLine = true,
+                            isError = cookieError,
+                            label = { Text("sp_dc") },
+                            supportingText = if (cookieError) {
+                                { Text("Spotify did not accept this cookie") }
+                            } else {
+                                null
+                            },
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        enabled = !cookieBusy && cookieText.isNotBlank(),
+                        onClick = {
+                            cookieBusy = true
+                            cookieError = false
+                            scope.launch {
+                                val ok = SpotifySession.connectWithCookie(context, cookieText)
+                                cookieBusy = false
+                                if (ok) {
+                                    showCookieDialog = false
+                                    navController.navigateUp()
+                                } else {
+                                    cookieError = true
+                                }
+                            }
+                        },
+                    ) { Text(if (cookieBusy) "Checking…" else "Connect") }
+                },
+                dismissButton = {
+                    TextButton(enabled = !cookieBusy, onClick = { showCookieDialog = false }) { Text(stringResource(R.string.cancel)) }
+                },
+            )
         }
 
         GlassTopAppBar(

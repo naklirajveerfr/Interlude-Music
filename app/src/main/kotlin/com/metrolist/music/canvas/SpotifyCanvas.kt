@@ -85,6 +85,22 @@ object SpotifySession {
         }
     }
 
+    /** Signs in with an sp_dc cookie copied from a desktop browser. Returns false if Spotify gives no token for it. */
+    suspend fun connectWithCookie(context: Context, spDc: String): Boolean {
+        val value = spDc.trim().removePrefix("sp_dc=").trim().trim('"', ';')
+        if (value.length < 20 || value.any { it.isWhitespace() }) return false
+        withContext(Dispatchers.Main) {
+            val cookies = CookieManager.getInstance()
+            cookies.setAcceptCookie(true)
+            cookies.setCookie("https://open.spotify.com", "sp_dc=$value; Domain=.spotify.com; Path=/; Secure; HttpOnly")
+            cookies.flush()
+        }
+        context.dataStore.edit { it[SpotifyConnectedKey] = true }
+        if (accessToken(context) != null) return true
+        disconnect(context)
+        return false
+    }
+
     suspend fun disconnect(context: Context) {
         context.dataStore.edit {
             it[SpotifyConnectedKey] = false
