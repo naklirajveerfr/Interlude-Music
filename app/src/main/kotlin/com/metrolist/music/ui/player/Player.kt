@@ -2110,6 +2110,7 @@ fun BottomSheetPlayer(
                     label = "bottomPadding",
                 )
                 if (useSpotifyStyle) {
+                    val immersiveLyrics by playerConnection.currentLyrics.collectAsStateWithLifecycle(initialValue = null)
                     SpotifyStylePlayerContent(
                         mediaMetadata = mediaMetadata,
                         isPlaying = effectiveIsPlaying,
@@ -2123,6 +2124,19 @@ fun BottomSheetPlayer(
                         onMore = {
                             mediaMetadata?.let { md ->
                                 menuState.show {
+                                    if (showInlineLyrics) {
+                                        com.metrolist.music.ui.menu.LyricsMenu(
+                                            lyricsProvider = { immersiveLyrics },
+                                            songProvider = { currentSong?.song },
+                                            mediaMetadataProvider = { md },
+                                            onDismiss = menuState::dismiss,
+                                            onShowOffsetDialog = {
+                                                bottomSheetPageState.show {
+                                                    ShowOffsetDialog()
+                                                }
+                                            },
+                                        )
+                                    } else
                                     PlayerMenu(
                                         mediaMetadata = md,
                                         playerBottomSheetState = state,
