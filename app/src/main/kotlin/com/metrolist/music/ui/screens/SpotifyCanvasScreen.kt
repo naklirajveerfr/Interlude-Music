@@ -2,6 +2,7 @@ package com.metrolist.music.ui.screens
 
 import android.annotation.SuppressLint
 import android.webkit.CookieManager
+import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
@@ -14,11 +15,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,6 +42,7 @@ import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 /** Connects (or disconnects) the Spotify account used for Spotify Canvas. */
 @SuppressLint("SetJavaScriptEnabled")
@@ -45,6 +51,8 @@ fun SpotifyCanvasScreen(navController: NavController) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val connected by rememberPreference(SpotifyConnectedKey, false)
+    var status by remember { mutableStateOf("Loading Spotify…") }
+    var loading by remember { mutableStateOf(true) }
 
     Box(
         modifier = Modifier
@@ -75,6 +83,26 @@ fun SpotifyCanvasScreen(navController: NavController) {
                     WebView(webViewContext).apply {
                         SpotifySession.configure(this)
                         webViewClient = object : WebViewClient() {
+                            override fun onPageFinished(view: WebView, url: String?) {
+                                loading = false
+                                status = "Loaded ${url?.substringBefore('?')} — ${view.title.orEmpty()}"
+                            }
+
+                            override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
+                                if (request.isForMainFrame) {
+                                    loading = false
+                                    status = "Error ${error.errorCode}: ${error.description}"
+                                    Timber.tag("SpotifyCanvas").w("Page error %s %s", error.errorCode, error.description)
+                                }
+                            }
+
+                            override fun onReceivedHttpError(view: WebView, request: WebResourceRequest, response: WebResourceResponse) {
+                                if (request.isForMainFrame) {
+                                    status = "HTTP ${response.statusCode} from ${request.url.host}"
+                                    Timber.tag("SpotifyCanvas").w("HTTP error %s %s", response.statusCode, request.url)
+                                }
+                            }
+
                             // Once logged in, the web player makes authorised requests; the first one carries the token.
                             override fun shouldInterceptRequest(
                                 view: WebView,
@@ -97,6 +125,18 @@ fun SpotifyCanvasScreen(navController: NavController) {
                     }
                 },
             )
+        }
+
+        if (!connected) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                if (loading) CircularProgressIndicator()
+                Text(text = status, style = MaterialTheme.typography.bodySmall)
+            }
         }
 
         GlassTopAppBar(
