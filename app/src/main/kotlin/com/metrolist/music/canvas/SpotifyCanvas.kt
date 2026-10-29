@@ -41,6 +41,23 @@ object SpotifySession {
     private val tokenHosts = setOf("spclient.wg.spotify.com", "api-partner.spotify.com", "api.spotify.com")
     private val mutex = Mutex()
 
+    // Spotify's login refuses the default WebView user agent (it contains "wv").
+    const val WEB_USER_AGENT =
+        "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36"
+
+    fun configure(webView: WebView) {
+        webView.settings.apply {
+            javaScriptEnabled = true
+            domStorageEnabled = true
+            userAgentString = WEB_USER_AGENT
+            mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+        }
+        CookieManager.getInstance().apply {
+            setAcceptCookie(true)
+            setAcceptThirdPartyCookies(webView, true)
+        }
+    }
+
     fun hasSession(): Boolean =
         CookieManager.getInstance().getCookie("https://open.spotify.com").orEmpty().contains("sp_dc=")
 
@@ -106,8 +123,7 @@ object SpotifySession {
                     }
                     cont.resume(token)
                 }
-                webView.settings.javaScriptEnabled = true
-                webView.settings.domStorageEnabled = true
+                configure(webView)
                 webView.webViewClient = object : WebViewClient() {
                     override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
                         tokenFrom(request)?.let(::finish)

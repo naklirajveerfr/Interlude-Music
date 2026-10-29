@@ -73,8 +73,7 @@ fun SpotifyCanvasScreen(navController: NavController) {
                 factory = { webViewContext ->
                     var finished = false
                     WebView(webViewContext).apply {
-                        settings.javaScriptEnabled = true
-                        settings.domStorageEnabled = true
+                        SpotifySession.configure(this)
                         webViewClient = object : WebViewClient() {
                             // Once logged in, the web player makes authorised requests; the first one carries the token.
                             override fun shouldInterceptRequest(
