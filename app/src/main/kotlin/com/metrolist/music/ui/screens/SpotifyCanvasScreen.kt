@@ -18,6 +18,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -32,6 +33,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavController
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
@@ -76,6 +79,13 @@ fun SpotifyCanvasScreen(navController: NavController) {
                 }
             }
         } else {
+            // Own window: the page doesn't paint when embedded in the app's frosted-glass layers.
+            Dialog(
+                onDismissRequest = { navController.navigateUp() },
+                properties = DialogProperties(usePlatformDefaultWidth = false),
+            ) {
+            Surface(modifier = Modifier.fillMaxSize()) {
+            Box(Modifier.fillMaxSize()) {
             AndroidView(
                 modifier = Modifier.fillMaxSize(),
                 factory = { webViewContext ->
@@ -129,9 +139,6 @@ fun SpotifyCanvasScreen(navController: NavController) {
                     }
                 },
             )
-        }
-
-        if (!connected) {
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -140,6 +147,16 @@ fun SpotifyCanvasScreen(navController: NavController) {
             ) {
                 if (loading) CircularProgressIndicator()
                 Text(text = status, style = MaterialTheme.typography.bodySmall)
+            }
+            IconButton(
+                onClick = { navController.navigateUp() },
+                onLongClick = { navController.navigateUp() },
+                modifier = Modifier.align(Alignment.TopStart),
+            ) {
+                Icon(painterResource(R.drawable.close), contentDescription = null)
+            }
+            }
+            }
             }
         }
 
