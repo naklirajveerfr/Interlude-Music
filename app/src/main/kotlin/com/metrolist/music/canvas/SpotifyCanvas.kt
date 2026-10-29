@@ -60,6 +60,8 @@ object SpotifySession {
             }
         }
         webView.setBackgroundColor(android.graphics.Color.BLACK)
+        // Test: some WebViews paint nothing when composited inside blurred/frosted Compose layers.
+        webView.setLayerType(android.view.View.LAYER_TYPE_SOFTWARE, null)
         CookieManager.getInstance().apply {
             setAcceptCookie(true)
             setAcceptThirdPartyCookies(webView, true)

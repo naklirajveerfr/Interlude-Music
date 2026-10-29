@@ -86,8 +86,9 @@ fun SpotifyCanvasScreen(navController: NavController) {
                             override fun onPageFinished(view: WebView, url: String?) {
                                 loading = false
                                 status = "Loaded ${url?.substringBefore('?')} — ${view.title.orEmpty()}"
-                                view.evaluateJavascript("document.body ? document.body.innerText.length : -1") { length ->
-                                    status += " (text: $length chars)"
+                                view.evaluateJavascript("document.body ? document.body.innerText.substring(0, 200) : ''") { text ->
+                                    Timber.tag("SpotifyCanvas").d("Page text: %s", text)
+                                    status += "\nText: ${text.orEmpty().take(200)}"
                                 }
                             }
 
