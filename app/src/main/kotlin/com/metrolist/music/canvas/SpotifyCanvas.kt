@@ -174,9 +174,19 @@ object SpotifyCanvas {
 
     suspend fun resolve(context: Context, title: String, artist: String): String? = withContext(Dispatchers.IO) {
         try {
-            val token = SpotifySession.accessToken(context) ?: return@withContext null
-            val trackId = searchTrack(token, title, artist) ?: return@withContext null
-            fetchCanvas(token, trackId)
+            val token = SpotifySession.accessToken(context)
+            if (token == null) {
+                Timber.tag(TAG).w("No Spotify token (session expired or token capture failed)")
+                return@withContext null
+            }
+            val trackId = searchTrack(token, title, artist)
+            if (trackId == null) {
+                Timber.tag(TAG).w("No Spotify track matched: %s - %s", artist, title)
+                return@withContext null
+            }
+            val url = fetchCanvas(token, trackId)
+            Timber.tag(TAG).d("Spotify canvas for %s: %s", trackId, url ?: "none")
+            url
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -191,7 +201,10 @@ object SpotifyCanvas {
             .url("https://api.spotify.com/v1/search?q=$query&type=track&limit=5")
             .header("Authorization", "Bearer $token")
             .build()
-        val body = client.newCall(request).execute().use { if (it.isSuccessful) it.body?.string() else null } ?: return null
+        val body = client.newCall(request).execute().use {
+            Timber.tag(TAG).d("Search HTTP %s", it.code)
+            if (it.isSuccessful) it.body?.string() else null
+        } ?: return null
         val items = JSONObject(body).optJSONObject("tracks")?.optJSONArray("items") ?: return null
         for (i in 0 until items.length()) {
             val item = items.optJSONObject(i) ?: continue
@@ -215,7 +228,10 @@ object SpotifyCanvas {
             .header("Accept", "application/protobuf")
             .post(payload.toRequestBody("application/x-protobuf".toMediaType()))
             .build()
-        val bytes = client.newCall(request).execute().use { if (it.isSuccessful) it.body?.bytes() else null } ?: return null
+        val bytes = client.newCall(request).execute().use {
+            Timber.tag(TAG).d("Canvas HTTP %s", it.code)
+            if (it.isSuccessful) it.body?.bytes() else null
+        } ?: return null
         return parseCanvasUrl(bytes)
     }
 

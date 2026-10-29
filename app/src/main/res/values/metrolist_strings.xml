@@ -1090,6 +1090,7 @@
     <string name="canvas_source_apple_music">Apple Music</string>
     <string name="canvas_source_tidal">TIDAL</string>
     <string name="canvas_source_all">All</string>
+    <string name="canvas_source_unavailable">Unavailable while Spotify canvas is on (all sources are used as fallback)</string>
     <string name="use_spotify_canvas">Use Spotify animated canvas</string>
     <string name="use_spotify_canvas_desc">Show Spotify\'s looping videos, falling back to the other sources</string>
     <string name="spotify_canvas_configure">Configure</string>

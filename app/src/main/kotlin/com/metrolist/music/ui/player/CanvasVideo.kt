@@ -163,11 +163,14 @@ fun CanvasArtworkOverlay(
     val sourcePref by rememberPreference(CanvasSourceKey, CanvasSource.ALL.name)
     val spotifyEnabled by rememberPreference(SpotifyCanvasEnabledKey, false)
     val spotifyConnected by rememberPreference(SpotifyConnectedKey, false)
-    val useSpotify = allowSpotify && spotifyEnabled && spotifyConnected
-    val videoUrl by produceState<String?>(initialValue = null, title, artist, sourcePref, useSpotify) {
+    val spotifyActive = allowSpotify && spotifyEnabled
+    val useSpotify = spotifyActive && spotifyConnected
+    val videoUrl by produceState<String?>(initialValue = null, title, artist, sourcePref, spotifyActive, useSpotify) {
         value = null
+        // With Spotify canvas on, the source picker is unavailable and every other source is a fallback.
+        val fallbackSource = if (spotifyActive) CanvasSource.ALL else CanvasSource.fromPreference(sourcePref)
         value = (if (useSpotify) SpotifyCanvas.resolve(context, title, artist) else null)
-            ?: CanvasRepository.resolve(title, artist, CanvasSource.fromPreference(sourcePref))
+            ?: CanvasRepository.resolve(title, artist, fallbackSource)
     }
 
     videoUrl?.let { url ->

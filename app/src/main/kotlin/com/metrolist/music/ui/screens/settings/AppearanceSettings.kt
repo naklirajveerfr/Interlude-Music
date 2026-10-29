@@ -238,6 +238,7 @@ fun AppearanceSettings(
     var showCanvasSourceDialog by rememberSaveable { mutableStateOf(false) }
     val (spotifyCanvasEnabled, onSpotifyCanvasEnabledChange) = rememberPreference(SpotifyCanvasEnabledKey, defaultValue = false)
     val (spotifyConnected) = rememberPreference(SpotifyConnectedKey, defaultValue = false)
+    val spotifyCanvasActive = spotifyCanvasEnabled && (isFullArtStyle || isImmersiveStyle)
     val (speedDialCarouselOutline, onSpeedDialCarouselOutlineChange) = rememberPreference(SpeedDialCarouselOutlineKey, defaultValue = false)
     val (iconRoundedness, onIconRoundednessChange) = rememberPreference(IconRoundednessKey, defaultValue = 3f)
     var showIconRoundednessDialog by rememberSaveable { mutableStateOf(false) }
@@ -1908,9 +1909,10 @@ fun AppearanceSettings(
                         Material3SettingsItem(
                             icon = painterResource(R.drawable.music_note),
                             title = { Text(stringResource(R.string.canvas_source)) },
+                            enabled = !spotifyCanvasActive,
                             description = {
                                 Text(
-                                    when (canvasSource) {
+                                    if (spotifyCanvasActive) stringResource(R.string.canvas_source_unavailable) else when (canvasSource) {
                                         CanvasSource.BETTER_LYRICS -> stringResource(R.string.canvas_source_better_lyrics)
                                         CanvasSource.APPLE_MUSIC -> stringResource(R.string.canvas_source_apple_music)
                                         CanvasSource.TIDAL -> stringResource(R.string.canvas_source_tidal)
