@@ -132,6 +132,7 @@ fun SpotifyStylePlayerContent(
             isPlaying = isPlaying,
             modifier = Modifier.fillMaxSize(),
             crop = true,
+            allowSpotify = true,
         )
         // Scrims keep the white text readable on bright videos.
         Box(

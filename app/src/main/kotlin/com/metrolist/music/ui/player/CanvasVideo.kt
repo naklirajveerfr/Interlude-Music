@@ -33,8 +33,11 @@ import androidx.media3.common.VideoSize
 import androidx.media3.exoplayer.ExoPlayer
 import com.metrolist.music.canvas.CanvasRepository
 import com.metrolist.music.canvas.CanvasSource
+import com.metrolist.music.canvas.SpotifyCanvas
 import com.metrolist.music.constants.CanvasEnabledKey
 import com.metrolist.music.constants.CanvasSourceKey
+import com.metrolist.music.constants.SpotifyCanvasEnabledKey
+import com.metrolist.music.constants.SpotifyConnectedKey
 import com.metrolist.music.utils.rememberPreference
 import timber.log.Timber
 import java.util.Locale
@@ -151,14 +154,20 @@ fun CanvasArtworkOverlay(
     isPlaying: Boolean,
     modifier: Modifier = Modifier,
     crop: Boolean = false,
+    allowSpotify: Boolean = false,
 ) {
     val canvasEnabled by rememberPreference(CanvasEnabledKey, true)
     if (!canvasEnabled) return
 
+    val context = LocalContext.current
     val sourcePref by rememberPreference(CanvasSourceKey, CanvasSource.ALL.name)
-    val videoUrl by produceState<String?>(initialValue = null, title, artist, sourcePref) {
+    val spotifyEnabled by rememberPreference(SpotifyCanvasEnabledKey, false)
+    val spotifyConnected by rememberPreference(SpotifyConnectedKey, false)
+    val useSpotify = allowSpotify && spotifyEnabled && spotifyConnected
+    val videoUrl by produceState<String?>(initialValue = null, title, artist, sourcePref, useSpotify) {
         value = null
-        value = CanvasRepository.resolve(title, artist, CanvasSource.fromPreference(sourcePref))
+        value = (if (useSpotify) SpotifyCanvas.resolve(context, title, artist) else null)
+            ?: CanvasRepository.resolve(title, artist, CanvasSource.fromPreference(sourcePref))
     }
 
     videoUrl?.let { url ->

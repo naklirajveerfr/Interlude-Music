@@ -121,6 +121,7 @@ private fun BoxScope.FullArtBackdrop(
                 isPlaying = isPlaying,
                 modifier = Modifier.fillMaxSize(),
                 crop = true,
+                allowSpotify = true,
             )
         }
     }

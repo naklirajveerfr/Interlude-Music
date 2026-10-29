@@ -419,6 +419,10 @@ fun NavGraphBuilder.navigationBuilder(
         AboutScreen(navController)
     }
 
+    composable("settings/spotify_canvas") {
+        SpotifyCanvasScreen(navController)
+    }
+
     composable("login") {
         LoginScreen(navController)
     }

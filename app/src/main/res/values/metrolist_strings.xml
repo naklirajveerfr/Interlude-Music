@@ -1090,4 +1090,12 @@
     <string name="canvas_source_apple_music">Apple Music</string>
     <string name="canvas_source_tidal">TIDAL</string>
     <string name="canvas_source_all">All</string>
+    <string name="use_spotify_canvas">Use Spotify animated canvas</string>
+    <string name="use_spotify_canvas_desc">Show Spotify\'s looping videos, falling back to the other sources</string>
+    <string name="spotify_canvas_configure">Configure</string>
+    <string name="spotify_canvas_required">Required</string>
+    <string name="spotify_canvas_connected">Spotify account connected</string>
+    <string name="spotify_canvas_connect_desc">Connect your Spotify account</string>
+    <string name="spotify_canvas_title">Spotify canvas</string>
+    <string name="spotify_canvas_connected_info">Your Spotify account is connected. Canvas videos are looked up for the song playing, and other sources are used when Spotify has none.</string>
 </resources>

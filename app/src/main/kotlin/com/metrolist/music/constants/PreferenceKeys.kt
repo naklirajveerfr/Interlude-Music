@@ -762,3 +762,7 @@ val PlayerBlurOpacityKey = androidx.datastore.preferences.core.floatPreferencesK
 
 val CanvasEnabledKey = androidx.datastore.preferences.core.booleanPreferencesKey("canvasEnabled")
 val CanvasSourceKey = androidx.datastore.preferences.core.stringPreferencesKey("canvasSource")
+val SpotifyCanvasEnabledKey = androidx.datastore.preferences.core.booleanPreferencesKey("spotifyCanvasEnabled")
+val SpotifyConnectedKey = androidx.datastore.preferences.core.booleanPreferencesKey("spotifyConnected")
+val SpotifyTokenKey = androidx.datastore.preferences.core.stringPreferencesKey("spotifyToken")
+val SpotifyTokenExpiryKey = androidx.datastore.preferences.core.longPreferencesKey("spotifyTokenExpiry")

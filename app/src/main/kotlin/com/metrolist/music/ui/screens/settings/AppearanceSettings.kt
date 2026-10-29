@@ -67,6 +67,8 @@ import com.metrolist.music.constants.ChipSortTypeKey
 import com.metrolist.music.canvas.CanvasSource
 import com.metrolist.music.constants.CanvasEnabledKey
 import com.metrolist.music.constants.CanvasSourceKey
+import com.metrolist.music.constants.SpotifyCanvasEnabledKey
+import com.metrolist.music.constants.SpotifyConnectedKey
 import com.metrolist.music.constants.CropAlbumArtKey
 import com.metrolist.music.constants.DefaultOpenTabKey
 import com.metrolist.music.constants.DensityScale
@@ -234,6 +236,8 @@ fun AppearanceSettings(
     val (canvasEnabled, onCanvasEnabledChange) = rememberPreference(CanvasEnabledKey, defaultValue = true)
     val (canvasSource, onCanvasSourceChange) = rememberEnumPreference(CanvasSourceKey, defaultValue = CanvasSource.ALL)
     var showCanvasSourceDialog by rememberSaveable { mutableStateOf(false) }
+    val (spotifyCanvasEnabled, onSpotifyCanvasEnabledChange) = rememberPreference(SpotifyCanvasEnabledKey, defaultValue = false)
+    val (spotifyConnected) = rememberPreference(SpotifyConnectedKey, defaultValue = false)
     val (speedDialCarouselOutline, onSpeedDialCarouselOutlineChange) = rememberPreference(SpeedDialCarouselOutlineKey, defaultValue = false)
     val (iconRoundedness, onIconRoundednessChange) = rememberPreference(IconRoundednessKey, defaultValue = 3f)
     var showIconRoundednessDialog by rememberSaveable { mutableStateOf(false) }
@@ -1917,6 +1921,57 @@ fun AppearanceSettings(
                             onClick = { showCanvasSourceDialog = true }
                         )
                     )
+                    if (isFullArtStyle || isImmersiveStyle) {
+                        add(
+                            Material3SettingsItem(
+                                icon = painterResource(R.drawable.slow_motion_video),
+                                title = { Text(stringResource(R.string.use_spotify_canvas)) },
+                                description = { Text(stringResource(R.string.use_spotify_canvas_desc)) },
+                                trailingContent = {
+                                    Switch(
+                                        checked = spotifyCanvasEnabled,
+                                        onCheckedChange = onSpotifyCanvasEnabledChange,
+                                        thumbContent = {
+                                            Icon(
+                                                painter = painterResource(
+                                                    id = if (spotifyCanvasEnabled) R.drawable.check else R.drawable.close
+                                                ),
+                                                contentDescription = null,
+                                                modifier = Modifier.size(SwitchDefaults.IconSize)
+                                            )
+                                        }
+                                    )
+                                },
+                                onClick = { onSpotifyCanvasEnabledChange(!spotifyCanvasEnabled) }
+                            )
+                        )
+                        if (spotifyCanvasEnabled) {
+                            add(
+                                Material3SettingsItem(
+                                    icon = painterResource(R.drawable.link),
+                                    title = { Text(stringResource(R.string.spotify_canvas_configure)) },
+                                    description = {
+                                        Text(
+                                            stringResource(
+                                                if (spotifyConnected) R.string.spotify_canvas_connected
+                                                else R.string.spotify_canvas_connect_desc
+                                            )
+                                        )
+                                    },
+                                    trailingContent = if (spotifyConnected) null else {
+                                        {
+                                            Text(
+                                                text = stringResource(R.string.spotify_canvas_required),
+                                                style = MaterialTheme.typography.labelLarge,
+                                                color = MaterialTheme.colorScheme.error,
+                                            )
+                                        }
+                                    },
+                                    onClick = { navController.navigate("settings/spotify_canvas") }
+                                )
+                            )
+                        }
+                    }
                 }
             }
         )
