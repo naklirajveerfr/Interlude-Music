@@ -1,45 +1,33 @@
 package com.metrolist.music.ui.screens
 
-import android.annotation.SuppressLint
-import android.webkit.CookieManager
-import android.webkit.WebResourceError
-import android.webkit.WebResourceRequest
-import android.webkit.WebResourceResponse
-import android.webkit.WebView
-import android.webkit.WebViewClient
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavController
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
@@ -50,18 +38,13 @@ import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.launch
-import timber.log.Timber
 
 /** Connects (or disconnects) the Spotify account used for Spotify Canvas. */
-@SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun SpotifyCanvasScreen(navController: NavController) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val connected by rememberPreference(SpotifyConnectedKey, false)
-    var status by remember { mutableStateOf("Loading Spotify…") }
-    var loading by remember { mutableStateOf(true) }
-    var webViewRef by remember { mutableStateOf<WebView?>(null) }
     var showCookieDialog by remember { mutableStateOf(false) }
     var cookieText by remember { mutableStateOf("") }
     var cookieBusy by remember { mutableStateOf(false) }
@@ -72,13 +55,14 @@ fun SpotifyCanvasScreen(navController: NavController) {
             .windowInsetsPadding(LocalPlayerAwareWindowInsets.current)
             .fillMaxSize(),
     ) {
-        if (connected) {
-            Column(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .padding(32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
+        Column(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .verticalScroll(rememberScrollState())
+                .padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            if (connected) {
                 Text(
                     text = stringResource(R.string.spotify_canvas_connected_info),
                     style = MaterialTheme.typography.bodyLarge,
@@ -87,173 +71,16 @@ fun SpotifyCanvasScreen(navController: NavController) {
                 Button(onClick = { scope.launch { SpotifySession.disconnect(context) } }) {
                     Text(stringResource(R.string.disconnect))
                 }
-            }
-        } else {
-            // Own window: the page doesn't paint when embedded in the app's frosted-glass layers.
-            Dialog(
-                onDismissRequest = { navController.navigateUp() },
-                properties = DialogProperties(usePlatformDefaultWidth = false),
-            ) {
-            Surface(modifier = Modifier.fillMaxSize()) {
-            Box(Modifier.fillMaxSize()) {
-            AndroidView(
-                modifier = Modifier.fillMaxSize(),
-                factory = { webViewContext ->
-                    var finished = false
-                    WebView(webViewContext).apply {
-                        SpotifySession.configure(this)
-                        webViewRef = this
-                        webViewClient = object : WebViewClient() {
-                            override fun onPageFinished(view: WebView, url: String?) {
-                                loading = false
-                                status = "Loaded ${url?.substringBefore('?')} — ${view.title.orEmpty()}"
-                                view.evaluateJavascript(
-                                    """(function(){var i=document.querySelector('input'),b=document.body,c=getComputedStyle(b),r=i?i.getBoundingClientRect():null;
-                                    return 'body op='+c.opacity+' vis='+c.visibility+' disp='+c.display+' bg='+c.backgroundColor+' color='+c.color+
-                                    ' | input='+(r?Math.round(r.x)+','+Math.round(r.y)+' '+Math.round(r.width)+'x'+Math.round(r.height):'none')+
-                                    ' | win='+innerWidth+'x'+innerHeight})()""",
-                                ) { info ->
-                                    Timber.tag("SpotifyCanvas").d("Page info: %s", info)
-                                    status += "\n$info"
-                                }
-                            }
-
-                            override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
-                                if (request.isForMainFrame) {
-                                    loading = false
-                                    status = "Error ${error.errorCode}: ${error.description}"
-                                    Timber.tag("SpotifyCanvas").w("Page error %s %s", error.errorCode, error.description)
-                                }
-                            }
-
-                            override fun onReceivedHttpError(view: WebView, request: WebResourceRequest, response: WebResourceResponse) {
-                                if (request.isForMainFrame) {
-                                    status = "HTTP ${response.statusCode} from ${request.url.host}"
-                                    Timber.tag("SpotifyCanvas").w("HTTP error %s %s", response.statusCode, request.url)
-                                }
-                            }
-
-                            // Once logged in, the web player makes authorised requests; the first one carries the token.
-                            override fun shouldInterceptRequest(
-                                view: WebView,
-                                request: WebResourceRequest,
-                            ): WebResourceResponse? {
-                                if (!finished && SpotifySession.hasSession()) {
-                                    SpotifySession.tokenFrom(request)?.let { token ->
-                                        finished = true
-                                        scope.launch {
-                                            SpotifySession.saveToken(context, token)
-                                            CookieManager.getInstance().flush()
-                                            navController.navigateUp()
-                                        }
-                                    }
-                                }
-                                return null
-                            }
-                        }
-                        loadUrl("https://open.spotify.com/")
-                    }
-                },
-            )
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                if (loading) CircularProgressIndicator()
-                Text(text = status, style = MaterialTheme.typography.bodySmall)
-            }
-            IconButton(
-                onClick = { navController.navigateUp() },
-                onLongClick = { navController.navigateUp() },
-                modifier = Modifier.align(Alignment.TopStart),
-            ) {
-                Icon(painterResource(R.drawable.close), contentDescription = null)
-            }
-            Row(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 4.dp, end = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                // Temporary page tests while the login page doesn't render.
-                listOf(
-                    "example" to "https://example.com/",
-                    "player" to "https://open.spotify.com/",
-                    "login" to "https://accounts.spotify.com/login",
-                ).drop(1).forEach { (label, url) ->
-                    TextButton(onClick = { loading = true; status = "Loading $label…"; webViewRef?.loadUrl(url) }) {
-                        Text(label)
-                    }
+            } else {
+                Text(
+                    text = stringResource(R.string.spotify_canvas_connect_steps),
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+                Spacer(Modifier.height(24.dp))
+                Button(onClick = { cookieError = false; showCookieDialog = true }) {
+                    Text(stringResource(R.string.spotify_canvas_paste_cookie))
                 }
-                TextButton(
-                    onClick = {
-                        loading = true
-                        status = "Loading login (desktop)…"
-                        webViewRef?.let { wv ->
-                            wv.settings.userAgentString = SpotifySession.DESKTOP_USER_AGENT
-                            wv.settings.useWideViewPort = true
-                            wv.settings.loadWithOverviewMode = true
-                            wv.loadUrl("https://accounts.spotify.com/login")
-                        }
-                    },
-                ) { Text("desktop") }
-                TextButton(onClick = { cookieError = false; showCookieDialog = true }) { Text("Paste cookie") }
             }
-            }
-            }
-            }
-        }
-
-        if (showCookieDialog) {
-            AlertDialog(
-                onDismissRequest = { if (!cookieBusy) showCookieDialog = false },
-                title = { Text("Paste sp_dc cookie") },
-                text = {
-                    Column {
-                        Text(
-                            "On a computer, log in at open.spotify.com, open DevTools → Application → Cookies → open.spotify.com, and copy the value of sp_dc.",
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                        Spacer(Modifier.height(12.dp))
-                        OutlinedTextField(
-                            value = cookieText,
-                            onValueChange = { cookieText = it },
-                            singleLine = true,
-                            isError = cookieError,
-                            label = { Text("sp_dc") },
-                            supportingText = if (cookieError) {
-                                { Text("Spotify did not accept this cookie") }
-                            } else {
-                                null
-                            },
-                        )
-                    }
-                },
-                confirmButton = {
-                    Button(
-                        enabled = !cookieBusy && cookieText.isNotBlank(),
-                        onClick = {
-                            cookieBusy = true
-                            cookieError = false
-                            scope.launch {
-                                val ok = SpotifySession.connectWithCookie(context, cookieText)
-                                cookieBusy = false
-                                if (ok) {
-                                    showCookieDialog = false
-                                    navController.navigateUp()
-                                } else {
-                                    cookieError = true
-                                }
-                            }
-                        },
-                    ) { Text(if (cookieBusy) "Checking…" else "Connect") }
-                },
-                dismissButton = {
-                    TextButton(enabled = !cookieBusy, onClick = { showCookieDialog = false }) { Text(stringResource(R.string.cancel)) }
-                },
-            )
         }
 
         GlassTopAppBar(
@@ -264,6 +91,57 @@ fun SpotifyCanvasScreen(navController: NavController) {
                     onLongClick = navController::backToMain,
                 ) {
                     Icon(painterResource(R.drawable.arrow_back), contentDescription = null)
+                }
+            },
+        )
+    }
+
+    if (showCookieDialog) {
+        AlertDialog(
+            onDismissRequest = { if (!cookieBusy) showCookieDialog = false },
+            title = { Text(stringResource(R.string.spotify_canvas_cookie_title)) },
+            text = {
+                OutlinedTextField(
+                    value = cookieText,
+                    onValueChange = { cookieText = it },
+                    singleLine = true,
+                    isError = cookieError,
+                    label = { Text("sp_dc") },
+                    supportingText = if (cookieError) {
+                        { Text(stringResource(R.string.spotify_canvas_cookie_rejected)) }
+                    } else {
+                        null
+                    },
+                )
+            },
+            confirmButton = {
+                Button(
+                    enabled = !cookieBusy && cookieText.isNotBlank(),
+                    onClick = {
+                        cookieBusy = true
+                        cookieError = false
+                        scope.launch {
+                            val ok = SpotifySession.connectWithCookie(context, cookieText)
+                            cookieBusy = false
+                            if (ok) {
+                                showCookieDialog = false
+                                cookieText = ""
+                            } else {
+                                cookieError = true
+                            }
+                        }
+                    },
+                ) {
+                    Text(
+                        stringResource(
+                            if (cookieBusy) R.string.spotify_canvas_checking else R.string.spotify_canvas_connect,
+                        ),
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(enabled = !cookieBusy, onClick = { showCookieDialog = false }) {
+                    Text(stringResource(R.string.cancel))
                 }
             },
         )
