@@ -7,8 +7,10 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -20,6 +22,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -56,6 +59,7 @@ fun SpotifyCanvasScreen(navController: NavController) {
     val connected by rememberPreference(SpotifyConnectedKey, false)
     var status by remember { mutableStateOf("Loading Spotify…") }
     var loading by remember { mutableStateOf(true) }
+    var webViewRef by remember { mutableStateOf<WebView?>(null) }
 
     Box(
         modifier = Modifier
@@ -92,6 +96,7 @@ fun SpotifyCanvasScreen(navController: NavController) {
                     var finished = false
                     WebView(webViewContext).apply {
                         SpotifySession.configure(this)
+                        webViewRef = this
                         webViewClient = object : WebViewClient() {
                             override fun onPageFinished(view: WebView, url: String?) {
                                 loading = false
@@ -154,6 +159,23 @@ fun SpotifyCanvasScreen(navController: NavController) {
                 modifier = Modifier.align(Alignment.TopStart),
             ) {
                 Icon(painterResource(R.drawable.close), contentDescription = null)
+            }
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 4.dp, end = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                // Temporary page tests while the login page doesn't render.
+                listOf(
+                    "example" to "https://example.com/",
+                    "player" to "https://open.spotify.com/",
+                    "login" to "https://accounts.spotify.com/login?continue=https%3A%2F%2Fopen.spotify.com%2F",
+                ).forEach { (label, url) ->
+                    TextButton(onClick = { loading = true; status = "Loading $label…"; webViewRef?.loadUrl(url) }) {
+                        Text(label)
+                    }
+                }
             }
             }
             }
