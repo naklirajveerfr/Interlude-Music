@@ -205,13 +205,20 @@ object SpotifyCanvas {
 
     private const val RESULTS_SCRIPT = """(function(){
         var out=[];
-        document.querySelectorAll('a[href^="/track/"]').forEach(function(a){
-            if(out.length>=10) return;
+        document.querySelectorAll('a[href*="/track/"]').forEach(function(a){
+            var m=a.getAttribute('href').match(/\\/track\\/([A-Za-z0-9]{22})/);
+            if(!m||out.length>=10) return;
             var row=a.closest('[data-testid="tracklist-row"]')||a.closest('[role="row"]')||a.parentElement.parentElement;
-            var artists=Array.from(row.querySelectorAll('a[href^="/artist/"]')).map(function(x){return x.textContent});
-            out.push({id:a.getAttribute('href').split('/')[2].split('?')[0],name:a.textContent,artists:artists});
+            var artists=Array.from(row.querySelectorAll('a[href*="/artist/"]')).map(function(x){return x.textContent});
+            out.push({id:m[1],name:a.textContent,artists:artists});
         });
         return out.length?JSON.stringify(out):'';
+    })()"""
+
+    private const val DIAGNOSTIC_SCRIPT = """(function(){
+        var a=document.querySelectorAll('a[href*="/track/"]').length;
+        return location.href+' | title='+document.title+' | trackLinks='+a+' | text='+
+            (document.body?document.body.innerText.replace(/\\s+/g,' ').substring(0,160):'none');
     })()"""
 
     /**
@@ -241,6 +248,10 @@ object SpotifyCanvas {
                             val text = raw?.let { runCatching { JSONTokener(it).nextValue() as? String }.getOrNull() }
                             if (!text.isNullOrEmpty()) return@withContext text
                         }
+                        val diagnostic = suspendCancellableCoroutine<String?> { cont ->
+                            webView.evaluateJavascript(DIAGNOSTIC_SCRIPT) { cont.resume(it) }
+                        }
+                        Timber.tag(TAG).w("Search page empty: %s", diagnostic)
                         null
                     } finally {
                         webView.stopLoading()
