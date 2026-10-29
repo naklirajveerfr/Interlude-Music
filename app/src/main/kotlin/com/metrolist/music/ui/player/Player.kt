@@ -236,6 +236,7 @@ fun BottomSheetPlayer(
     val bottomSheetPageState = LocalBottomSheetPageState.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val playerStyle by rememberEnumPreference(PlayerStyleKey, PlayerStyle.DEFAULT)
+    CanvasPrefetchEffect()
     val useFullArtTest =
         playerStyle == PlayerStyle.FULLART &&
             LocalConfiguration.current.orientation != Configuration.ORIENTATION_LANDSCAPE

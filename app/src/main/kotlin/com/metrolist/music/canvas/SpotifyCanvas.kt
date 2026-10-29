@@ -176,7 +176,18 @@ object SpotifyCanvas {
         .readTimeout(18, TimeUnit.SECONDS)
         .build()
 
+    private val urlCache = object : LinkedHashMap<String, String>(100, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>?) = size > 200
+    }
+
     suspend fun resolve(context: Context, title: String, artist: String): String? = withContext(Dispatchers.IO) {
+        val key = "${title.lowercase()}|${artist.lowercase()}"
+        val saved = context.getSharedPreferences("spotify_canvas_urls", Context.MODE_PRIVATE)
+        synchronized(urlCache) { urlCache[key] }?.let { return@withContext it }
+        saved.getString(key, null)?.let { url ->
+            synchronized(urlCache) { urlCache[key] = url }
+            return@withContext url
+        }
         try {
             val token = SpotifySession.accessToken(context)
             if (token == null) {
@@ -190,6 +201,10 @@ object SpotifyCanvas {
             }
             val url = fetchCanvas(token, trackId)
             Timber.tag(TAG).d("Spotify canvas for %s: %s", trackId, url ?: "none")
+            if (url != null) {
+                synchronized(urlCache) { urlCache[key] = url }
+                saved.edit().putString(key, url).apply()
+            }
             url
         } catch (e: CancellationException) {
             throw e
