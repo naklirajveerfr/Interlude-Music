@@ -29,6 +29,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import org.json.JSONTokener
 import timber.log.Timber
+import java.io.ByteArrayInputStream
 import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
@@ -203,6 +204,44 @@ object SpotifyCanvas {
     }
     private val searchMutex = Mutex()
 
+    private val pageClient = OkHttpClient.Builder()
+        .followRedirects(false)
+        .connectTimeout(12, TimeUnit.SECONDS)
+        .readTimeout(18, TimeUnit.SECONDS)
+        .build()
+
+    // The web player shows "Playback of protected content is not enabled" and nothing else when the WebView
+    // has no DRM. This makes that check pass; the page is only used to read search results, never to play.
+    private const val DRM_STUB = """(function(){
+        var access={keySystem:'com.widevine.alpha',getConfiguration:function(){return {}},
+            createMediaKeys:function(){return Promise.reject(new Error('unsupported'))}};
+        var f=function(){return Promise.resolve(access)};
+        try{Object.defineProperty(navigator,'requestMediaKeySystemAccess',{value:f,configurable:true})}
+        catch(e){navigator.requestMediaKeySystemAccess=f}
+    })();"""
+
+    private val headTag = Regex("<head[^>]*>", RegexOption.IGNORE_CASE)
+
+    /** Fetches the page like the WebView would, with [DRM_STUB] first in <head>. Null lets the WebView load it normally. */
+    private fun pageWithDrmStub(url: String): WebResourceResponse? = runCatching {
+        val request = Request.Builder()
+            .url(url)
+            .header("User-Agent", SpotifySession.DESKTOP_USER_AGENT)
+            .header("Cookie", CookieManager.getInstance().getCookie(url).orEmpty())
+            .header("Accept", "text/html,application/xhtml+xml")
+            .header("Accept-Language", "en-US,en;q=0.9")
+            .build()
+        pageClient.newCall(request).execute().use { response ->
+            if (response.code !in 200..299 || response.header("Content-Type").orEmpty().contains("text/html").not()) {
+                return@use null
+            }
+            val html = response.body?.string() ?: return@use null
+            val head = headTag.find(html) ?: return@use null
+            val patched = html.substring(0, head.range.last + 1) + "<script>$DRM_STUB</script>" + html.substring(head.range.last + 1)
+            WebResourceResponse("text/html", "utf-8", ByteArrayInputStream(patched.toByteArray()))
+        }
+    }.getOrNull()
+
     private const val RESULTS_SCRIPT = """(function(){
         var out=[];
         document.querySelectorAll('a[href*="/track/"]').forEach(function(a){
@@ -237,7 +276,14 @@ object SpotifyCanvas {
                     try {
                         SpotifySession.configure(webView)
                         webView.settings.userAgentString = SpotifySession.DESKTOP_USER_AGENT
-                        webView.webViewClient = WebViewClient()
+                        webView.webViewClient = object : WebViewClient() {
+                            override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? =
+                                if (request.isForMainFrame && request.method == "GET" && request.url.host == "open.spotify.com") {
+                                    pageWithDrmStub(request.url.toString())
+                                } else {
+                                    null
+                                }
+                        }
                         webView.layout(0, 0, 1280, 2400)
                         webView.loadUrl("https://open.spotify.com/search/$query/tracks")
                         repeat(40) {
