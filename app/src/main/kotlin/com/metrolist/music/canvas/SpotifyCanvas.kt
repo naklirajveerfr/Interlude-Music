@@ -45,6 +45,9 @@ object SpotifySession {
     const val WEB_USER_AGENT =
         "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36"
 
+    const val DESKTOP_USER_AGENT =
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+
     fun configure(webView: WebView) {
         webView.settings.apply {
             javaScriptEnabled = true

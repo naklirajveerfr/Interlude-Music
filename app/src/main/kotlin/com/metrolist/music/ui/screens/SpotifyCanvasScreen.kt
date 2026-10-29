@@ -107,9 +107,14 @@ fun SpotifyCanvasScreen(navController: NavController) {
                             override fun onPageFinished(view: WebView, url: String?) {
                                 loading = false
                                 status = "Loaded ${url?.substringBefore('?')} — ${view.title.orEmpty()}"
-                                view.evaluateJavascript("document.body ? document.body.innerText.substring(0, 200) : ''") { text ->
-                                    Timber.tag("SpotifyCanvas").d("Page text: %s", text)
-                                    status += "\nText: ${text.orEmpty().take(200)}"
+                                view.evaluateJavascript(
+                                    """(function(){var i=document.querySelector('input'),b=document.body,c=getComputedStyle(b),r=i?i.getBoundingClientRect():null;
+                                    return 'body op='+c.opacity+' vis='+c.visibility+' disp='+c.display+' bg='+c.backgroundColor+' color='+c.color+
+                                    ' | input='+(r?Math.round(r.x)+','+Math.round(r.y)+' '+Math.round(r.width)+'x'+Math.round(r.height):'none')+
+                                    ' | win='+innerWidth+'x'+innerHeight})()""",
+                                ) { info ->
+                                    Timber.tag("SpotifyCanvas").d("Page info: %s", info)
+                                    status += "\n$info"
                                 }
                             }
 
@@ -176,12 +181,24 @@ fun SpotifyCanvasScreen(navController: NavController) {
                 listOf(
                     "example" to "https://example.com/",
                     "player" to "https://open.spotify.com/",
-                    "login" to "https://accounts.spotify.com/login?continue=https%3A%2F%2Fopen.spotify.com%2F",
+                    "login" to "https://accounts.spotify.com/login",
                 ).drop(1).forEach { (label, url) ->
                     TextButton(onClick = { loading = true; status = "Loading $label…"; webViewRef?.loadUrl(url) }) {
                         Text(label)
                     }
                 }
+                TextButton(
+                    onClick = {
+                        loading = true
+                        status = "Loading login (desktop)…"
+                        webViewRef?.let { wv ->
+                            wv.settings.userAgentString = SpotifySession.DESKTOP_USER_AGENT
+                            wv.settings.useWideViewPort = true
+                            wv.settings.loadWithOverviewMode = true
+                            wv.loadUrl("https://accounts.spotify.com/login")
+                        }
+                    },
+                ) { Text("desktop") }
                 TextButton(onClick = { cookieError = false; showCookieDialog = true }) { Text("Paste cookie") }
             }
             }
