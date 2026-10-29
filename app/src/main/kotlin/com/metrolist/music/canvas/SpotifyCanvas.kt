@@ -206,7 +206,7 @@ object SpotifyCanvas {
     private const val RESULTS_SCRIPT = """(function(){
         var out=[];
         document.querySelectorAll('a[href*="/track/"]').forEach(function(a){
-            var m=a.getAttribute('href').match(/\\/track\\/([A-Za-z0-9]{22})/);
+            var m=a.getAttribute('href').match(/\/track\/([A-Za-z0-9]{22})/);
             if(!m||out.length>=10) return;
             var row=a.closest('[data-testid="tracklist-row"]')||a.closest('[role="row"]')||a.parentElement.parentElement;
             var artists=Array.from(row.querySelectorAll('a[href*="/artist/"]')).map(function(x){return x.textContent});
@@ -218,7 +218,7 @@ object SpotifyCanvas {
     private const val DIAGNOSTIC_SCRIPT = """(function(){
         var a=document.querySelectorAll('a[href*="/track/"]').length;
         return location.href+' | title='+document.title+' | trackLinks='+a+' | text='+
-            (document.body?document.body.innerText.replace(/\\s+/g,' ').substring(0,160):'none');
+            (document.body?document.body.innerText.replace(/\s+/g,' ').substring(0,160):'none');
     })()"""
 
     /**
