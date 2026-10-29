@@ -86,6 +86,9 @@ fun SpotifyCanvasScreen(navController: NavController) {
                             override fun onPageFinished(view: WebView, url: String?) {
                                 loading = false
                                 status = "Loaded ${url?.substringBefore('?')} — ${view.title.orEmpty()}"
+                                view.evaluateJavascript("document.body ? document.body.innerText.length : -1") { length ->
+                                    status += " (text: $length chars)"
+                                }
                             }
 
                             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {

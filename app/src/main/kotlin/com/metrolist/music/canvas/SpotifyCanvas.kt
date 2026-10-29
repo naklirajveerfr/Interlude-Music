@@ -51,7 +51,15 @@ object SpotifySession {
             domStorageEnabled = true
             userAgentString = WEB_USER_AGENT
             mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+            // The app's dark theme otherwise makes Android recolour the page, which can hide Spotify's text.
+            if (android.os.Build.VERSION.SDK_INT >= 33) {
+                isAlgorithmicDarkeningAllowed = false
+            } else if (android.os.Build.VERSION.SDK_INT >= 29) {
+                @Suppress("DEPRECATION")
+                forceDark = android.webkit.WebSettings.FORCE_DARK_OFF
+            }
         }
+        webView.setBackgroundColor(android.graphics.Color.BLACK)
         CookieManager.getInstance().apply {
             setAcceptCookie(true)
             setAcceptThirdPartyCookies(webView, true)
