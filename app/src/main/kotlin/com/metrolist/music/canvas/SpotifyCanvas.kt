@@ -14,6 +14,7 @@ import com.metrolist.music.constants.SpotifyTokenKey
 import com.metrolist.music.utils.dataStore
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
@@ -24,7 +25,9 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONArray
 import org.json.JSONObject
+import org.json.JSONTokener
 import timber.log.Timber
 import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
@@ -179,7 +182,7 @@ object SpotifyCanvas {
                 Timber.tag(TAG).w("No Spotify token (session expired or token capture failed)")
                 return@withContext null
             }
-            val trackId = searchTrack(token, title, artist)
+            val trackId = searchTrack(context, title, artist)
             if (trackId == null) {
                 Timber.tag(TAG).w("No Spotify track matched: %s - %s", artist, title)
                 return@withContext null
@@ -195,26 +198,77 @@ object SpotifyCanvas {
         }
     }
 
-    private fun searchTrack(token: String, title: String, artist: String): String? {
-        val query = URLEncoder.encode("track:$title artist:$artist", "UTF-8")
-        val request = Request.Builder()
-            .url("https://api.spotify.com/v1/search?q=$query&type=track&limit=5")
-            .header("Authorization", "Bearer $token")
-            .build()
-        val body = client.newCall(request).execute().use {
-            Timber.tag(TAG).d("Search HTTP %s", it.code)
-            if (it.isSuccessful) it.body?.string() else null
-        } ?: return null
-        val items = JSONObject(body).optJSONObject("tracks")?.optJSONArray("items") ?: return null
-        for (i in 0 until items.length()) {
-            val item = items.optJSONObject(i) ?: continue
+    private val idCache = object : LinkedHashMap<String, String?>(100, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String?>?) = size > 200
+    }
+    private val searchMutex = Mutex()
+
+    private const val RESULTS_SCRIPT = """(function(){
+        var out=[];
+        document.querySelectorAll('a[href^="/track/"]').forEach(function(a){
+            if(out.length>=10) return;
+            var row=a.closest('[data-testid="tracklist-row"]')||a.closest('[role="row"]')||a.parentElement.parentElement;
+            var artists=Array.from(row.querySelectorAll('a[href^="/artist/"]')).map(function(x){return x.textContent});
+            out.push({id:a.getAttribute('href').split('/')[2].split('?')[0],name:a.textContent,artists:artists});
+        });
+        return out.length?JSON.stringify(out):'';
+    })()"""
+
+    /**
+     * Spotify's search API refuses web-player tokens (HTTP 429), so the track is found by opening the
+     * web player's own search page in a hidden WebView and reading the result links from the page.
+     */
+    @SuppressLint("SetJavaScriptEnabled")
+    private suspend fun searchTrack(context: Context, title: String, artist: String): String? {
+        val key = "${title.lowercase()}|${artist.lowercase()}"
+        synchronized(idCache) { if (idCache.containsKey(key)) return idCache[key] }
+        val query = URLEncoder.encode("$title $artist", "UTF-8").replace("+", "%20")
+        val json = searchMutex.withLock {
+            withTimeoutOrNull(25_000) {
+                withContext(Dispatchers.Main) {
+                    val webView = WebView(context.applicationContext)
+                    try {
+                        SpotifySession.configure(webView)
+                        webView.settings.userAgentString = SpotifySession.DESKTOP_USER_AGENT
+                        webView.webViewClient = WebViewClient()
+                        webView.layout(0, 0, 1280, 2400)
+                        webView.loadUrl("https://open.spotify.com/search/$query/tracks")
+                        repeat(40) {
+                            delay(500)
+                            val raw = suspendCancellableCoroutine<String?> { cont ->
+                                webView.evaluateJavascript(RESULTS_SCRIPT) { cont.resume(it) }
+                            }
+                            val text = raw?.let { runCatching { JSONTokener(it).nextValue() as? String }.getOrNull() }
+                            if (!text.isNullOrEmpty()) return@withContext text
+                        }
+                        null
+                    } finally {
+                        webView.stopLoading()
+                        webView.destroy()
+                    }
+                }
+            }
+        }
+        if (json == null) {
+            Timber.tag(TAG).w("Spotify search page returned no results for: %s - %s", artist, title)
+            return null
+        }
+        val results = JSONArray(json)
+        var found: String? = null
+        for (i in 0 until results.length()) {
+            val item = results.optJSONObject(i) ?: continue
             val candidate = CanvasArtwork(
                 name = item.optString("name"),
-                artist = item.optJSONArray("artists")?.optJSONObject(0)?.optString("name"),
+                artist = item.optJSONArray("artists")?.optString(0),
             )
-            if (candidate.matchesSong(title, artist)) return item.optString("id").takeIf { it.isNotEmpty() }
+            if (candidate.matchesSong(title, artist)) {
+                found = item.optString("id").takeIf { it.isNotEmpty() }
+                break
+            }
         }
-        return null
+        Timber.tag(TAG).d("Search page: %d results, match=%s", results.length(), found)
+        synchronized(idCache) { idCache[key] = found }
+        return found
     }
 
     private fun fetchCanvas(token: String, trackId: String): String? {
