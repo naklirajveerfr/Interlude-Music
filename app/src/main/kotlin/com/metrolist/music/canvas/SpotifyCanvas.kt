@@ -220,6 +220,12 @@ object SpotifyCanvas {
         catch(e){navigator.requestMediaKeySystemAccess=f}
     })();"""
 
+    private val heavyExtensions = setOf("woff", "woff2", "ttf", "otf", "png", "jpg", "jpeg", "webp", "gif", "svg", "mp3", "mp4", "m4a", "ogg")
+    private val imageHosts = setOf("i.scdn.co", "mosaic.scdn.co", "image-cdn-ak.spotifycdn.com", "image-cdn-fa.spotifycdn.com")
+
+    private fun isHeavyResource(url: android.net.Uri): Boolean =
+        url.host in imageHosts || url.lastPathSegment?.substringAfterLast('.', "")?.lowercase() in heavyExtensions
+
     private val headTag = Regex("<head[^>]*>", RegexOption.IGNORE_CASE)
 
     /** Fetches the page like the WebView would, with [DRM_STUB] first in <head>. Null lets the WebView load it normally. */
@@ -268,6 +274,11 @@ object SpotifyCanvas {
     private suspend fun searchTrack(context: Context, title: String, artist: String): String? {
         val key = "${title.lowercase()}|${artist.lowercase()}"
         synchronized(idCache) { if (idCache.containsKey(key)) return idCache[key] }
+        val saved = context.getSharedPreferences("spotify_canvas_ids", Context.MODE_PRIVATE)
+        saved.getString(key, null)?.let { id ->
+            synchronized(idCache) { idCache[key] = id }
+            return id
+        }
         val query = URLEncoder.encode("$title $artist", "UTF-8").replace("+", "%20")
         val json = searchMutex.withLock {
             withTimeoutOrNull(25_000) {
@@ -276,18 +287,22 @@ object SpotifyCanvas {
                     try {
                         SpotifySession.configure(webView)
                         webView.settings.userAgentString = SpotifySession.DESKTOP_USER_AGENT
+                        webView.settings.blockNetworkImage = true
                         webView.webViewClient = object : WebViewClient() {
                             override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? =
-                                if (request.isForMainFrame && request.method == "GET" && request.url.host == "open.spotify.com") {
-                                    pageWithDrmStub(request.url.toString())
-                                } else {
-                                    null
+                                when {
+                                    request.isForMainFrame && request.method == "GET" && request.url.host == "open.spotify.com" ->
+                                        pageWithDrmStub(request.url.toString())
+                                    // Only the result links are read, so fonts, images and media are skipped.
+                                    isHeavyResource(request.url) ->
+                                        WebResourceResponse("text/plain", "utf-8", 204, "No Content", emptyMap(), ByteArrayInputStream(ByteArray(0)))
+                                    else -> null
                                 }
                         }
                         webView.layout(0, 0, 1280, 2400)
                         webView.loadUrl("https://open.spotify.com/search/$query/tracks")
-                        repeat(40) {
-                            delay(500)
+                        repeat(100) {
+                            delay(250)
                             val raw = suspendCancellableCoroutine<String?> { cont ->
                                 webView.evaluateJavascript(RESULTS_SCRIPT) { cont.resume(it) }
                             }
@@ -325,6 +340,8 @@ object SpotifyCanvas {
         }
         Timber.tag(TAG).d("Search page: %d results, match=%s", results.length(), found)
         synchronized(idCache) { idCache[key] = found }
+        // Only hits are saved to disk; misses stay in memory so a song is retried after a restart.
+        if (found != null) saved.edit().putString(key, found).apply()
         return found
     }
 

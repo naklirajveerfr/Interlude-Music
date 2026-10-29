@@ -39,6 +39,9 @@ import com.metrolist.music.constants.CanvasSourceKey
 import com.metrolist.music.constants.SpotifyCanvasEnabledKey
 import com.metrolist.music.constants.SpotifyConnectedKey
 import com.metrolist.music.utils.rememberPreference
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.util.Locale
 
@@ -169,8 +172,21 @@ fun CanvasArtworkOverlay(
         value = null
         // With Spotify canvas on, the source picker is unavailable and every other source is a fallback.
         val fallbackSource = if (spotifyActive) CanvasSource.ALL else CanvasSource.fromPreference(sourcePref)
-        value = (if (useSpotify) SpotifyCanvas.resolve(context, title, artist) else null)
-            ?: CanvasRepository.resolve(title, artist, fallbackSource)
+        if (!useSpotify) {
+            value = CanvasRepository.resolve(title, artist, fallbackSource)
+            return@produceState
+        }
+        // Spotify's lookup is slow, so the other sources run alongside it: their result is shown straight
+        // away and Spotify's replaces it if it finds one.
+        coroutineScope {
+            val spotify = async { SpotifyCanvas.resolve(context, title, artist) }
+            val fallback = async { CanvasRepository.resolve(title, artist, fallbackSource) }
+            launch {
+                val early = fallback.await()
+                if (!spotify.isCompleted) value = early
+            }
+            value = spotify.await() ?: fallback.await()
+        }
     }
 
     videoUrl?.let { url ->
