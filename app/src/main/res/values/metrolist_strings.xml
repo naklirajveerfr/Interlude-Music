@@ -1100,6 +1100,9 @@
     <string name="spotify_canvas_title">Spotify canvas</string>
     <string name="spotify_canvas_connect_steps">To connect, copy your Spotify login cookie (sp_dc).\n\nOn this phone: tap \"Open Spotify\" and log in with Firefox for Android, install the free Cookie-Editor add-on, open it on open.spotify.com and copy the value of sp_dc. Chrome cannot show cookies.\n\nOn a computer: log in at open.spotify.com, press F12 → Application (Storage in Firefox) → Cookies → open.spotify.com and copy the value of sp_dc.\n\nThen tap \"Paste cookie\". The cookie works like a password. It stays on this device and is only used to look up canvas videos.</string>
     <string name="spotify_canvas_open_spotify">Open Spotify</string>
+    <string name="audio_output_connect">Connect</string>
+    <string name="audio_output_this_phone">This phone</string>
+    <string name="audio_output_find_bluetooth">Find Bluetooth devices</string>
     <string name="spotify_canvas_paste_cookie">Paste cookie</string>
     <string name="spotify_canvas_cookie_title">Paste sp_dc cookie</string>
     <string name="spotify_canvas_cookie_rejected">Spotify did not accept this cookie</string>

@@ -276,12 +276,23 @@ fun SpotifyStylePlayerContent(
             }
 
             val output = rememberAudioOutput()
+            var showOutputs by remember { mutableStateOf(false) }
+            if (showOutputs) {
+                AudioOutputSheet(
+                    output = output,
+                    nowPlaying = listOf(title.uppercase(), artist).filter { it.isNotBlank() }.joinToString(" – "),
+                    onDismiss = { showOutputs = false },
+                )
+            }
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    Modifier.weight(1f).clickable { showOutputs = true },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Icon(
                         painterResource(if (output.isBluetooth) R.drawable.bluetooth else R.drawable.smartphone),
                         null,
@@ -401,11 +412,11 @@ private fun LiveLyricLine(mediaMetadata: MediaMetadata?, positionProvider: () ->
     }
 }
 
-private data class AudioOutput(val isBluetooth: Boolean, val name: String)
+internal data class AudioOutput(val isBluetooth: Boolean, val name: String)
 
 /** Where the sound is going: the connected Bluetooth device's name, otherwise this phone's name. */
 @Composable
-private fun rememberAudioOutput(): AudioOutput {
+internal fun rememberAudioOutput(): AudioOutput {
     val context = LocalContext.current
     fun granted() = Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
         ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
