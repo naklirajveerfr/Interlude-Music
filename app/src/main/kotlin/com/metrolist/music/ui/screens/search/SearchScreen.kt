@@ -304,8 +304,9 @@ fun SearchScreen(
         Box(
             modifier =
                 Modifier
-                    .padding(top = paddingValues.calculateTopPadding())
-                    .fillMaxSize(),
+                    .fillMaxSize()
+                    .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.surface)
+                    .padding(top = paddingValues.calculateTopPadding()),
         ) {
             when (searchSource) {
                 SearchSource.LOCAL -> {
