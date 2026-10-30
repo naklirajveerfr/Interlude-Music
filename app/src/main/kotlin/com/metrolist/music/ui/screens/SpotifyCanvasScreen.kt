@@ -33,9 +33,7 @@ import androidx.core.net.toUri
 import androidx.navigation.NavController
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
-import com.metrolist.music.canvas.SpotifyOAuth
 import com.metrolist.music.canvas.SpotifySession
-import com.metrolist.music.constants.SpotifyClientIdKey
 import com.metrolist.music.constants.SpotifyConnectedKey
 import com.metrolist.music.ui.component.GlassTopAppBar
 import com.metrolist.music.ui.component.IconButton
@@ -49,7 +47,6 @@ fun SpotifyCanvasScreen(navController: NavController) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val connected by rememberPreference(SpotifyConnectedKey, false)
-    var clientId by rememberPreference(SpotifyClientIdKey, "")
     var showCookieDialog by remember { mutableStateOf(false) }
     var cookieText by remember { mutableStateOf("") }
     var cookieBusy by remember { mutableStateOf(false) }
@@ -82,21 +79,6 @@ fun SpotifyCanvasScreen(navController: NavController) {
                     style = MaterialTheme.typography.bodyLarge,
                 )
                 Spacer(Modifier.height(24.dp))
-                OutlinedTextField(
-                    value = clientId,
-                    onValueChange = { clientId = it.trim() },
-                    singleLine = true,
-                    label = { Text(stringResource(R.string.spotify_canvas_client_id)) },
-                    supportingText = { Text(stringResource(R.string.spotify_canvas_client_id_hint)) },
-                )
-                Spacer(Modifier.height(12.dp))
-                Button(
-                    enabled = clientId.isNotBlank(),
-                    onClick = { scope.launch { SpotifyOAuth.start(context, clientId) } },
-                ) {
-                    Text(stringResource(R.string.spotify_canvas_login_browser))
-                }
-                Spacer(Modifier.height(12.dp))
                 Button(
                     onClick = {
                         context.startActivity(
