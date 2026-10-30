@@ -2170,6 +2170,7 @@ fun BottomSheetPlayer(
                         onQueue = { queueSheetState.expandSoft() },
                         showLyrics = showInlineLyrics,
                         onToggleLyrics = { showInlineLyrics = !showInlineLyrics },
+                        queueProgress = { queueSheetState.progress },
                         overlay = {
                             androidx.compose.animation.AnimatedVisibility(
                                 visible = showInlineLyrics,
@@ -2177,12 +2178,6 @@ fun BottomSheetPlayer(
                                 exit = androidx.compose.animation.fadeOut(),
                             ) {
                                 Box(Modifier.fillMaxSize()) {
-                                    coil3.compose.AsyncImage(
-                                        model = mediaMetadata?.thumbnailUrl,
-                                        contentDescription = null,
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier.fillMaxSize().blur(20.dp),
-                                    )
                                     Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f)))
                                     Box(
                                         Modifier
@@ -2292,12 +2287,6 @@ fun BottomSheetPlayer(
                                 ),
                             ) {
                                 Box(Modifier.fillMaxSize()) {
-                                    coil3.compose.AsyncImage(
-                                        model = mediaMetadata?.thumbnailUrl,
-                                        contentDescription = null,
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier.fillMaxSize().blur(40.dp),
-                                    )
                                     Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.35f)))
                                     androidx.compose.animation.AnimatedVisibility(
                                         visible = showInlineLyrics,
@@ -2356,6 +2345,7 @@ fun BottomSheetPlayer(
                         showLyrics = showInlineLyrics,
                         isFullScreen = isFullScreen,
                         onFullScreen = { isFullScreen = !isFullScreen },
+                        queueProgress = { queueSheetState.progress },
                         buttonShape = playerButtonShape,
                         appleButtonColor = if (playerButtonsStyle == PlayerButtonsStyle.DEFAULT) Color.Unspecified else textButtonColor,
                         fadeStyle = playerFadeStyle,
@@ -2553,6 +2543,7 @@ when (sliderStyle) {
                 showInlineLyrics = showInlineLyrics,
                 playerBackground = playerBackground,
                 blurArtworkUrl = mediaMetadata?.thumbnailUrl,
+                liveBackdrop = useFullArtTest || useSpotifyStyle,
                 hideCollapsedBar = useFullArtTest || useSpotifyStyle,
                 onToggleLyrics = {
                     showInlineLyrics = !showInlineLyrics

@@ -160,6 +160,7 @@ fun FullArtPlayerContent(
     showLyrics: Boolean = false,
     isFullScreen: Boolean = false,
     onFullScreen: () -> Unit = {},
+    queueProgress: () -> Float = { 0f },
     modifier: Modifier = Modifier,
     overlay: @Composable BoxScope.() -> Unit = {},
 ) {
@@ -184,14 +185,35 @@ fun FullArtPlayerContent(
         }
     }
 
+    // The live artwork (canvas video included) is blurred and dimmed in place when lyrics or the queue open.
+    val lyricsBackdrop = animateFloatAsState(if (showLyrics) 1f else 0f, tween(300), label = "lyricsBackdrop")
+    val backdrop = { maxOf(lyricsBackdrop.value, queueProgress().coerceIn(0f, 1f)) }
+
     Box(modifier.fillMaxSize()) {
         if (showArt) {
-            FullArtBackdrop(artworkUrl, fadeStyle, title, artist, isPlaying)
-            if (fadeFromArt != null && !artFadeDone) {
-                Box(Modifier.fillMaxSize().graphicsLayer { alpha = artFadeAlpha.value }) {
-                    FullArtBackdrop(fadeFromArt, fadeStyle, title, artist, isPlaying, showCanvas = false)
+            Box(
+                Modifier.fillMaxSize().graphicsLayer {
+                    val amount = backdrop()
+                    renderEffect = if (amount > 0f && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                        val radius = 24.dp.toPx() * amount
+                        BlurEffect(radius, radius, TileMode.Clamp)
+                    } else {
+                        null
+                    }
+                },
+            ) {
+                FullArtBackdrop(artworkUrl, fadeStyle, title, artist, isPlaying)
+                if (fadeFromArt != null && !artFadeDone) {
+                    Box(Modifier.fillMaxSize().graphicsLayer { alpha = artFadeAlpha.value }) {
+                        FullArtBackdrop(fadeFromArt, fadeStyle, title, artist, isPlaying, showCanvas = false)
+                    }
                 }
             }
+            Box(
+                Modifier.fillMaxSize()
+                    .graphicsLayer { alpha = queueProgress().coerceIn(0f, 1f) }
+                    .background(Color.Black.copy(alpha = 0.55f)),
+            )
         }
 
         overlay()
@@ -200,6 +222,7 @@ fun FullArtPlayerContent(
             Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
+                .graphicsLayer { alpha = (1f - queueProgress() * 2f).coerceIn(0f, 1f) }
                 .navigationBarsPadding()
                 .padding(horizontal = 24.dp, vertical = 16.dp),
         ) {

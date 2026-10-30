@@ -11,6 +11,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -56,6 +57,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -113,6 +117,7 @@ fun SpotifyStylePlayerContent(
     onSeek: (Long) -> Unit,
     showLyrics: Boolean = false,
     onToggleLyrics: () -> Unit = {},
+    queueProgress: () -> Float = { 0f },
     overlay: @Composable BoxScope.() -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -121,35 +126,60 @@ fun SpotifyStylePlayerContent(
     val albumName = mediaMetadata?.album?.title
     val total = duration.coerceAtLeast(1L)
 
+    // The live artwork (canvas video included) is blurred and dimmed in place when lyrics or the queue open.
+    val lyricsBackdrop = animateFloatAsState(if (showLyrics) 1f else 0f, tween(300), label = "lyricsBackdrop")
+    val backdrop = { maxOf(lyricsBackdrop.value, queueProgress().coerceIn(0f, 1f)) }
+
     Box(modifier.fillMaxSize().background(Color.Black)) {
-        AsyncImage(
-            model = mediaMetadata?.thumbnailUrl,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize(),
-        )
-        CanvasArtworkOverlay(
-            title = title,
-            artist = artist,
-            isPlaying = isPlaying,
-            modifier = Modifier.fillMaxSize(),
-            crop = true,
-            allowSpotify = true,
+        Box(
+            Modifier.fillMaxSize().graphicsLayer {
+                val amount = backdrop()
+                renderEffect = if (amount > 0f && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    val radius = 24.dp.toPx() * amount
+                    BlurEffect(radius, radius, TileMode.Clamp)
+                } else {
+                    null
+                }
+            },
+        ) {
+            AsyncImage(
+                model = mediaMetadata?.thumbnailUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+            CanvasArtworkOverlay(
+                title = title,
+                artist = artist,
+                isPlaying = isPlaying,
+                modifier = Modifier.fillMaxSize(),
+                crop = true,
+                allowSpotify = true,
+            )
+        }
+        Box(
+            Modifier.fillMaxSize()
+                .graphicsLayer { alpha = queueProgress().coerceIn(0f, 1f) }
+                .background(Color.Black.copy(alpha = 0.55f)),
         )
         // Scrims keep the white text readable on bright videos.
         Box(
             Modifier.fillMaxWidth().height(160.dp).align(Alignment.TopCenter)
+                .graphicsLayer { alpha = (1f - queueProgress() * 2f).coerceIn(0f, 1f) }
                 .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.55f), Color.Transparent))),
         )
         Box(
             Modifier.fillMaxWidth().height(380.dp).align(Alignment.BottomCenter)
+                .graphicsLayer { alpha = (1f - queueProgress() * 2f).coerceIn(0f, 1f) }
                 .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.8f)))),
         )
 
         overlay()
 
         Row(
-            Modifier.align(Alignment.TopCenter).fillMaxWidth().statusBarsPadding().padding(horizontal = 8.dp, vertical = 4.dp),
+            Modifier.align(Alignment.TopCenter).fillMaxWidth()
+                .graphicsLayer { alpha = (1f - queueProgress() * 2f).coerceIn(0f, 1f) }
+                .statusBarsPadding().padding(horizontal = 8.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onBack) {
@@ -179,7 +209,9 @@ fun SpotifyStylePlayerContent(
         }
 
         Column(
-            Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding().padding(horizontal = 18.dp, vertical = 12.dp),
+            Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+                .graphicsLayer { alpha = (1f - queueProgress() * 2f).coerceIn(0f, 1f) }
+                .navigationBarsPadding().padding(horizontal = 18.dp, vertical = 12.dp),
         ) {
             if (!showLyrics) {
                 LiveLyricLine(mediaMetadata, positionProvider, onClick = onToggleLyrics)

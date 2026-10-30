@@ -168,6 +168,7 @@ fun Queue(
     showInlineLyrics: Boolean,
     playerBackground: PlayerBackgroundStyle = PlayerBackgroundStyle.DEFAULT,
     blurArtworkUrl: String? = null,
+    liveBackdrop: Boolean = false,
     hideCollapsedBar: Boolean = false,
     onToggleLyrics: () -> Unit = {},
 ) {
@@ -275,13 +276,16 @@ fun Queue(
         background = {
             if (blurArtworkUrl != null) {
                 Box(Modifier.fillMaxSize()) {
-                    coil3.compose.AsyncImage(
-                        model = blurArtworkUrl,
-                        contentDescription = null,
-                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize().blur(60.dp),
-                    )
-                    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.55f)))
+                    // The immersive players blur their own live artwork behind the queue, so it shows through.
+                    if (!liveBackdrop) {
+                        coil3.compose.AsyncImage(
+                            model = blurArtworkUrl,
+                            contentDescription = null,
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize().blur(60.dp),
+                        )
+                        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.55f)))
+                    }
                 }
             } else {
                 Box(Modifier.fillMaxSize().background(Color.Unspecified))
