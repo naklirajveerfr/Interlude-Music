@@ -1,5 +1,6 @@
 package com.metrolist.music.ui.screens
 
+import android.content.Intent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -28,6 +29,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.navigation.NavController
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
@@ -93,6 +95,16 @@ fun SpotifyCanvasScreen(navController: NavController) {
                     onClick = { scope.launch { SpotifyOAuth.start(context, clientId) } },
                 ) {
                     Text(stringResource(R.string.spotify_canvas_login_browser))
+                }
+                Spacer(Modifier.height(12.dp))
+                Button(
+                    onClick = {
+                        context.startActivity(
+                            Intent(Intent.ACTION_VIEW, "https://open.spotify.com".toUri()).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                        )
+                    },
+                ) {
+                    Text(stringResource(R.string.spotify_canvas_open_spotify))
                 }
                 Spacer(Modifier.height(12.dp))
                 Button(onClick = { cookieError = false; showCookieDialog = true }) {

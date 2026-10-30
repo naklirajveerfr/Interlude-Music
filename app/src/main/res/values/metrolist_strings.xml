@@ -1098,7 +1098,8 @@
     <string name="spotify_canvas_connected">Spotify account connected</string>
     <string name="spotify_canvas_connect_desc">Connect your Spotify account</string>
     <string name="spotify_canvas_title">Spotify canvas</string>
-    <string name="spotify_canvas_connect_steps">To connect, copy your Spotify login cookie from a computer:\n\n1. Log in at open.spotify.com\n2. Open DevTools (F12) → Application (Storage in Firefox) → Cookies → open.spotify.com\n3. Copy the value of sp_dc and paste it here\n\nThe cookie works like a password. It stays on this device and is only used to look up canvas videos.</string>
+    <string name="spotify_canvas_connect_steps">To connect, copy your Spotify login cookie (sp_dc).\n\nOn this phone: tap \"Open Spotify\" and log in with Firefox for Android, install the free Cookie-Editor add-on, open it on open.spotify.com and copy the value of sp_dc. Chrome cannot show cookies.\n\nOn a computer: log in at open.spotify.com, press F12 → Application (Storage in Firefox) → Cookies → open.spotify.com and copy the value of sp_dc.\n\nThen tap \"Paste cookie\". The cookie works like a password. It stays on this device and is only used to look up canvas videos.</string>
+    <string name="spotify_canvas_open_spotify">Open Spotify</string>
     <string name="spotify_canvas_paste_cookie">Paste cookie</string>
     <string name="spotify_canvas_cookie_title">Paste sp_dc cookie</string>
     <string name="spotify_canvas_cookie_rejected">Spotify did not accept this cookie</string>
