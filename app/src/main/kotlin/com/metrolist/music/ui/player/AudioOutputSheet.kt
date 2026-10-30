@@ -7,9 +7,8 @@ import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
 import android.content.Context
 import android.content.Intent
-import android.media.MediaRoute2Info
-import android.media.MediaRouter2
-import android.media.RouteDiscoveryPreference
+import android.media.AudioDeviceInfo
+import android.media.AudioManager
 import android.os.Build
 import android.provider.Settings
 import android.widget.Toast
@@ -49,9 +48,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.media3.exoplayer.ExoPlayer
+import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -69,6 +71,7 @@ internal fun ColumnScope.AudioOutputMenuContent(
 ) {
     val context = LocalContext.current
     val output = rememberAudioOutput()
+    val player = LocalPlayerConnection.current?.service?.player
     val phoneLabel = stringResource(R.string.audio_output_this_phone)
     val scope = rememberCoroutineScope()
     var connecting by remember { mutableStateOf<String?>(null) }
@@ -126,7 +129,7 @@ internal fun ColumnScope.AudioOutputMenuContent(
                         .clickable(enabled = connecting == null) {
                             connecting = device.name
                             scope.launch {
-                                if (switchTo(context, device)) {
+                                if (switchTo(context, player, device)) {
                                     // The top card updates by itself once the new output shows up.
                                     delay(8_000)
                                     if (connecting == device.name) connecting = null
@@ -192,33 +195,46 @@ private fun pairedAudioDevices(context: Context): List<String> = runCatching {
         .distinct()
 }.getOrDefault(emptyList())
 
-/**
- * Moves audio to [target]. A connected device is switched to through the system media router; a paired
- * one that is not connected gets an A2DP connect request. Returns false when neither worked.
- */
-private suspend fun switchTo(context: Context, target: AudioOutput): Boolean {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && routeTo(context, target)) return true
-    return target.isBluetooth && connectA2dp(context, target.name)
+/** Set when the user picked "This phone" while Bluetooth is connected, so the label matches where the audio goes. */
+internal object OutputRoute {
+    val forcedPhone = MutableStateFlow(false)
 }
 
-@androidx.annotation.RequiresApi(Build.VERSION_CODES.R)
-private suspend fun routeTo(context: Context, target: AudioOutput): Boolean = withContext(Dispatchers.Main) {
-    runCatching {
-        val router = MediaRouter2.getInstance(context)
-        val callback = object : MediaRouter2.RouteCallback() {}
-        val preference = RouteDiscoveryPreference.Builder(listOf(MediaRoute2Info.FEATURE_LIVE_AUDIO), true).build()
-        router.registerRouteCallback(Runnable::run, callback, preference)
-        try {
-            delay(600)
-            val route = router.routes.firstOrNull {
-                if (target.isBluetooth) it.name.toString() == target.name else it.type == MediaRoute2Info.TYPE_BUILTIN_SPEAKER
-            } ?: return@runCatching false
-            router.transferTo(route)
-            true
-        } finally {
-            router.unregisterRouteCallback(callback)
-        }
-    }.getOrDefault(false)
+private fun isBluetoothOutput(device: AudioDeviceInfo): Boolean =
+    device.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
+        device.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
+        (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+            (device.type == AudioDeviceInfo.TYPE_BLE_HEADSET || device.type == AudioDeviceInfo.TYPE_BLE_SPEAKER))
+
+/**
+ * Moves the app's audio to [target]. A connected output is chosen on the player itself; a paired
+ * Bluetooth device that is not connected gets an A2DP connect request. Returns false when neither worked.
+ */
+private suspend fun switchTo(context: Context, player: ExoPlayer?, target: AudioOutput): Boolean =
+    withContext(Dispatchers.Main) {
+        if (player != null && routeTo(context, player, target)) return@withContext true
+        if (!target.isBluetooth || !connectA2dp(context, target.name)) return@withContext false
+        // Let the system pick the newly connected device.
+        player?.setPreferredAudioDevice(null)
+        OutputRoute.forcedPhone.value = false
+        true
+    }
+
+private fun routeTo(context: Context, player: ExoPlayer, target: AudioOutput): Boolean {
+    val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+    val devices = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+    if (!target.isBluetooth) {
+        val speaker = devices.firstOrNull { it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER } ?: return false
+        player.setPreferredAudioDevice(speaker)
+        OutputRoute.forcedPhone.value = true
+        return true
+    }
+    val connected = devices.filter(::isBluetoothOutput)
+    val device = connected.firstOrNull { it.productName?.toString() == target.name } ?: connected.singleOrNull()
+        ?: return false
+    player.setPreferredAudioDevice(device)
+    OutputRoute.forcedPhone.value = false
+    return true
 }
 
 /** Asks the Bluetooth stack to connect the paired device. Hidden API, so it can fail on newer Android versions. */

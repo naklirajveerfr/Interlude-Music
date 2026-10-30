@@ -41,6 +41,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -414,6 +415,7 @@ internal data class AudioOutput(val isBluetooth: Boolean, val name: String)
 /** Where the sound is going: the connected Bluetooth device's name, otherwise this phone's name. */
 @Composable
 internal fun rememberAudioOutput(): AudioOutput {
+    val forcedPhone by OutputRoute.forcedPhone.collectAsState()
     val context = LocalContext.current
     fun granted() = Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
         ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
@@ -483,5 +485,5 @@ internal fun rememberAudioOutput(): AudioOutput {
             a2dp?.let { runCatching { adapter?.closeProfileProxy(BluetoothProfile.A2DP, it) } }
         }
     }
-    return output
+    return if (forcedPhone) AudioOutput(false, phoneName) else output
 }
