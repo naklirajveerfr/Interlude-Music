@@ -32,6 +32,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -72,7 +73,8 @@ internal fun AudioOutputSheet(
     val context = LocalContext.current
     val phoneLabel = stringResource(R.string.audio_output_this_phone)
     val scope = rememberCoroutineScope()
-    var busy by remember { mutableStateOf(false) }
+    var connecting by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(output) { connecting = null }
     val others = remember(output) {
         val paired = pairedAudioDevices(context).filter { !output.isBluetooth || it != output.name }
         if (output.isBluetooth) listOf(AudioOutput(false, phoneLabel)) + paired.map { AudioOutput(true, it) }
@@ -123,16 +125,17 @@ internal fun AudioOutputSheet(
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .clickable(enabled = !busy) {
-                            busy = true
+                        .clickable(enabled = connecting == null) {
+                            connecting = device.name
                             scope.launch {
-                                Toast.makeText(
-                                    context,
-                                    context.getString(R.string.audio_output_connecting, device.name),
-                                    Toast.LENGTH_SHORT,
-                                ).show()
-                                if (!switchTo(context, device)) openBluetoothSettings(context)
-                                onDismiss()
+                                if (switchTo(context, device)) {
+                                    // The top card updates by itself once the new output shows up.
+                                    delay(8_000)
+                                    if (connecting == device.name) connecting = null
+                                } else {
+                                    connecting = null
+                                    Toast.makeText(context, R.string.audio_output_connect_failed, Toast.LENGTH_SHORT).show()
+                                }
                             }
                         }
                         .padding(vertical = 14.dp, horizontal = 8.dp),
@@ -145,7 +148,16 @@ internal fun AudioOutputSheet(
                         modifier = Modifier.size(22.dp),
                     )
                     Spacer(Modifier.width(16.dp))
-                    Text(device.name, color = Color.White, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Column {
+                        Text(device.name, color = Color.White, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        if (connecting == device.name) {
+                            Text(
+                                stringResource(R.string.audio_output_connecting),
+                                color = MaterialTheme.colorScheme.primary,
+                                fontSize = 12.sp,
+                            )
+                        }
+                    }
                 }
             }
             Spacer(Modifier.height(32.dp))
