@@ -9,6 +9,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.datastore.preferences.core.edit
 import com.metrolist.music.constants.SpotifyConnectedKey
+import com.metrolist.music.constants.SpotifyRefreshTokenKey
 import com.metrolist.music.constants.SpotifyTokenExpiryKey
 import com.metrolist.music.constants.SpotifyTokenKey
 import com.metrolist.music.utils.dataStore
@@ -113,6 +114,7 @@ object SpotifySession {
             it[SpotifyConnectedKey] = false
             it.remove(SpotifyTokenKey)
             it.remove(SpotifyTokenExpiryKey)
+            it.remove(SpotifyRefreshTokenKey)
         }
         withContext(Dispatchers.Main) {
             // Only Spotify's cookies are expired, so the YouTube login stored in the same WebView survives.
@@ -135,6 +137,7 @@ object SpotifySession {
         if (stored != null && (prefs[SpotifyTokenExpiryKey] ?: 0L) > System.currentTimeMillis() + 60_000) {
             return@withLock stored
         }
+        SpotifyOAuth.refresh(context)?.let { return@withLock it }
         val fresh = harvest(context.applicationContext) ?: return@withLock null
         saveToken(context, fresh)
         fresh

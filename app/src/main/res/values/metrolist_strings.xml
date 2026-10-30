@@ -1104,5 +1104,9 @@
     <string name="spotify_canvas_cookie_rejected">Spotify did not accept this cookie</string>
     <string name="spotify_canvas_connect">Connect</string>
     <string name="spotify_canvas_checking">Checking…</string>
+    <string name="spotify_canvas_login_browser">Log in with browser</string>
+    <string name="spotify_canvas_login_failed">Spotify login failed</string>
+    <string name="spotify_canvas_client_id">Spotify client ID</string>
+    <string name="spotify_canvas_client_id_hint">Create an app at developer.spotify.com/dashboard, add the redirect URI interlude://spotify-callback, and paste its client ID.</string>
     <string name="spotify_canvas_connected_info">Your Spotify account is connected. Canvas videos are looked up for the song playing, and other sources are used when Spotify has none.</string>
 </resources>

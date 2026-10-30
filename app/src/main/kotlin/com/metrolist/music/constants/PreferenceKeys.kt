@@ -766,3 +766,6 @@ val SpotifyCanvasEnabledKey = androidx.datastore.preferences.core.booleanPrefere
 val SpotifyConnectedKey = androidx.datastore.preferences.core.booleanPreferencesKey("spotifyConnected")
 val SpotifyTokenKey = androidx.datastore.preferences.core.stringPreferencesKey("spotifyToken")
 val SpotifyTokenExpiryKey = androidx.datastore.preferences.core.longPreferencesKey("spotifyTokenExpiry")
+val SpotifyClientIdKey = androidx.datastore.preferences.core.stringPreferencesKey("spotifyClientId")
+val SpotifyRefreshTokenKey = androidx.datastore.preferences.core.stringPreferencesKey("spotifyRefreshToken")
+val SpotifyPkceVerifierKey = androidx.datastore.preferences.core.stringPreferencesKey("spotifyPkceVerifier")

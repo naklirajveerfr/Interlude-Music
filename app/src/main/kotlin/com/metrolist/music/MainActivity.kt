@@ -1696,6 +1696,18 @@ class MainActivity : FragmentActivity() {
         intent.removeExtra(Intent.EXTRA_TEXT)
         val coroutineScope = lifecycle.coroutineScope
 
+        if (uri.scheme == "interlude" && uri.host == "spotify-callback") {
+            coroutineScope.launch {
+                val ok = com.metrolist.music.canvas.SpotifyOAuth.handleCallback(applicationContext, uri)
+                Toast.makeText(
+                    this@MainActivity,
+                    if (ok) R.string.spotify_canvas_connected else R.string.spotify_canvas_login_failed,
+                    Toast.LENGTH_SHORT,
+                ).show()
+            }
+            return
+        }
+
         val listenCode =
             uri.getQueryParameter("code")
                 ?: uri.getQueryParameter("room")
