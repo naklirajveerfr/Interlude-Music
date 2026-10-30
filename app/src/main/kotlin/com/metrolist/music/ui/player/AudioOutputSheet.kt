@@ -83,7 +83,7 @@ internal fun ColumnScope.AudioOutputMenuContent(
     }
 
     run {
-        Column(Modifier.fillMaxWidth().navigationBarsPadding()) {
+        Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(top = 20.dp)) {
             Text(
                 stringResource(R.string.audio_output_connect),
                 color = MaterialTheme.colorScheme.onSurface,
