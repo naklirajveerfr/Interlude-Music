@@ -17,6 +17,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,10 +27,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -59,18 +58,17 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.resume
 
-private val SheetColor = Color(0xFF1F1F1F)
-private val CardColor = Color(0xFF2A2A2A)
-
-/** Bottom sheet opened from the output label: the current output, other paired audio devices, and a way to pair more. */
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Content for the app's menu sheet (it follows the Menu background and Frosted glass settings):
+ * the current output, other paired audio devices, and a way to pair more.
+ */
 @Composable
-internal fun AudioOutputSheet(
-    output: AudioOutput,
+internal fun ColumnScope.AudioOutputMenuContent(
     nowPlaying: String,
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
+    val output = rememberAudioOutput()
     val phoneLabel = stringResource(R.string.audio_output_this_phone)
     val scope = rememberCoroutineScope()
     var connecting by remember { mutableStateOf<String?>(null) }
@@ -81,23 +79,23 @@ internal fun AudioOutputSheet(
         else paired.map { AudioOutput(true, it) }
     }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = SheetColor) {
-        Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp)) {
+    run {
+        Column(Modifier.fillMaxWidth().navigationBarsPadding()) {
             Text(
                 stringResource(R.string.audio_output_connect),
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
             )
             Spacer(Modifier.height(16.dp))
             Row(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(CardColor).padding(16.dp),
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.09f)).padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
                     Text(
                         if (output.isBluetooth) output.name else phoneLabel,
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
@@ -144,12 +142,12 @@ internal fun AudioOutputSheet(
                     Icon(
                         painterResource(if (device.isBluetooth) R.drawable.bluetooth else R.drawable.smartphone),
                         null,
-                        tint = Color.White,
+                        tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(22.dp),
                     )
                     Spacer(Modifier.width(16.dp))
                     Column {
-                        Text(device.name, color = Color.White, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(device.name, color = MaterialTheme.colorScheme.onSurface, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         if (connecting == device.name) {
                             Text(
                                 stringResource(R.string.audio_output_connecting),
@@ -165,16 +163,16 @@ internal fun AudioOutputSheet(
                 Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(CardColor)
+                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.09f))
                     .clickable { openBluetoothSettings(context); onDismiss() }
                     .padding(vertical = 14.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Icon(painterResource(R.drawable.bluetooth), null, tint = Color.White, modifier = Modifier.size(20.dp))
+                Icon(painterResource(R.drawable.bluetooth), null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(20.dp))
                 Text(
                     stringResource(R.string.audio_output_find_bluetooth),
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 12.sp,
                     textAlign = TextAlign.Center,
                 )

@@ -77,6 +77,7 @@ import android.os.Build
 import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
+import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.db.entities.LyricsEntity
 import com.metrolist.music.lyrics.LyricsUtils
 import com.metrolist.music.models.MediaMetadata
@@ -276,21 +277,17 @@ fun SpotifyStylePlayerContent(
             }
 
             val output = rememberAudioOutput()
-            var showOutputs by remember { mutableStateOf(false) }
-            if (showOutputs) {
-                AudioOutputSheet(
-                    output = output,
-                    nowPlaying = listOf(title.uppercase(), artist).filter { it.isNotBlank() }.joinToString(" – "),
-                    onDismiss = { showOutputs = false },
-                )
-            }
+            val menuState = LocalMenuState.current
+            val nowPlaying = listOf(title.uppercase(), artist).filter { it.isNotBlank() }.joinToString(" – ")
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Row(
-                    Modifier.weight(1f).clickable { showOutputs = true },
+                    Modifier.weight(1f).clickable {
+                        menuState.show { AudioOutputMenuContent(nowPlaying) { menuState.dismiss() } }
+                    },
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(
