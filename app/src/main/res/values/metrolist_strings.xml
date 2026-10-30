@@ -1103,6 +1103,7 @@
     <string name="audio_output_connect">Connect</string>
     <string name="audio_output_this_phone">This phone</string>
     <string name="audio_output_find_bluetooth">Find Bluetooth devices</string>
+    <string name="audio_output_connecting">Connecting to %1$s…</string>
     <string name="spotify_canvas_paste_cookie">Paste cookie</string>
     <string name="spotify_canvas_cookie_title">Paste sp_dc cookie</string>
     <string name="spotify_canvas_cookie_rejected">Spotify did not accept this cookie</string>

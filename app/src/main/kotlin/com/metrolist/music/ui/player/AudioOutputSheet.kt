@@ -2,12 +2,17 @@ package com.metrolist.music.ui.player
 
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothClass
+import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
+import android.bluetooth.BluetoothProfile
 import android.content.Context
 import android.content.Intent
+import android.media.MediaRoute2Info
 import android.media.MediaRouter2
+import android.media.RouteDiscoveryPreference
 import android.os.Build
 import android.provider.Settings
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -27,7 +32,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -41,6 +50,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.metrolist.music.R
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.coroutines.resume
 
 private val SheetColor = Color(0xFF1F1F1F)
 private val CardColor = Color(0xFF2A2A2A)
@@ -55,6 +71,8 @@ internal fun AudioOutputSheet(
 ) {
     val context = LocalContext.current
     val phoneLabel = stringResource(R.string.audio_output_this_phone)
+    val scope = rememberCoroutineScope()
+    var busy by remember { mutableStateOf(false) }
     val others = remember(output) {
         val paired = pairedAudioDevices(context).filter { !output.isBluetooth || it != output.name }
         if (output.isBluetooth) listOf(AudioOutput(false, phoneLabel)) + paired.map { AudioOutput(true, it) }
@@ -105,7 +123,18 @@ internal fun AudioOutputSheet(
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .clickable { openOutputSwitcher(context); onDismiss() }
+                        .clickable(enabled = !busy) {
+                            busy = true
+                            scope.launch {
+                                Toast.makeText(
+                                    context,
+                                    context.getString(R.string.audio_output_connecting, device.name),
+                                    Toast.LENGTH_SHORT,
+                                ).show()
+                                if (!switchTo(context, device)) openBluetoothSettings(context)
+                                onDismiss()
+                            }
+                        }
                         .padding(vertical = 14.dp, horizontal = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -153,18 +182,60 @@ private fun pairedAudioDevices(context: Context): List<String> = runCatching {
         .distinct()
 }.getOrDefault(emptyList())
 
-/** Android only lets the system move audio to another output, so a tapped device opens its output picker. */
-private fun openOutputSwitcher(context: Context) {
-    val shown = Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
-        runCatching { MediaRouter2.getInstance(context).showSystemOutputSwitcher() }.getOrDefault(false)
-    if (shown) return
+/**
+ * Moves audio to [target]. A connected device is switched to through the system media router; a paired
+ * one that is not connected gets an A2DP connect request. Returns false when neither worked.
+ */
+private suspend fun switchTo(context: Context, target: AudioOutput): Boolean {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && routeTo(context, target)) return true
+    return target.isBluetooth && connectA2dp(context, target.name)
+}
+
+@androidx.annotation.RequiresApi(Build.VERSION_CODES.R)
+private suspend fun routeTo(context: Context, target: AudioOutput): Boolean = withContext(Dispatchers.Main) {
     runCatching {
-        context.startActivity(
-            Intent("com.android.settings.panel.action.MEDIA_OUTPUT")
-                .putExtra("com.android.settings.panel.extra.PACKAGE_NAME", context.packageName)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-        )
-    }.onFailure { openBluetoothSettings(context) }
+        val router = MediaRouter2.getInstance(context)
+        val callback = object : MediaRouter2.RouteCallback() {}
+        val preference = RouteDiscoveryPreference.Builder(listOf(MediaRoute2Info.FEATURE_LIVE_AUDIO), true).build()
+        router.registerRouteCallback(Runnable::run, callback, preference)
+        try {
+            delay(600)
+            val route = router.routes.firstOrNull {
+                if (target.isBluetooth) it.name.toString() == target.name else it.type == MediaRoute2Info.TYPE_BUILTIN_SPEAKER
+            } ?: return@runCatching false
+            router.transferTo(route)
+            true
+        } finally {
+            router.unregisterRouteCallback(callback)
+        }
+    }.getOrDefault(false)
+}
+
+/** Asks the Bluetooth stack to connect the paired device. Hidden API, so it can fail on newer Android versions. */
+@SuppressLint("MissingPermission", "DiscouragedPrivateApi")
+private suspend fun connectA2dp(context: Context, name: String): Boolean = withContext(Dispatchers.Main) {
+    runCatching {
+        val adapter = (context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager)?.adapter
+            ?: return@runCatching false
+        val device = adapter.bondedDevices.firstOrNull { it.name == name } ?: return@runCatching false
+        val proxy = withTimeoutOrNull(3_000) {
+            suspendCancellableCoroutine<BluetoothProfile?> { cont ->
+                val listener = object : BluetoothProfile.ServiceListener {
+                    override fun onServiceConnected(profile: Int, proxy: BluetoothProfile) {
+                        if (cont.isActive) cont.resume(proxy)
+                    }
+
+                    override fun onServiceDisconnected(profile: Int) = Unit
+                }
+                if (!adapter.getProfileProxy(context, listener, BluetoothProfile.A2DP) && cont.isActive) cont.resume(null)
+            }
+        } ?: return@runCatching false
+        try {
+            proxy.javaClass.getMethod("connect", BluetoothDevice::class.java).invoke(proxy, device) as? Boolean ?: false
+        } finally {
+            adapter.closeProfileProxy(BluetoothProfile.A2DP, proxy)
+        }
+    }.getOrDefault(false)
 }
 
 private fun openBluetoothSettings(context: Context) {
