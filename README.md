@@ -6,9 +6,24 @@
 
 ### A YouTube Music client for Android
 
+
+
+
+<p align="center">
+  <a href="https://buymeacoffee.com/naklirajveer">
+    <img
+      src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png"
+      alt="Buy Me a Coffee"
+      width="217"
+      height="60"
+    />
+  </a>
+</p>
+
 </div>
 
 An unofficial, ad-free YouTube Music client for Android, built with **Material 3 Expressive**.
+
 
 > [!IMPORTANT]
 > Interlude is not affiliated with, endorsed by, or sponsored by Google or YouTube.
