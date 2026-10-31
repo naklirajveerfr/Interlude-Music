@@ -398,16 +398,23 @@ fun OnlineSearchScreen(
                 Text(
                     text = stringResource(R.string.recently_played),
                     style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 12.dp),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.surface)
+                            .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 12.dp),
                 )
             }
 
             item(key = "recently_played_row") {
                 LazyRow(
                     state = recentRowState,
-                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.padding(bottom = 16.dp),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.surface),
                 ) {
                     items(recentSongs, key = { it.id }) { song ->
                         RecentlyPlayedCard(
