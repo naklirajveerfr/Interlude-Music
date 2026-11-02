@@ -98,6 +98,7 @@ private const val STEP_ANIM_MS = 350
  */
 private const val PLAYER_STYLE_DEFAULT_IMAGE = "onboarding_player_default"
 private const val PLAYER_STYLE_FULLART_IMAGE = "onboarding_player_fullart"
+private const val PLAYER_STYLE_IMMERSIVE_IMAGE = "onboarding_player_immersive"
 
 @Composable
 fun CustomiseStage(
@@ -107,6 +108,9 @@ fun CustomiseStage(
     var intro by rememberSaveable { mutableStateOf(true) }
     var step by rememberSaveable { mutableIntStateOf(0) }
     var finishing by rememberSaveable { mutableStateOf(false) }
+    val (playerStyle) = rememberEnumPreference(PlayerStyleKey, PlayerStyle.DEFAULT)
+    // Immersive brings its own button and slider look, so the other steps are skipped.
+    val lastStep = if (playerStyle == PlayerStyle.SPOTIFY) 0 else LAST_STEP
 
     LaunchedEffect(Unit) {
         if (intro) {
@@ -185,10 +189,10 @@ fun CustomiseStage(
                 }
                 Spacer(Modifier.height(12.dp))
                 Button(
-                    onClick = { if (step < LAST_STEP) step++ else finishing = true },
+                    onClick = { if (step < lastStep) step++ else finishing = true },
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                 ) {
-                    Text(stringResource(if (step < LAST_STEP) R.string.next else R.string.continue_action))
+                    Text(stringResource(if (step < lastStep) R.string.next else R.string.continue_action))
                 }
             }
         }
@@ -230,6 +234,13 @@ private fun PlayerStyleStep() {
             label = stringResource(R.string.onboarding_player_style_fullart),
             selected = playerStyle == PlayerStyle.FULLART,
             onClick = { onPlayerStyleChange(PlayerStyle.FULLART) },
+            modifier = Modifier.weight(1f),
+        )
+        PlayerStyleCard(
+            imageName = PLAYER_STYLE_IMMERSIVE_IMAGE,
+            label = stringResource(R.string.onboarding_player_style_immersive),
+            selected = playerStyle == PlayerStyle.SPOTIFY,
+            onClick = { onPlayerStyleChange(PlayerStyle.SPOTIFY) },
             modifier = Modifier.weight(1f),
         )
     }

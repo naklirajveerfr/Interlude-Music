@@ -1045,6 +1045,7 @@
     <string name="onboarding_player_style_title">Choose your player style</string>
     <string name="onboarding_player_style_default">Default</string>
     <string name="onboarding_player_style_fullart">Full art</string>
+    <string name="onboarding_player_style_immersive">Immersive</string>
     <string name="onboarding_button_shape_title">Choose your button shape</string>
     <string name="onboarding_shape_round">Round</string>
     <string name="onboarding_shape_pill">Pill</string>
