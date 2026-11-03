@@ -1121,4 +1121,6 @@
     <string name="support_upi_id">naklirajveer@fam</string>
     <string name="support_upi_desc">Tap to copy the UPI ID</string>
     <string name="support_thanks">Thank you for using Interlude!</string>
+    <string name="usage_stats">Share anonymous usage stats</string>
+    <string name="usage_stats_desc">Sends an anonymous \"app opened\" count so the developer can see how many people use Interlude. No account, listening or personal data is sent. Takes effect on the next launch.</string>
 </resources>

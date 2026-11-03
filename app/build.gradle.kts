@@ -269,6 +269,7 @@ dependencies {
 
     implementation(libs.coil)
     implementation(libs.haze)
+    implementation(libs.aptabase)
     implementation(libs.coil.network.okhttp)
     implementation(libs.browser)
 

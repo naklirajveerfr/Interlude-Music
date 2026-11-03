@@ -14,6 +14,7 @@ import android.os.Build
 import android.os.Process
 import android.widget.Toast
 import coil3.ImageLoader
+import com.aptabase.Aptabase
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
 import coil3.disk.DiskCache
@@ -94,6 +95,17 @@ class App :
         // Pre-read Coil cache size on background to avoid runBlocking in newImageLoader
         applicationScope.launch(Dispatchers.IO) {
             cachedCoilCacheSize = dataStore.data.map { it[MaxImageCacheSizeKey] ?: 512 }.first()
+        }
+
+        // Anonymous "app opened" count; skipped entirely when the user turned usage stats off.
+        applicationScope.launch(Dispatchers.IO) {
+            if (dataStore.data.first()[UsageStatsKey] == false) return@launch
+            withContext(Dispatchers.Main) {
+                runCatching {
+                    Aptabase.instance.initialize(applicationContext, "A-EU-0072271928")
+                    Aptabase.instance.trackEvent("app_opened")
+                }.onFailure { Timber.w(it, "Usage stats unavailable") }
+            }
         }
 
         // تهيئة إعدادات التطبيق عند الإقلاع
