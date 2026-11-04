@@ -1103,6 +1103,7 @@
     <string name="spotify_canvas_open_spotify">Open Spotify</string>
     <string name="audio_output_connect">Connect</string>
     <string name="audio_output_this_phone">This phone</string>
+    <string name="audio_output_wired_headphones">Wired headphones</string>
     <string name="audio_output_find_bluetooth">Find Bluetooth devices</string>
     <string name="audio_output_connecting">Connecting…</string>
     <string name="audio_output_connect_failed">Couldn\'t connect. Try Find Bluetooth devices.</string>

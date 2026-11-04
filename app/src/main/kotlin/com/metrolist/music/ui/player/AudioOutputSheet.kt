@@ -78,7 +78,7 @@ internal fun ColumnScope.AudioOutputMenuContent(
     LaunchedEffect(output) { connecting = null }
     val others = remember(output) {
         val paired = pairedAudioDevices(context).filter { !output.isBluetooth || it != output.name }
-        if (output.isBluetooth) listOf(AudioOutput(false, phoneLabel)) + paired.map { AudioOutput(true, it) }
+        if (output.isBluetooth || output.isWired) listOf(AudioOutput(false, phoneLabel)) + paired.map { AudioOutput(true, it) }
         else paired.map { AudioOutput(true, it) }
     }
 
@@ -97,7 +97,7 @@ internal fun ColumnScope.AudioOutputMenuContent(
             ) {
                 Column(Modifier.weight(1f)) {
                     Text(
-                        if (output.isBluetooth) output.name else phoneLabel,
+                        if (output.isBluetooth || output.isWired) output.name else phoneLabel,
                         color = MaterialTheme.colorScheme.onSurface,
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
@@ -115,7 +115,7 @@ internal fun ColumnScope.AudioOutputMenuContent(
                     }
                 }
                 Icon(
-                    painterResource(if (output.isBluetooth) R.drawable.bluetooth else R.drawable.smartphone),
+                    painterResource(if (output.isBluetooth) R.drawable.bluetooth else if (output.isWired) R.drawable.headphones else R.drawable.smartphone),
                     null,
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(32.dp),

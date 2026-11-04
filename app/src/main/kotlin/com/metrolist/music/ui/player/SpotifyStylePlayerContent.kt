@@ -324,7 +324,7 @@ fun SpotifyStylePlayerContent(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(
-                        painterResource(if (output.isBluetooth) R.drawable.bluetooth else R.drawable.smartphone),
+                        painterResource(if (output.isBluetooth) R.drawable.bluetooth else if (output.isWired) R.drawable.headphones else R.drawable.smartphone),
                         null,
                         tint = Color.White,
                         modifier = Modifier.size(18.dp),
@@ -442,7 +442,7 @@ private fun LiveLyricLine(mediaMetadata: MediaMetadata?, positionProvider: () ->
     }
 }
 
-internal data class AudioOutput(val isBluetooth: Boolean, val name: String)
+internal data class AudioOutput(val isBluetooth: Boolean, val name: String, val isWired: Boolean = false)
 
 /** Where the sound is going: the connected Bluetooth device's name, otherwise this phone's name. */
 @Composable
@@ -475,9 +475,23 @@ internal fun rememberAudioOutput(): AudioOutput {
                 (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
                     (device.type == AudioDeviceInfo.TYPE_BLE_HEADSET || device.type == AudioDeviceInfo.TYPE_BLE_SPEAKER))
 
+        fun isWired(device: AudioDeviceInfo): Boolean =
+            device.type == AudioDeviceInfo.TYPE_WIRED_HEADPHONES ||
+                device.type == AudioDeviceInfo.TYPE_WIRED_HEADSET ||
+                device.type == AudioDeviceInfo.TYPE_USB_HEADSET ||
+                device.type == AudioDeviceInfo.TYPE_USB_DEVICE
+
         fun refresh() {
-            val audioDevice = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS).firstOrNull(::isBluetooth)
-            output = if (audioDevice == null) {
+            val devices = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+            val wiredDevice = devices.firstOrNull(::isWired)
+            val audioDevice = devices.firstOrNull(::isBluetooth)
+            output = if (wiredDevice != null) {
+                // Android routes to a plugged-in wired device ahead of Bluetooth.
+                val usbName = wiredDevice.productName?.toString()?.takeIf {
+                    it.isNotBlank() && wiredDevice.type != AudioDeviceInfo.TYPE_WIRED_HEADPHONES && wiredDevice.type != AudioDeviceInfo.TYPE_WIRED_HEADSET
+                }
+                AudioOutput(false, usbName ?: context.getString(R.string.audio_output_wired_headphones), isWired = true)
+            } else if (audioDevice == null) {
                 AudioOutput(false, phoneName)
             } else {
                 // The audio route only says "a Bluetooth device"; the profile service knows its real name.
