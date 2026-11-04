@@ -14,6 +14,7 @@ mediarouter = "1.8.1"
 castFramework = "22.3.1"
 room = "2.8.5"
 hilt = "2.60.1"
+work = "2.10.0"
 ktor = "3.6.0"
 ksp = "2.3.12"
 coil = "3.6.3"
@@ -89,6 +90,7 @@ room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 
 hilt = { module = "com.google.dagger:hilt-android", version.ref = "hilt" }
 hilt-compiler = { module = "com.google.dagger:hilt-android-compiler", version.ref = "hilt" }
+work-runtime = { module = "androidx.work:work-runtime-ktx", version.ref = "work" }
 
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }

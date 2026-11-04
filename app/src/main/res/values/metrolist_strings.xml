@@ -1107,6 +1107,11 @@
     <string name="time_capsule">Time capsule</string>
     <string name="time_capsule_one_year_ago">A year ago</string>
     <string name="time_capsule_years_ago">%d years ago</string>
+    <string name="notifications">Notifications</string>
+    <string name="time_capsule_notification_desc">A daily note about what you were listening to a year ago</string>
+    <string name="time_capsule_channel_desc">A daily reminder of what you listened to in past years</string>
+    <string name="time_capsule_notification_one_year">A year ago you were listening to %1$s</string>
+    <string name="time_capsule_notification_years">%1$d years ago you were listening to %2$s</string>
     <string name="audio_output_find_bluetooth">Find Bluetooth devices</string>
     <string name="audio_output_connecting">Connecting…</string>
     <string name="audio_output_connect_failed">Couldn\'t connect. Try Find Bluetooth devices.</string>

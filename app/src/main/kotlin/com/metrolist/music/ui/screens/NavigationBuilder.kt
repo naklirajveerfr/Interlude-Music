@@ -53,6 +53,7 @@ import com.metrolist.music.ui.screens.settings.BackupAndRestore
 import com.metrolist.music.ui.screens.settings.ContentSettings
 import com.metrolist.music.ui.screens.settings.DarkMode
 import com.metrolist.music.ui.screens.settings.PlayerSettings
+import com.metrolist.music.ui.screens.settings.NotificationSettings
 import com.metrolist.music.ui.screens.settings.PrivacySettings
 import com.metrolist.music.ui.screens.settings.RomanizationSettings
 import com.metrolist.music.ui.screens.settings.SettingsScreen
@@ -390,6 +391,10 @@ fun NavGraphBuilder.navigationBuilder(
 
     composable("settings/privacy") {
         PrivacySettings(navController)
+    }
+
+    composable("settings/notifications") {
+        NotificationSettings(navController)
     }
 
     composable("settings/backup_restore") {

@@ -54,6 +54,7 @@ import com.metrolist.music.utils.NotInterested
 import com.metrolist.music.utils.SyncUtils
 import com.metrolist.music.utils.TasteProfile
 import com.metrolist.music.utils.dataStore
+import com.metrolist.music.utils.findTimeCapsule
 import com.metrolist.music.utils.safeDataStoreEdit
 import com.metrolist.music.utils.get
 import com.metrolist.music.utils.reportException
@@ -634,20 +635,10 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    /** Most played songs within 3 days of today in the closest past year (up to 3 years back) that has enough plays. */
     private suspend fun loadTimeCapsule(hideVideoSongs: Boolean) {
-        val now = LocalDateTime.now()
-        for (yearsAgo in 1..3) {
-            val center = now.minusYears(yearsAgo.toLong())
-            val songs = database.timeCapsuleSongs(center.minusDays(3), center.plusDays(3)).first()
-                .filterVideoSongs(hideVideoSongs)
-            if (songs.size >= 3) {
-                timeCapsuleYearsAgo.value = yearsAgo
-                timeCapsule.value = songs
-                return
-            }
-        }
-        timeCapsule.value = null
+        val capsule = database.findTimeCapsule(hideVideoSongs)
+        capsule?.let { timeCapsuleYearsAgo.value = it.yearsAgo }
+        timeCapsule.value = capsule?.songs
     }
 
     private suspend fun loadInner() {

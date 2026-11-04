@@ -264,6 +264,7 @@ val VideoThumbnailMigrationDoneKey = booleanPreferencesKey("videoThumbnailMigrat
 val QueueEditLockKey = booleanPreferencesKey("queueEditLock")
 val ShowWrappedCardKey = booleanPreferencesKey("show_wrapped_card")
 val WrappedSeenYearKey = intPreferencesKey("wrapped_seen_year")
+val TimeCapsuleNotificationKey = booleanPreferencesKey("time_capsule_notification")
 val LastSeenVersionKey = stringPreferencesKey("lastSeenVersion")
 val OnboardingStepKey = intPreferencesKey("onboardingStep")
 val RandomizeHomeOrderKey = booleanPreferencesKey("randomizeHomeOrder")
