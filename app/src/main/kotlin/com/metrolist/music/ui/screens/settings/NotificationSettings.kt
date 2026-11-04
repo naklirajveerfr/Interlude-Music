@@ -27,6 +27,10 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -36,7 +40,9 @@ import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
+import com.metrolist.music.constants.NewReleasesNotificationKey
 import com.metrolist.music.constants.TimeCapsuleNotificationKey
+import com.metrolist.music.notifications.NewReleasesScheduler
 import com.metrolist.music.notifications.TimeCapsuleScheduler
 import com.metrolist.music.ui.component.GlassTopAppBar
 import com.metrolist.music.ui.component.IconButton
@@ -53,25 +59,40 @@ fun NotificationSettings(navController: NavController) {
         key = TimeCapsuleNotificationKey,
         defaultValue = false,
     )
+    val (newReleases, onNewReleasesChange) = rememberPreference(
+        key = NewReleasesNotificationKey,
+        defaultValue = false,
+    )
 
-    fun setTimeCapsule(enabled: Boolean) {
-        onTimeCapsuleChange(enabled)
-        TimeCapsuleScheduler.update(context, enabled)
-    }
-
+    // The switch that asked for the notification permission, applied once it is granted.
+    var pendingApply by remember { mutableStateOf<(() -> Unit)?>(null) }
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) setTimeCapsule(true)
+        if (granted) pendingApply?.invoke()
+        pendingApply = null
     }
 
-    fun requestTimeCapsule(enabled: Boolean) {
+    fun toggle(
+        enabled: Boolean,
+        apply: (Boolean) -> Unit,
+    ) {
         val needsPermission = enabled &&
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         if (needsPermission) {
+            pendingApply = { apply(true) }
             permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         } else {
-            setTimeCapsule(enabled)
+            apply(enabled)
         }
+    }
+
+    val setTimeCapsule = { enabled: Boolean ->
+        onTimeCapsuleChange(enabled)
+        TimeCapsuleScheduler.update(context, enabled)
+    }
+    val setNewReleases = { enabled: Boolean ->
+        onNewReleasesChange(enabled)
+        NewReleasesScheduler.update(context, enabled)
     }
 
     Column(
@@ -93,7 +114,7 @@ fun NotificationSettings(navController: NavController) {
                     trailingContent = {
                         Switch(
                             checked = timeCapsule,
-                            onCheckedChange = ::requestTimeCapsule,
+                            onCheckedChange = { toggle(it, setTimeCapsule) },
                             thumbContent = {
                                 Icon(
                                     painter = painterResource(
@@ -105,7 +126,28 @@ fun NotificationSettings(navController: NavController) {
                             },
                         )
                     },
-                    onClick = { requestTimeCapsule(!timeCapsule) },
+                    onClick = { toggle(!timeCapsule, setTimeCapsule) },
+                ),
+                Material3SettingsItem(
+                    icon = painterResource(R.drawable.album),
+                    title = { Text(stringResource(R.string.new_releases_followed)) },
+                    description = { Text(stringResource(R.string.new_releases_notification_desc)) },
+                    trailingContent = {
+                        Switch(
+                            checked = newReleases,
+                            onCheckedChange = { toggle(it, setNewReleases) },
+                            thumbContent = {
+                                Icon(
+                                    painter = painterResource(
+                                        id = if (newReleases) R.drawable.check else R.drawable.close,
+                                    ),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(SwitchDefaults.IconSize),
+                                )
+                            },
+                        )
+                    },
+                    onClick = { toggle(!newReleases, setNewReleases) },
                 ),
             ),
         )

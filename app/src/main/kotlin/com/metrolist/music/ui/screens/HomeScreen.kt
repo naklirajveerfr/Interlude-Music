@@ -196,6 +196,8 @@ sealed class HomeSection(
 
     data object TimeCapsule : HomeSection("time_capsule", 35)
 
+    data object NewReleases : HomeSection("new_releases", 45)
+
     data object FromTheCommunity : HomeSection("from_the_community", 20)
 
     data class SimilarRecommendation(
@@ -761,6 +763,7 @@ fun HomeScreen(
     val quickPicks = homeFeed.quickPicks
     val forgottenFavorites = homeFeed.forgottenFavorites
     val timeCapsule = homeFeed.timeCapsule
+    val newReleases = homeFeed.newReleases
     val timeCapsuleYearsAgo by viewModel.timeCapsuleYearsAgo.collectAsStateWithLifecycle()
     val keepListening = homeFeed.keepListening
     val similarRecommendations = homeFeed.similarRecommendations
@@ -1138,6 +1141,7 @@ fun HomeScreen(
             accountPlaylists,
             forgottenFavorites,
             timeCapsule,
+            newReleases,
             communityPlaylists,
             similarRecommendations,
             genreRecommendations,
@@ -1155,6 +1159,7 @@ fun HomeScreen(
             if (!chipActive && accountPlaylists?.isNotEmpty() == true) list.add(HomeSection.AccountPlaylists)
             if (!chipActive && forgottenFavorites?.isNotEmpty() == true) list.add(HomeSection.ForgottenFavorites)
             if (!chipActive && timeCapsule?.isNotEmpty() == true) list.add(HomeSection.TimeCapsule)
+            if (!chipActive && newReleases?.isNotEmpty() == true) list.add(HomeSection.NewReleases)
 
             if (!chipActive) {
                 genreRecommendations?.indices?.forEach { i ->
@@ -1193,6 +1198,7 @@ fun HomeScreen(
                             HomeSection.AccountPlaylists,
                             HomeSection.ForgottenFavorites,
                             HomeSection.TimeCapsule,
+                            HomeSection.NewReleases,
                             HomeSection.FromTheCommunity,
                             -> 300
 
@@ -1217,6 +1223,7 @@ fun HomeScreen(
                             HomeSection.AccountPlaylists,
                             HomeSection.ForgottenFavorites,
                             HomeSection.TimeCapsule,
+                            HomeSection.NewReleases,
                             HomeSection.FromTheCommunity,
                             -> sectionRandom.nextInt(-100, 400)
 
@@ -1233,6 +1240,7 @@ fun HomeScreen(
                         HomeSection.FromTheCommunity to 80,
                         HomeSection.DailyDiscover to 70,
                         HomeSection.KeepListening to 60,
+                        HomeSection.NewReleases to 65,
                         HomeSection.TimeCapsule to 55,
                         HomeSection.AccountPlaylists to 50,
                         HomeSection.ForgottenFavorites to 40,
@@ -2139,6 +2147,30 @@ fun HomeScreen(
                                                             },
                                                         ),
                                             )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        HomeSection.NewReleases -> {
+                            newReleases?.takeIf { it.isNotEmpty() }?.let { newReleases ->
+                                item(key = "new_releases_title") {
+                                    NavigationTitle(title = stringResource(R.string.new_releases_followed))
+                                }
+
+                                item(key = "new_releases_list") {
+                                    LazyRow(
+                                        contentPadding =
+                                            WindowInsets.systemBars
+                                                .only(WindowInsetsSides.Horizontal)
+                                                .asPaddingValues(),
+                                    ) {
+                                        items(
+                                            items = newReleases.distinctBy { it.id },
+                                            key = { "home_new_release_${it.id}" },
+                                        ) { item ->
+                                            ytGridItem(item)
                                         }
                                     }
                                 }

@@ -5,6 +5,7 @@
 
 package com.metrolist.music.viewmodels
 
+import com.metrolist.innertube.models.AlbumItem
 import com.metrolist.innertube.models.YTItem
 import com.metrolist.innertube.pages.HomePage
 import com.metrolist.music.db.entities.LocalItem
@@ -19,6 +20,7 @@ data class HomeFeed(
     val keepListening: List<LocalItem>? = null,
     val forgottenFavorites: List<Song>? = null,
     val timeCapsule: List<Song>? = null,
+    val newReleases: List<AlbumItem>? = null,
     val genreRecommendations: List<GenreRecommendation>? = null,
     val similarRecommendations: List<SimilarRecommendation>? = null,
     val homePage: HomePage? = null,
@@ -44,6 +46,7 @@ internal fun dedupeHomeFeed(
     homePage: HomePage?,
     chipActive: Boolean,
     timeCapsule: List<Song>? = null,
+    newReleases: List<AlbumItem>? = null,
 ): HomeFeed {
     // With a chip selected only the chip's own page is shown, so there is nothing to compare against.
     if (chipActive) {
@@ -53,6 +56,7 @@ internal fun dedupeHomeFeed(
             keepListening = keepListening,
             forgottenFavorites = forgottenFavorites,
             timeCapsule = timeCapsule,
+            newReleases = newReleases,
             genreRecommendations = genreRecommendations,
             similarRecommendations = similarRecommendations,
             homePage = homePage,
@@ -67,6 +71,7 @@ internal fun dedupeHomeFeed(
     val keep = keepListening?.filter { seen.add(it.id) }
     val forgotten = forgottenFavorites?.filter { seen.add(it.id) }
     val capsule = timeCapsule?.filter { seen.add(it.id) }
+    val releases = newReleases?.filter { seen.add(it.id) }
     val genres =
         genreRecommendations?.mapNotNull { rec ->
             rec.copy(items = rec.items.filter { seen.add(it.id) }).takeIf { it.items.isNotEmpty() }
@@ -100,6 +105,7 @@ internal fun dedupeHomeFeed(
         keepListening = keep,
         forgottenFavorites = forgotten,
         timeCapsule = capsule,
+        newReleases = releases,
         genreRecommendations = genres,
         similarRecommendations = similar,
         homePage = home,

@@ -54,6 +54,7 @@ import com.metrolist.music.utils.NotInterested
 import com.metrolist.music.utils.SyncUtils
 import com.metrolist.music.utils.TasteProfile
 import com.metrolist.music.utils.dataStore
+import com.metrolist.music.utils.fetchFollowedArtistReleases
 import com.metrolist.music.utils.findTimeCapsule
 import com.metrolist.music.utils.safeDataStoreEdit
 import com.metrolist.music.utils.get
@@ -140,6 +141,7 @@ class HomeViewModel @Inject constructor(
     val forgottenFavorites = MutableStateFlow<List<Song>?>(null)
     val timeCapsule = MutableStateFlow<List<Song>?>(null)
     val timeCapsuleYearsAgo = MutableStateFlow(1)
+    val newReleases = MutableStateFlow<List<AlbumItem>?>(null)
     val keepListening = MutableStateFlow<List<LocalItem>?>(null)
     val similarRecommendations = MutableStateFlow<List<SimilarRecommendation>?>(null)
     val genreRecommendations = MutableStateFlow<List<GenreRecommendation>?>(null)
@@ -255,7 +257,8 @@ class HomeViewModel @Inject constructor(
                 OtherSources(genre, home, chip != null, pool, pinned.map { it.id }.toSet())
             },
             timeCapsule,
-        ) { lists, others, capsule ->
+            newReleases,
+        ) { lists, others, capsule, releases ->
             dedupeHomeFeed(
                 pinnedIds = others.pinnedIds,
                 quickPicks = lists.quickPicks,
@@ -268,6 +271,7 @@ class HomeViewModel @Inject constructor(
                 homePage = others.homePage,
                 chipActive = others.chipActive,
                 timeCapsule = capsule,
+                newReleases = releases,
             )
         }.stateIn(viewModelScope, SharingStarted.Lazily, HomeFeed())
 
@@ -702,6 +706,15 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) { getDailyDiscover() }
 
         viewModelScope.launch(Dispatchers.IO) { getCommunityPlaylists() }
+
+        viewModelScope.launch(Dispatchers.IO) {
+            newReleases.value =
+                fetchFollowedArtistReleases(database, maxArtists = 8)
+                    .filter { !hideExplicit || !it.explicit }
+                    .filterNot { blocked.blocks(it) }
+                    .take(20)
+                    .takeIf { it.isNotEmpty() }
+        }
 
         viewModelScope.launch(Dispatchers.IO) { getGenreRecommendations() }
 

@@ -14,9 +14,6 @@ import android.content.Intent
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.work.CoroutineWorker
-import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.PeriodicWorkRequestBuilder
-import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.metrolist.music.R
 import com.metrolist.music.constants.HideVideoSongsKey
@@ -29,9 +26,6 @@ import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
-import java.time.Duration
-import java.time.LocalDateTime
-import java.util.concurrent.TimeUnit
 
 @EntryPoint
 @InstallIn(SingletonComponent::class)
@@ -106,25 +100,8 @@ class TimeCapsuleWorker(
 }
 
 object TimeCapsuleScheduler {
-    private const val WORK_NAME = "time_capsule_daily"
-
-    /** Schedules the check for around 10:00 local time every day, or cancels it. */
     fun update(
         context: Context,
         enabled: Boolean,
-    ) {
-        val workManager = WorkManager.getInstance(context)
-        if (!enabled) {
-            workManager.cancelUniqueWork(WORK_NAME)
-            return
-        }
-        val now = LocalDateTime.now()
-        var next = now.toLocalDate().atTime(10, 0)
-        if (!next.isAfter(now)) next = next.plusDays(1)
-        val request =
-            PeriodicWorkRequestBuilder<TimeCapsuleWorker>(1, TimeUnit.DAYS)
-                .setInitialDelay(Duration.between(now, next).toMillis(), TimeUnit.MILLISECONDS)
-                .build()
-        workManager.enqueueUniquePeriodicWork(WORK_NAME, ExistingPeriodicWorkPolicy.UPDATE, request)
-    }
+    ) = DailyWorkScheduler.update<TimeCapsuleWorker>(context, "time_capsule_daily", 10, enabled)
 }
