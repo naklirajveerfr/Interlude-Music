@@ -194,6 +194,8 @@ sealed class HomeSection(
 
     data object ForgottenFavorites : HomeSection("forgotten_favorites", 30)
 
+    data object TimeCapsule : HomeSection("time_capsule", 35)
+
     data object FromTheCommunity : HomeSection("from_the_community", 20)
 
     data class SimilarRecommendation(
@@ -758,6 +760,8 @@ fun HomeScreen(
     val homeFeed by viewModel.homeFeed.collectAsStateWithLifecycle()
     val quickPicks = homeFeed.quickPicks
     val forgottenFavorites = homeFeed.forgottenFavorites
+    val timeCapsule = homeFeed.timeCapsule
+    val timeCapsuleYearsAgo by viewModel.timeCapsuleYearsAgo.collectAsStateWithLifecycle()
     val keepListening = homeFeed.keepListening
     val similarRecommendations = homeFeed.similarRecommendations
     val genreRecommendations = homeFeed.genreRecommendations
@@ -785,6 +789,7 @@ fun HomeScreen(
 
     val quickPicksLazyGridState = rememberLazyGridState()
     val forgottenFavoritesLazyGridState = rememberLazyGridState()
+    val timeCapsuleLazyGridState = rememberLazyGridState()
 
     val accountName by viewModel.accountName.collectAsStateWithLifecycle()
     val accountImageUrl by viewModel.accountImageUrl.collectAsStateWithLifecycle()
@@ -1132,6 +1137,7 @@ fun HomeScreen(
             keepListening,
             accountPlaylists,
             forgottenFavorites,
+            timeCapsule,
             communityPlaylists,
             similarRecommendations,
             genreRecommendations,
@@ -1148,6 +1154,7 @@ fun HomeScreen(
             if (!chipActive && keepListening?.isNotEmpty() == true) list.add(HomeSection.KeepListening)
             if (!chipActive && accountPlaylists?.isNotEmpty() == true) list.add(HomeSection.AccountPlaylists)
             if (!chipActive && forgottenFavorites?.isNotEmpty() == true) list.add(HomeSection.ForgottenFavorites)
+            if (!chipActive && timeCapsule?.isNotEmpty() == true) list.add(HomeSection.TimeCapsule)
 
             if (!chipActive) {
                 genreRecommendations?.indices?.forEach { i ->
@@ -1185,6 +1192,7 @@ fun HomeScreen(
                             HomeSection.KeepListening,
                             HomeSection.AccountPlaylists,
                             HomeSection.ForgottenFavorites,
+                            HomeSection.TimeCapsule,
                             HomeSection.FromTheCommunity,
                             -> 300
 
@@ -1208,6 +1216,7 @@ fun HomeScreen(
                             HomeSection.KeepListening,
                             HomeSection.AccountPlaylists,
                             HomeSection.ForgottenFavorites,
+                            HomeSection.TimeCapsule,
                             HomeSection.FromTheCommunity,
                             -> sectionRandom.nextInt(-100, 400)
 
@@ -1224,6 +1233,7 @@ fun HomeScreen(
                         HomeSection.FromTheCommunity to 80,
                         HomeSection.DailyDiscover to 70,
                         HomeSection.KeepListening to 60,
+                        HomeSection.TimeCapsule to 55,
                         HomeSection.AccountPlaylists to 50,
                         HomeSection.ForgottenFavorites to 40,
                         HomeSection.MoodAndGenres to 10,
@@ -1246,6 +1256,10 @@ fun HomeScreen(
 
     LaunchedEffect(forgottenFavorites) {
         forgottenFavoritesLazyGridState.scrollToItem(0)
+    }
+
+    LaunchedEffect(timeCapsule) {
+        timeCapsuleLazyGridState.scrollToItem(0)
     }
 
     PullToRefreshBox(
@@ -1282,6 +1296,15 @@ fun HomeScreen(
                 remember(forgottenFavoritesLazyGridState) {
                     SnapLayoutInfoProvider(
                         lazyGridState = forgottenFavoritesLazyGridState,
+                        positionInLayout = { layoutSize, itemSize ->
+                            (layoutSize * horizontalLazyGridItemWidthFactor / 2f - itemSize / 2f)
+                        },
+                    )
+                }
+            val timeCapsuleSnapLayoutInfoProvider =
+                remember(timeCapsuleLazyGridState) {
+                    SnapLayoutInfoProvider(
+                        lazyGridState = timeCapsuleLazyGridState,
                         positionInLayout = { layoutSize, itemSize ->
                             (layoutSize * horizontalLazyGridItemWidthFactor / 2f - itemSize / 2f)
                         },
@@ -2101,6 +2124,119 @@ fun HomeScreen(
                                                                                     items = listOf(song!!.toMediaItem())
                                                                                 )
                                                                             }
+                                                                        )
+                                                                    }
+                                                                }
+                                                            },
+                                                            onLongClick = {
+                                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                                menuState.show {
+                                                                    SongMenu(
+                                                                        originalSong = song!!,
+                                                                        onDismiss = menuState::dismiss,
+                                                                    )
+                                                                }
+                                                            },
+                                                        ),
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        HomeSection.TimeCapsule -> {
+                            timeCapsule?.takeIf { it.isNotEmpty() }?.let { timeCapsule ->
+                                item(key = "time_capsule_title") {
+                                    val timeCapsuleTitle = stringResource(R.string.time_capsule)
+                                    NavigationTitle(
+                                        label =
+                                            if (timeCapsuleYearsAgo == 1) {
+                                                stringResource(R.string.time_capsule_one_year_ago)
+                                            } else {
+                                                stringResource(R.string.time_capsule_years_ago, timeCapsuleYearsAgo)
+                                            },
+                                        title = timeCapsuleTitle,
+                                        onPlayAllClick =
+                                            if (!isListenTogetherGuest) {
+                                                {
+                                                    playerConnection.playQueue(
+                                                        ListQueue(
+                                                            title = timeCapsuleTitle,
+                                                            items = timeCapsule.distinctBy { it.id }.map { it.toMediaItem() },
+                                                        ),
+                                                    )
+                                                }
+                                            } else {
+                                                null
+                                            },
+                                    )
+                                }
+
+                                item(key = "time_capsule_list") {
+                                    val rows = min(4, timeCapsule.size)
+                                    LazyHorizontalGrid(
+                                        state = timeCapsuleLazyGridState,
+                                        rows = GridCells.Fixed(rows),
+                                        contentPadding =
+                                            WindowInsets.systemBars
+                                                .only(WindowInsetsSides.Horizontal)
+                                                .asPaddingValues(),
+                                        flingBehavior =
+                                            rememberSnapFlingBehavior(
+                                                timeCapsuleSnapLayoutInfoProvider,
+                                            ),
+                                        modifier =
+                                            Modifier
+                                                .fillMaxWidth()
+                                                .height(ListItemHeight * rows),
+                                    ) {
+                                        items(
+                                            items = timeCapsule.distinctBy { it.id },
+                                            key = { "home_time_capsule_${it.id}" },
+                                        ) { originalSong ->
+                                            val song by database
+                                                .song(originalSong.id)
+                                                .collectAsStateWithLifecycle(initialValue = originalSong)
+
+                                            SongListItem(
+                                                song = song!!,
+                                                showInLibraryIcon = true,
+                                                isActive = song!!.id == mediaMetadata?.id,
+                                                isPlaying = isPlaying,
+                                                isSwipeable = false,
+                                                trailingContent = {
+                                                    IconButton(
+                                                        onClick = {
+                                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                            menuState.show {
+                                                                SongMenu(
+                                                                    originalSong = song!!,
+                                                                    onDismiss = menuState::dismiss,
+                                                                )
+                                                            }
+                                                        },
+                                                    ) {
+                                                        Icon(
+                                                            painter = painterResource(R.drawable.more_vert),
+                                                            contentDescription = null,
+                                                        )
+                                                    }
+                                                },
+                                                modifier =
+                                                    Modifier
+                                                        .width(horizontalLazyGridItemWidth)
+                                                        .combinedClickable(
+                                                            onClick = {
+                                                                if (!isListenTogetherGuest) {
+                                                                    if (song!!.id == mediaMetadata?.id) {
+                                                                        playerConnection.togglePlayPause()
+                                                                    } else {
+                                                                        playerConnection.playQueue(
+                                                                            ListQueue(
+                                                                                title = song!!.title,
+                                                                                items = listOf(song!!.toMediaItem()),
+                                                                            ),
                                                                         )
                                                                     }
                                                                 }

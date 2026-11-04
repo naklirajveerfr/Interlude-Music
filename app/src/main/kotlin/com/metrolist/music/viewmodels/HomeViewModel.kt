@@ -137,6 +137,8 @@ class HomeViewModel @Inject constructor(
     val quickPicks = MutableStateFlow<List<Song>?>(null)
     val dailyDiscover = MutableStateFlow<List<DailyDiscoverItem>?>(null)
     val forgottenFavorites = MutableStateFlow<List<Song>?>(null)
+    val timeCapsule = MutableStateFlow<List<Song>?>(null)
+    val timeCapsuleYearsAgo = MutableStateFlow(1)
     val keepListening = MutableStateFlow<List<LocalItem>?>(null)
     val similarRecommendations = MutableStateFlow<List<SimilarRecommendation>?>(null)
     val genreRecommendations = MutableStateFlow<List<GenreRecommendation>?>(null)
@@ -251,7 +253,8 @@ class HomeViewModel @Inject constructor(
                 ->
                 OtherSources(genre, home, chip != null, pool, pinned.map { it.id }.toSet())
             },
-        ) { lists, others ->
+            timeCapsule,
+        ) { lists, others, capsule ->
             dedupeHomeFeed(
                 pinnedIds = others.pinnedIds,
                 quickPicks = lists.quickPicks,
@@ -263,6 +266,7 @@ class HomeViewModel @Inject constructor(
                 speedDialPool = others.speedDialPool,
                 homePage = others.homePage,
                 chipActive = others.chipActive,
+                timeCapsule = capsule,
             )
         }.stateIn(viewModelScope, SharingStarted.Lazily, HomeFeed())
 
@@ -359,6 +363,7 @@ class HomeViewModel @Inject constructor(
         if (b.songs.isEmpty() && b.artists.isEmpty()) return
         quickPicks.value = quickPicks.value?.filterNot { b.blocks(it) }
         forgottenFavorites.value = forgottenFavorites.value?.filterNot { b.blocks(it) }
+        timeCapsule.value = timeCapsule.value?.filterNot { b.blocks(it) }
         keepListening.value = keepListening.value?.filterNot { b.blocks(it) }
         dailyDiscover.value = dailyDiscover.value?.filterNot { b.blocks(it.seed) || b.blocks(it.recommendation) }
         similarRecommendations.value =
@@ -629,6 +634,22 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    /** Most played songs within 3 days of today in the closest past year (up to 3 years back) that has enough plays. */
+    private suspend fun loadTimeCapsule(hideVideoSongs: Boolean) {
+        val now = LocalDateTime.now()
+        for (yearsAgo in 1..3) {
+            val center = now.minusYears(yearsAgo.toLong())
+            val songs = database.timeCapsuleSongs(center.minusDays(3), center.plusDays(3)).first()
+                .filterVideoSongs(hideVideoSongs)
+            if (songs.size >= 3) {
+                timeCapsuleYearsAgo.value = yearsAgo
+                timeCapsule.value = songs
+                return
+            }
+        }
+        timeCapsule.value = null
+    }
+
     private suspend fun loadInner() {
         isLoading.value = true
         val hideExplicit = context.dataStore.get(HideExplicitKey, false)
@@ -646,6 +667,8 @@ class HomeViewModel @Inject constructor(
                 forgottenFavorites.value = database.forgottenFavorites().first()
                     .filterVideoSongs(hideVideoSongs).shuffled().take(20)
             }
+
+            launch(Dispatchers.IO) { loadTimeCapsule(hideVideoSongs) }
 
             launch(Dispatchers.IO) {
                 val songs = database.mostPlayedSongs(fromTimeStamp = fromTimeStamp, limit = 15, offset = 5, toTimeStamp = LocalDateTime.now()).first()

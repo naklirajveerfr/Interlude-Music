@@ -554,6 +554,27 @@ interface DatabaseDao {
     fun recentlyPlayedSongs(limit: Int = 10): Flow<List<Song>>
 
     @Transaction
+    @Query(
+        """
+        SELECT song.*
+        FROM song
+        JOIN (SELECT songId, SUM(playTime) AS total
+              FROM event
+              WHERE timestamp >= :fromTimeStamp AND timestamp <= :toTimeStamp
+              GROUP BY songId
+              ORDER BY total DESC
+              LIMIT :limit) AS capsule
+        ON song.id = capsule.songId
+        ORDER BY capsule.total DESC
+        """,
+    )
+    fun timeCapsuleSongs(
+        fromTimeStamp: LocalDateTime,
+        toTimeStamp: LocalDateTime,
+        limit: Int = 20,
+    ): Flow<List<Song>>
+
+    @Transaction
     @SuppressWarnings(RoomWarnings.QUERY_MISMATCH)
     @Query(
         """

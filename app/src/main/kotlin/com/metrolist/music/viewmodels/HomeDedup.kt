@@ -18,6 +18,7 @@ data class HomeFeed(
     val dailyDiscover: List<DailyDiscoverItem>? = null,
     val keepListening: List<LocalItem>? = null,
     val forgottenFavorites: List<Song>? = null,
+    val timeCapsule: List<Song>? = null,
     val genreRecommendations: List<GenreRecommendation>? = null,
     val similarRecommendations: List<SimilarRecommendation>? = null,
     val homePage: HomePage? = null,
@@ -42,6 +43,7 @@ internal fun dedupeHomeFeed(
     speedDialPool: List<YTItem>,
     homePage: HomePage?,
     chipActive: Boolean,
+    timeCapsule: List<Song>? = null,
 ): HomeFeed {
     // With a chip selected only the chip's own page is shown, so there is nothing to compare against.
     if (chipActive) {
@@ -50,6 +52,7 @@ internal fun dedupeHomeFeed(
             dailyDiscover = dailyDiscover,
             keepListening = keepListening,
             forgottenFavorites = forgottenFavorites,
+            timeCapsule = timeCapsule,
             genreRecommendations = genreRecommendations,
             similarRecommendations = similarRecommendations,
             homePage = homePage,
@@ -63,6 +66,7 @@ internal fun dedupeHomeFeed(
     val daily = dailyDiscover?.filter { seen.add(it.recommendation.id) }
     val keep = keepListening?.filter { seen.add(it.id) }
     val forgotten = forgottenFavorites?.filter { seen.add(it.id) }
+    val capsule = timeCapsule?.filter { seen.add(it.id) }
     val genres =
         genreRecommendations?.mapNotNull { rec ->
             rec.copy(items = rec.items.filter { seen.add(it.id) }).takeIf { it.items.isNotEmpty() }
@@ -95,6 +99,7 @@ internal fun dedupeHomeFeed(
         dailyDiscover = daily,
         keepListening = keep,
         forgottenFavorites = forgotten,
+        timeCapsule = capsule,
         genreRecommendations = genres,
         similarRecommendations = similar,
         homePage = home,

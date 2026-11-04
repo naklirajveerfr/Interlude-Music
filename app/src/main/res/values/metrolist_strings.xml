@@ -1104,6 +1104,9 @@
     <string name="audio_output_connect">Connect</string>
     <string name="audio_output_this_phone">This phone</string>
     <string name="audio_output_wired_headphones">Wired headphones</string>
+    <string name="time_capsule">Time capsule</string>
+    <string name="time_capsule_one_year_ago">A year ago</string>
+    <string name="time_capsule_years_ago">%d years ago</string>
     <string name="audio_output_find_bluetooth">Find Bluetooth devices</string>
     <string name="audio_output_connecting">Connecting…</string>
     <string name="audio_output_connect_failed">Couldn\'t connect. Try Find Bluetooth devices.</string>
