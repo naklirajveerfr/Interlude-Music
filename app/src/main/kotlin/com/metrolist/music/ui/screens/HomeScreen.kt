@@ -1178,6 +1178,7 @@ fun HomeScreen(
 
             if (randomizeHomeOrder) {
                 list.sortedByDescending { section ->
+                    if (section == HomeSection.NewReleases) return@sortedByDescending Int.MAX_VALUE
                     // Use a stable seed for each section based on the session seed + section ID hash
                     // This ensures the weight for a specific section remains constant during a session (until refresh)
                     // even if other sections appear/disappear, preventing jumping.
@@ -1240,7 +1241,7 @@ fun HomeScreen(
                         HomeSection.FromTheCommunity to 80,
                         HomeSection.DailyDiscover to 70,
                         HomeSection.KeepListening to 60,
-                        HomeSection.NewReleases to 65,
+                        HomeSection.NewReleases to 110,
                         HomeSection.TimeCapsule to 55,
                         HomeSection.AccountPlaylists to 50,
                         HomeSection.ForgottenFavorites to 40,
