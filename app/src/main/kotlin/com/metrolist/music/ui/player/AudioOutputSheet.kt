@@ -78,8 +78,9 @@ internal fun ColumnScope.AudioOutputMenuContent(
     LaunchedEffect(output) { connecting = null }
     val others = remember(output) {
         val paired = pairedAudioDevices(context).filter { !output.isBluetooth || it != output.name }
-        if (output.isBluetooth || output.isWired) listOf(AudioOutput(false, phoneLabel)) + paired.map { AudioOutput(true, it) }
-        else paired.map { AudioOutput(true, it) }
+        val phone = AudioOutput(false, phoneLabel).takeIf { output.isBluetooth || output.isWired }
+        val wired = connectedWiredOutput(context).takeIf { !output.isWired }
+        listOfNotNull(phone, wired) + paired.map { AudioOutput(true, it) }
     }
 
     run {
@@ -143,7 +144,7 @@ internal fun ColumnScope.AudioOutputMenuContent(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(
-                        painterResource(if (device.isBluetooth) R.drawable.bluetooth else R.drawable.smartphone),
+                        painterResource(if (device.isBluetooth) R.drawable.bluetooth else if (device.isWired) R.drawable.headphones else R.drawable.smartphone),
                         null,
                         tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(22.dp),
@@ -206,6 +207,22 @@ private fun isBluetoothOutput(device: AudioDeviceInfo): Boolean =
         (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
             (device.type == AudioDeviceInfo.TYPE_BLE_HEADSET || device.type == AudioDeviceInfo.TYPE_BLE_SPEAKER))
 
+private fun isWiredOutput(device: AudioDeviceInfo): Boolean =
+    device.type == AudioDeviceInfo.TYPE_WIRED_HEADPHONES ||
+        device.type == AudioDeviceInfo.TYPE_WIRED_HEADSET ||
+        device.type == AudioDeviceInfo.TYPE_USB_HEADSET ||
+        device.type == AudioDeviceInfo.TYPE_USB_DEVICE
+
+/** The plugged-in wired/USB output, if any, even while the player is forced to the phone speaker. */
+private fun connectedWiredOutput(context: Context): AudioOutput? {
+    val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+    val device = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS).firstOrNull(::isWiredOutput) ?: return null
+    val usbName = device.productName?.toString()?.takeIf {
+        it.isNotBlank() && device.type != AudioDeviceInfo.TYPE_WIRED_HEADPHONES && device.type != AudioDeviceInfo.TYPE_WIRED_HEADSET
+    }
+    return AudioOutput(false, usbName ?: context.getString(R.string.audio_output_wired_headphones), isWired = true)
+}
+
 /**
  * Moves the app's audio to [target]. A connected output is chosen on the player itself; a paired
  * Bluetooth device that is not connected gets an A2DP connect request. Returns false when neither worked.
@@ -223,6 +240,12 @@ private suspend fun switchTo(context: Context, player: ExoPlayer?, target: Audio
 private fun routeTo(context: Context, player: ExoPlayer, target: AudioOutput): Boolean {
     val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     val devices = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+    if (target.isWired) {
+        val wired = devices.firstOrNull(::isWiredOutput) ?: return false
+        player.setPreferredAudioDevice(wired)
+        OutputRoute.forcedPhone.value = false
+        return true
+    }
     if (!target.isBluetooth) {
         val speaker = devices.firstOrNull { it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER } ?: return false
         player.setPreferredAudioDevice(speaker)
