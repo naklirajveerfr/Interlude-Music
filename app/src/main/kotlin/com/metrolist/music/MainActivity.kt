@@ -223,6 +223,7 @@ import com.metrolist.music.utils.ReleaseInfo
 import com.metrolist.music.utils.SearchRoutes
 import com.metrolist.music.utils.SyncUtils
 import com.metrolist.music.utils.ArtistNameAliases
+import com.metrolist.music.utils.UpdateInstaller
 import com.metrolist.music.utils.Updater
 import com.metrolist.music.utils.dataStore
 import com.metrolist.music.utils.safeDataStoreEdit
@@ -548,7 +549,13 @@ class MainActivity : FragmentActivity() {
                     }
 
                     if (update != null && notificationsEnabled) {
-                        val intent = Intent(Intent.ACTION_VIEW, update.downloadUrl.toUri())
+                        val intent =
+                            if (update.isKmp) {
+                                Intent(Intent.ACTION_VIEW, update.downloadUrl.toUri())
+                            } else {
+                                Intent(this@MainActivity, MainActivity::class.java)
+                                    .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                            }
                         val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                         val pending = PendingIntent.getActivity(this@MainActivity, 1001, intent, flags)
                         val notificationText =
@@ -1602,7 +1609,11 @@ class MainActivity : FragmentActivity() {
                                     TextButton(
                                         onClick = {
                                             dismissUpdate()
-                                            startActivity(Intent(Intent.ACTION_VIEW, update.downloadUrl.toUri()))
+                                            if (update.isKmp) {
+                                                startActivity(Intent(Intent.ACTION_VIEW, update.downloadUrl.toUri()))
+                                            } else {
+                                                UpdateInstaller.install(this@MainActivity, update.release)
+                                            }
                                         },
                                     ) {
                                         Text(

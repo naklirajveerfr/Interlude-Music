@@ -389,6 +389,11 @@
     <string name="update_available_title">New update available</string>
     <string name="update_available_message">Interlude Music %s is ready to download.</string>
     <string name="update_action">Install</string>
+    <string name="update_downloading">Downloading update…</string>
+    <string name="update_download_failed">Couldn\'t download the update. Opening the releases page instead.</string>
+    <string name="update_allow_install">Allow installing updates from Interlude Music, then tap update again.</string>
+    <string name="update_ready_title">Update ready</string>
+    <string name="update_ready_message">Tap to install the new version.</string>
     <string name="update_channel_name">App updates</string>
     <string name="update_channel_desc">Notifications about new app versions</string>
     <string name="kmp_upgrade_title">Metrolist KMP %s is available</string>

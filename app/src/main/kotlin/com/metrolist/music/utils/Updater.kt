@@ -99,12 +99,31 @@ object Updater {
                 val version = parseVersion(release.optString("tag_name"))
                     ?: throw IllegalStateException("Latest GitHub release has no valid version tag")
 
+                val assetsJson = release.optJSONArray("assets") ?: JSONArray()
+                val assets = (0 until assetsJson.length())
+                    .map { assetsJson.getJSONObject(it) }
+                    .filter { it.optString("name").endsWith(".apk", ignoreCase = true) }
+                    .map {
+                        val name = it.getString("name")
+                        ReleaseAsset(
+                            name = name,
+                            downloadUrl = it.getString("browser_download_url"),
+                            size = it.optLong("size"),
+                            architecture = "universal",
+                            variant = when {
+                                name.contains("Cast", ignoreCase = true) -> "gms"
+                                name.contains("izzy", ignoreCase = true) -> "izzy"
+                                else -> "foss"
+                            }
+                        )
+                    }
+
                 val releaseInfo = ReleaseInfo(
                     tagName = version,
                     versionName = version,
                     description = release.optString("body"),
                     releaseDate = release.optString("published_at"),
-                    assets = emptyList()
+                    assets = assets
                 )
 
                 cachedReleaseInfo = releaseInfo
@@ -153,10 +172,18 @@ object Updater {
     suspend fun getLatestKmpRelease(): Result<ReleaseInfo?> = Result.success(null)
 
     /**
-     * Get the page where the new version can be downloaded
+     * The APK of the release that matches the installed variant (foss or gms)
      */
-    @Suppress("UNUSED_PARAMETER")
-    fun getDownloadUrlForCurrentVariant(releaseInfo: ReleaseInfo): String = DOWNLOAD_URL
+    fun getApkAssetForCurrentVariant(releaseInfo: ReleaseInfo): ReleaseAsset? {
+        val variant = if (BuildConfig.CAST_AVAILABLE) "gms" else "foss"
+        return releaseInfo.assets.firstOrNull { it.variant == variant }
+    }
+
+    /**
+     * Direct APK link for the installed variant, or the releases page if the release has none
+     */
+    fun getDownloadUrlForCurrentVariant(releaseInfo: ReleaseInfo): String =
+        getApkAssetForCurrentVariant(releaseInfo)?.downloadUrl ?: DOWNLOAD_URL
 
     /**
      * Check if update is needed (respects 2-hour cache)

@@ -34,7 +34,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -48,6 +47,7 @@ import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.utils.backToMain
+import com.metrolist.music.utils.UpdateInstaller
 import com.metrolist.music.utils.Updater
 import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.Dispatchers
@@ -66,7 +66,6 @@ fun UpdaterScreen(
     var isChecking by remember { mutableStateOf(false) }
     var updateAvailable by remember { mutableStateOf(false) }
     var latestVersion by remember { mutableStateOf<String?>(null) }
-    val uriHandler = LocalUriHandler.current
     var checkError by remember { mutableStateOf<String?>(null) }
     val failedToCheckUpdatesTemplate = stringResource(R.string.failed_to_check_updates)
 
@@ -217,7 +216,7 @@ fun UpdaterScreen(
         if (updateAvailable && latestVersion != null) {
             Spacer(Modifier.height(16.dp))
             Button(
-                onClick = { uriHandler.openUri(Updater.DOWNLOAD_URL) },
+                onClick = { UpdateInstaller.install(context, Updater.getCachedLatestRelease()) },
                 modifier =
                     Modifier
                         .fillMaxWidth()
