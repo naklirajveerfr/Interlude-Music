@@ -165,7 +165,6 @@ val EnableSongCacheKey = booleanPreferencesKey("enableSongCache")
 val PauseListenHistoryKey = booleanPreferencesKey("pauseListenHistory")
 val PauseSearchHistoryKey = booleanPreferencesKey("pauseSearchHistory")
 val DisableScreenshotKey = booleanPreferencesKey("disableScreenshot")
-val UsageStatsKey = booleanPreferencesKey("usageStats")
 
 val EnableDynamicIconKey = booleanPreferencesKey("enableDynamicIcon")
 

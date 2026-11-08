@@ -40,7 +40,6 @@ import com.metrolist.music.R
 import com.metrolist.music.constants.DisableScreenshotKey
 import com.metrolist.music.constants.PauseListenHistoryKey
 import com.metrolist.music.constants.PauseSearchHistoryKey
-import com.metrolist.music.constants.UsageStatsKey
 import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.Material3SettingsGroup
@@ -65,10 +64,6 @@ fun PrivacySettings(
     val (disableScreenshot, onDisableScreenshotChange) = rememberPreference(
         key = DisableScreenshotKey,
         defaultValue = false
-    )
-    val (usageStats, onUsageStatsChange) = rememberPreference(
-        key = UsageStatsKey,
-        defaultValue = true
     )
 
     var showClearListenHistoryDialog by remember {
@@ -247,27 +242,6 @@ fun PrivacySettings(
                         )
                     },
                     onClick = { onDisableScreenshotChange(!disableScreenshot) }
-                ),
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.info),
-                    title = { Text(stringResource(R.string.usage_stats)) },
-                    description = { Text(stringResource(R.string.usage_stats_desc)) },
-                    trailingContent = {
-                        Switch(
-                            checked = usageStats,
-                            onCheckedChange = onUsageStatsChange,
-                            thumbContent = {
-                                Icon(
-                                    painter = painterResource(
-                                        id = if (usageStats) R.drawable.check else R.drawable.close
-                                    ),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(androidx.compose.material3.SwitchDefaults.IconSize)
-                                )
-                            }
-                        )
-                    },
-                    onClick = { onUsageStatsChange(!usageStats) }
                 )
             )
         )
