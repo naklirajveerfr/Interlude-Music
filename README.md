@@ -86,7 +86,7 @@ Interlude is a fork of [Metrolist](https://github.com/MetrolistGroup/Metrolist).
 
 ### Look and Feel
 
-* **Spotify Canvas:** looping Canvas videos play full-screen behind the player in the Full Art and Immersive styles. The next song's Canvas is prefetched and cached on disk, and connecting a Spotify account is optional. Animated artwork from Apple Music is supported too.
+* **Spotify Canvas:** looping Canvas videos play full-screen behind the player in the Full Art and Immersive styles. The next song's Canvas is prefetched and cached on disk. Canvas requires a connected Spotify account. Animated artwork from Apple Music is supported too.
 * **Material 3 Expressive** design with wavy progress components.
 * **Frosted Glass UI**
 * Three player styles: **Default**,**Full Art**. and Immersive
