@@ -139,6 +139,7 @@ import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.DraggableScrollbar
 import com.metrolist.music.ui.component.EmptyPlaceholder
 import com.metrolist.music.ui.component.ExpandableText
+import com.metrolist.music.ui.component.HideOnScrollFAB
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.OverlayEditButton
@@ -224,6 +225,15 @@ fun LocalPlaylistScreen(
                 }
             }
         }
+
+    val displayedSongs = if (isSearching) filteredSongs else mutableSongs
+
+    val locateVisible by remember(displayedSongs, mediaMetadata?.id) {
+        derivedStateOf {
+            val id = mediaMetadata?.id
+            id != null && displayedSongs.any { it.song.id == id }
+        }
+    }
 
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(isSearching) {
@@ -568,8 +578,6 @@ fun LocalPlaylistScreen(
                 }
             }
 
-            val displayedSongs = if (isSearching) filteredSongs else mutableSongs
-
             itemsIndexed(
                 items = displayedSongs,
                 key = { _, song -> song.map.id },
@@ -752,6 +760,25 @@ fun LocalPlaylistScreen(
                     ).align(Alignment.CenterEnd),
             scrollState = lazyListState,
             headerItems = 2,
+        )
+
+        HideOnScrollFAB(
+            lazyListState = lazyListState,
+            locateOnly = true,
+            locateVisible = locateVisible,
+            onLocateClick = {
+                val id = mediaMetadata?.id ?: return@HideOnScrollFAB
+                val index = displayedSongs.indexOfFirst { it.song.id == id }
+                if (index >= 0) {
+                    coroutineScope.launch {
+                        lazyListState.animateScrollToItem((if (isSearching) 1 else 2) + index)
+                    }
+                } else {
+                    coroutineScope.launch {
+                        snackbarHostState.showSnackbar(context.getString(R.string.playing_song_not_in_playlist))
+                    }
+                }
+            },
         )
 
         GlassTopAppBar(

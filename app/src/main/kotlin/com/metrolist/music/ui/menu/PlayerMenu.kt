@@ -115,6 +115,8 @@ fun PlayerMenu(
     isQueueTrigger: Boolean? = false,
     onShowDetailsDialog: () -> Unit,
     onDismiss: () -> Unit,
+    isFullScreen: Boolean = false,
+    onToggleFullScreen: (() -> Unit)? = null,
 ) {
     mediaMetadata ?: return
     val navController = LocalNavController.current
@@ -434,6 +436,32 @@ fun PlayerMenu(
                                         else -> "Repeat: Off"
                                     },
                                 onClick = { playerConnection.player.toggleRepeatMode() },
+                            )
+                        } else {
+                            null
+                        },
+                        if (onToggleFullScreen != null) {
+                            NewAction(
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(
+                                            if (isFullScreen) R.drawable.fullscreen_exit else R.drawable.fullscreen,
+                                        ),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(32.dp),
+                                        tint =
+                                            if (isFullScreen) {
+                                                MaterialTheme.colorScheme.primary
+                                            } else {
+                                                MaterialTheme.colorScheme.onSurfaceVariant
+                                            },
+                                    )
+                                },
+                                text = if (isFullScreen) "Exit fullscreen" else "Fullscreen",
+                                onClick = {
+                                    onToggleFullScreen()
+                                    onDismiss()
+                                },
                             )
                         } else {
                             null

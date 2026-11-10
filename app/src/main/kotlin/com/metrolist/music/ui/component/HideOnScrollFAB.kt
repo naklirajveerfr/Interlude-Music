@@ -48,9 +48,12 @@ import com.metrolist.music.ui.utils.isScrollingUp
 fun BoxScope.HideOnScrollFAB(
     visible: Boolean = true,
     lazyListState: LazyListState,
-    @DrawableRes icon: Int,
-    onClick: () -> Unit,
+    @DrawableRes icon: Int = R.drawable.shuffle,
+    onClick: () -> Unit = {},
     onRecognitionClick: (() -> Unit)? = null,
+    onLocateClick: (() -> Unit)? = null,
+    locateVisible: Boolean = false,
+    locateOnly: Boolean = false,
     onLongPress: (() -> Unit)? = null,
     onDoubleTap: (() -> Unit)? = null,
     longPressTimeoutMillis: Long = 2500L,
@@ -90,61 +93,80 @@ fun BoxScope.HideOnScrollFAB(
                 }
                 Spacer(modifier = Modifier.height(12.dp))
             }
-            FloatingActionButton(
-                onClick = onClick,
-                modifier =
-                    if (onLongPress == null && onDoubleTap == null) {
-                        Modifier
-                    } else {
-                        Modifier.pointerInput(onLongPress == null, onDoubleTap == null, longPressTimeoutMillis) {
-                            awaitEachGesture {
-                                awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-                                var firstUp: PointerInputChange? = null
-                                val heldLong =
-                                    onLongPress != null &&
-                                        try {
-                                            withTimeout(longPressTimeoutMillis) {
-                                                firstUp = waitForUpOrCancellation(PointerEventPass.Initial)
+            if (onLocateClick != null && locateVisible) {
+                SmallFloatingActionButton(
+                    onClick = onLocateClick,
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.location_on),
+                        contentDescription = stringResource(R.string.locate_playing_song),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                if (!locateOnly) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+            }
+            if (!locateOnly) {
+                FloatingActionButton(
+                    onClick = onClick,
+                    modifier =
+                        if (onLongPress == null && onDoubleTap == null) {
+                            Modifier
+                        } else {
+                            Modifier.pointerInput(onLongPress == null, onDoubleTap == null, longPressTimeoutMillis) {
+                                awaitEachGesture {
+                                    awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                                    var firstUp: PointerInputChange? = null
+                                    val heldLong =
+                                        onLongPress != null &&
+                                            try {
+                                                withTimeout(longPressTimeoutMillis) {
+                                                    firstUp = waitForUpOrCancellation(PointerEventPass.Initial)
+                                                }
+                                                false
+                                            } catch (_: PointerEventTimeoutCancellationException) {
+                                                true
                                             }
-                                            false
-                                        } catch (_: PointerEventTimeoutCancellationException) {
-                                            true
-                                        }
-                                if (heldLong) {
-                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    currentOnLongPress?.invoke()
-                                    // Consume the release so the FAB's own click doesn't also fire
-                                    waitForUpOrCancellation(PointerEventPass.Initial)?.consume()
-                                    return@awaitEachGesture
-                                }
-                                if (onLongPress == null) {
-                                    firstUp = waitForUpOrCancellation(PointerEventPass.Initial)
-                                }
-                                val tapUp = firstUp ?: return@awaitEachGesture
-                                if (onDoubleTap == null) return@awaitEachGesture
-
-                                // Hold back the single tap until we know a second tap isn't coming
-                                tapUp.consume()
-                                val secondDown =
-                                    withTimeoutOrNull(viewConfiguration.doubleTapTimeoutMillis) {
-                                        awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                                    if (heldLong) {
+                                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        currentOnLongPress?.invoke()
+                                        // Consume the release so the FAB's own click doesn't also fire
+                                        waitForUpOrCancellation(PointerEventPass.Initial)?.consume()
+                                        return@awaitEachGesture
                                     }
-                                if (secondDown == null) {
-                                    currentOnClick()
-                                } else {
-                                    secondDown.consume()
-                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    currentOnDoubleTap?.invoke()
-                                    waitForUpOrCancellation(PointerEventPass.Initial)?.consume()
+                                    if (onLongPress == null) {
+                                        firstUp = waitForUpOrCancellation(PointerEventPass.Initial)
+                                    }
+                                    val tapUp = firstUp ?: return@awaitEachGesture
+                                    if (onDoubleTap == null) return@awaitEachGesture
+
+                                    // Hold back the single tap until we know a second tap isn't coming
+                                    tapUp.consume()
+                                    val secondDown =
+                                        withTimeoutOrNull(viewConfiguration.doubleTapTimeoutMillis) {
+                                            awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                                        }
+                                    if (secondDown == null) {
+                                        currentOnClick()
+                                    } else {
+                                        secondDown.consume()
+                                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        currentOnDoubleTap?.invoke()
+                                        waitForUpOrCancellation(PointerEventPass.Initial)?.consume()
+                                    }
                                 }
                             }
-                        }
-                    },
-            ) {
-                Icon(
-                    painter = painterResource(icon),
-                    contentDescription = null,
-                )
+                        },
+                ) {
+                    Icon(
+                        painter = painterResource(icon),
+                        contentDescription = null,
+                    )
+                }
             }
         }
     }

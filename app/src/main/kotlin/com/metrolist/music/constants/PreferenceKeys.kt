@@ -461,6 +461,7 @@ const val OpenRouterDefaultModel = "google/gemini-2.5-flash-lite"
 
 val TranslateModeKey = stringPreferencesKey("translateMode")
 val TranslateLanguageKey = stringPreferencesKey("translateLanguage")
+val AutoTranslateLyricsKey = booleanPreferencesKey("autoTranslateLyrics")
 val DeeplApiKey = stringPreferencesKey("deeplApiKey")
 val DeeplFormalityKey = stringPreferencesKey("deeplFormality")
 val AiSystemPromptKey = stringPreferencesKey("aiSystemPrompt")

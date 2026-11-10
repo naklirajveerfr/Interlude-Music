@@ -41,10 +41,12 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -86,6 +88,7 @@ import com.metrolist.music.extensions.toMediaItem
 import com.metrolist.music.playback.queues.ListQueue
 import com.metrolist.music.ui.component.DraggableScrollbar
 import com.metrolist.music.ui.component.EmptyPlaceholder
+import com.metrolist.music.ui.component.HideOnScrollFAB
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.SongListItem
@@ -97,6 +100,7 @@ import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.CachePlaylistViewModel
+import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -152,6 +156,7 @@ fun CachePlaylistScreen(
     var query by remember { mutableStateOf(TextFieldValue()) }
     val focusRequester = remember { FocusRequester() }
     val lazyListState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(isSearching) {
         if (isSearching) {
@@ -173,6 +178,13 @@ fun CachePlaylistScreen(
         else sortedSongs.filter { song ->
             song.title.contains(query.text, true) ||
                 song.artists.any { it.name.contains(query.text, true) }
+        }
+    }
+
+    val locateVisible by remember(filteredSongs, mediaMetadata?.id) {
+        derivedStateOf {
+            val id = mediaMetadata?.id
+            id != null && filteredSongs.any { it.id == id }
         }
     }
 
@@ -252,7 +264,7 @@ fun CachePlaylistScreen(
                     }
                 }
 
-                itemsIndexed(filteredSongs, key = { index, song -> "${song.id}_$index" }) { index, song ->
+                itemsIndexed(filteredSongs, key = { _, song -> song.id }) { index, song ->
                     val onCheckedChange: (Boolean) -> Unit = {
                         if (it) {
                             selection.add(song.id)
@@ -334,7 +346,6 @@ fun CachePlaylistScreen(
                                     }
                                 }
                             )
-                            .animateItem()
                     )
                 }
             }
@@ -349,6 +360,21 @@ fun CachePlaylistScreen(
                 .align(Alignment.CenterEnd),
             scrollState = lazyListState,
             headerItems = 2
+        )
+
+        HideOnScrollFAB(
+            lazyListState = lazyListState,
+            locateOnly = true,
+            locateVisible = locateVisible,
+            onLocateClick = {
+                val id = mediaMetadata?.id ?: return@HideOnScrollFAB
+                val index = filteredSongs.indexOfFirst { it.id == id }
+                if (index >= 0) {
+                    scope.launch {
+                        lazyListState.animateScrollToItem((if (isSearching) 1 else 2) + index)
+                    }
+                }
+            },
         )
 
         GlassTopAppBar(

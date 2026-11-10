@@ -112,6 +112,7 @@ import com.metrolist.music.constants.PlayerStyleKey
 import com.metrolist.music.constants.RespectAgentPositioningKey
 import com.metrolist.music.constants.ShowIntervalIndicatorKey
 import com.metrolist.music.constants.TranslateLanguageKey
+import com.metrolist.music.constants.AutoTranslateLyricsKey
 import com.metrolist.music.constants.TranslateModeKey
 import com.metrolist.music.db.entities.LyricsEntity.Companion.LYRICS_NOT_FOUND
 import com.metrolist.music.lyrics.LyricsTranslationHelper
@@ -178,11 +179,12 @@ fun ExperimentalLyrics(
     // AI Translation Preferences
     val openRouterApiKey by rememberPreference(OpenRouterApiKey, "")
     val deeplApiKey by rememberPreference(DeeplApiKey, "")
-    val aiProvider by rememberPreference(AiProviderKey, "OpenRouter")
+    val aiProvider by rememberPreference(AiProviderKey, "Free")
     val openRouterBaseUrl by rememberPreference(OpenRouterBaseUrlKey, OpenRouterDefaultBaseUrl)
     val openRouterModel by rememberPreference(OpenRouterModelKey, OpenRouterDefaultModel)
-    val translateLanguage by rememberPreference(TranslateLanguageKey, "en")
+    val translateLanguage by rememberPreference(TranslateLanguageKey, "zh-CN")
     val translateMode by rememberPreference(TranslateModeKey, "Literal")
+    val autoTranslateLyrics by rememberPreference(AutoTranslateLyricsKey, true)
     val deeplFormality by rememberPreference(DeeplFormalityKey, "default")
     val aiSystemPrompt by rememberPreference(AiSystemPromptKey, "")
     
@@ -259,7 +261,56 @@ fun ExperimentalLyrics(
             )
         }
     }
-    
+
+    // When "always translate" is on, translate any song that doesn't yet have a
+    // translation for the current language/mode. Cached/DB results are shown by
+    // loadTranslationsFromDatabase above, so this only fires for genuinely new songs.
+    val autoTranslatedSongId = remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(
+        autoTranslateLyrics,
+        showLyrics,
+        lines,
+        lyricsEntity?.id,
+        translateLanguage,
+        translateMode,
+        aiProvider,
+    ) {
+        val entity = lyricsEntity
+        val songId = entity?.id
+        val hasMatchingTranslation = entity != null &&
+            entity.translatedLyrics.isNotBlank() &&
+            entity.translationLanguage == translateLanguage &&
+            entity.translationMode == translateMode
+        if (
+            autoTranslateLyrics &&
+            showLyrics &&
+            lines.isNotEmpty() &&
+            songId != null &&
+            !hasMatchingTranslation &&
+            autoTranslatedSongId.value != songId &&
+            (aiProvider == "Free" || (if (aiProvider == "DeepL") deeplApiKey else openRouterApiKey).isNotBlank())
+        ) {
+            autoTranslatedSongId.value = songId
+            LyricsTranslationHelper.translateLyrics(
+                lyrics = lines,
+                targetLanguage = translateLanguage,
+                apiKey = openRouterApiKey,
+                baseUrl = openRouterBaseUrl,
+                model = openRouterModel,
+                mode = translateMode,
+                scope = scope,
+                context = context,
+                provider = aiProvider,
+                deeplApiKey = deeplApiKey,
+                deeplFormality = deeplFormality,
+                useStreaming = true,
+                songId = currentSong?.id ?: "",
+                database = database,
+                systemPrompt = aiSystemPrompt,
+            )
+        }
+    }
+
     LaunchedEffect(
         showLyrics, 
         lines, 
@@ -277,7 +328,7 @@ fun ExperimentalLyrics(
     ) {
         LyricsTranslationHelper.manualTrigger.collectLatest {
             val effectiveApiKey = if (aiProvider == "DeepL") deeplApiKey else openRouterApiKey
-            if (showLyrics && lines.isNotEmpty() && effectiveApiKey.isNotBlank()) {
+            if (showLyrics && lines.isNotEmpty() && (aiProvider == "Free" || effectiveApiKey.isNotBlank())) {
                 LyricsTranslationHelper.translateLyrics(
                     lyrics = lines,
                     targetLanguage = translateLanguage,
@@ -295,12 +346,12 @@ fun ExperimentalLyrics(
                     database = database,
                     systemPrompt = aiSystemPrompt,
                 )
-            } else if (effectiveApiKey.isBlank()) {
+            } else if (aiProvider != "Free" && effectiveApiKey.isBlank()) {
                 Toast.makeText(context, context.getString(R.string.ai_api_key_required), Toast.LENGTH_SHORT).show()
             }
         }
     }
-    
+
     LaunchedEffect(lines) {
         LyricsTranslationHelper.clearTranslationsTrigger.collectLatest {
             lines.forEach { it.translatedTextFlow.value = null }

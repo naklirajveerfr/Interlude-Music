@@ -11,6 +11,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -60,6 +61,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.BlurEffect
+import androidx.compose.ui.graphics.RenderEffect
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -115,6 +118,9 @@ fun SpotifyStylePlayerContent(
     onRepeat: () -> Unit,
     onQueue: () -> Unit,
     onSeek: (Long) -> Unit,
+    onSleepTimer: () -> Unit = {},
+    isFullScreen: Boolean = false,
+    onFullScreen: () -> Unit = {},
     showLyrics: Boolean = false,
     onToggleLyrics: () -> Unit = {},
     queueProgress: () -> Float = { 0f },
@@ -129,14 +135,21 @@ fun SpotifyStylePlayerContent(
     // The live artwork (canvas video included) is blurred and dimmed in place when lyrics or the queue open.
     val lyricsBackdrop = animateFloatAsState(if (showLyrics) 1f else 0f, tween(300), label = "lyricsBackdrop")
     val backdrop = { maxOf(lyricsBackdrop.value, queueProgress().coerceIn(0f, 1f)) }
+    // Hoist the density lookup and reuse the RenderEffect while the animated radius is unchanged.
+    val blurRadiusPx = with(LocalDensity.current) { 24.dp.toPx() }
+    val blurCache = remember { object { var radius = Float.NaN; var effect: RenderEffect? = null } }
 
     Box(modifier.fillMaxSize().background(Color.Black)) {
         Box(
             Modifier.fillMaxSize().graphicsLayer {
                 val amount = backdrop()
                 renderEffect = if (amount > 0f && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    val radius = 24.dp.toPx() * amount
-                    BlurEffect(radius, radius, TileMode.Clamp)
+                    val radius = blurRadiusPx * amount
+                    if (radius != blurCache.radius) {
+                        blurCache.radius = radius
+                        blurCache.effect = BlurEffect(radius, radius, TileMode.Clamp)
+                    }
+                    blurCache.effect
                 } else {
                     null
                 }
@@ -203,6 +216,13 @@ fun SpotifyStylePlayerContent(
                     )
                 }
             }
+            IconButton(onClick = onFullScreen) {
+                Icon(
+                    painterResource(if (isFullScreen) R.drawable.fullscreen_exit else R.drawable.fullscreen),
+                    null,
+                    tint = Color.White,
+                )
+            }
             IconButton(onClick = onMore) {
                 Icon(painterResource(R.drawable.more_vert), null, tint = Color.White)
             }
@@ -266,87 +286,98 @@ fun SpotifyStylePlayerContent(
                 Text(formatTime(total), color = Color.White.copy(alpha = 0.7f), fontSize = 11.sp)
             }
 
-            Row(
-                Modifier.fillMaxWidth().padding(top = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
+            AnimatedVisibility(
+                visible = !isFullScreen,
+                enter = fadeIn(tween(300)),
+                exit = fadeOut(tween(300)),
             ) {
-                IconButton(onClick = onShuffle) {
-                    Icon(
-                        painterResource(R.drawable.shuffle),
-                        null,
-                        tint = if (shuffleOn) MaterialTheme.colorScheme.primary else Color.White,
-                    )
-                }
-                IconButton(onClick = onPrevious) {
-                    Icon(painterResource(R.drawable.nm_skip_previous), null, tint = Color.White, modifier = Modifier.size(36.dp))
-                }
-                Box(
-                    Modifier.size(68.dp).clip(CircleShape).background(Color.White).clickable(onClick = onPlayPause),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        painterResource(if (isPlaying) R.drawable.nm_pause else R.drawable.nm_play_arrow),
-                        null,
-                        tint = Color.Black,
-                        modifier = Modifier.size(36.dp),
-                    )
-                }
-                IconButton(onClick = onNext, modifier = Modifier.smoothSkipOnHold()) {
-                    Icon(painterResource(R.drawable.nm_skip_next), null, tint = Color.White, modifier = Modifier.size(36.dp))
-                }
-                IconButton(onClick = onRepeat) {
-                    Icon(
-                        painterResource(
-                            when (repeatMode) {
-                                1 -> R.drawable.repeat_one
-                                else -> R.drawable.repeat
-                            },
-                        ),
-                        null,
-                        tint = if (repeatMode != 0) MaterialTheme.colorScheme.primary else Color.White,
-                    )
-                }
-            }
+                Column {
+                    Row(
+                        Modifier.fillMaxWidth().padding(top = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        IconButton(onClick = onShuffle) {
+                            Icon(
+                                painterResource(R.drawable.shuffle),
+                                null,
+                                tint = if (shuffleOn) MaterialTheme.colorScheme.primary else Color.White,
+                            )
+                        }
+                        IconButton(onClick = onPrevious) {
+                            Icon(painterResource(R.drawable.nm_skip_previous), null, tint = Color.White, modifier = Modifier.size(36.dp))
+                        }
+                        Box(
+                            Modifier.size(68.dp).clip(CircleShape).background(Color.White).clickable(onClick = onPlayPause),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                painterResource(if (isPlaying) R.drawable.nm_pause else R.drawable.nm_play_arrow),
+                                null,
+                                tint = Color.Black,
+                                modifier = Modifier.size(36.dp),
+                            )
+                        }
+                        IconButton(onClick = onNext, modifier = Modifier.smoothSkipOnHold()) {
+                            Icon(painterResource(R.drawable.nm_skip_next), null, tint = Color.White, modifier = Modifier.size(36.dp))
+                        }
+                        IconButton(onClick = onRepeat) {
+                            Icon(
+                                painterResource(
+                                    when (repeatMode) {
+                                        1 -> R.drawable.repeat_one
+                                        else -> R.drawable.repeat
+                                    },
+                                ),
+                                null,
+                                tint = if (repeatMode != 0) MaterialTheme.colorScheme.primary else Color.White,
+                            )
+                        }
+                    }
 
-            val output = rememberAudioOutput()
-            val menuState = LocalMenuState.current
-            val nowPlaying = listOf(title.uppercase(), artist).filter { it.isNotBlank() }.joinToString(" – ")
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Row(
-                    Modifier.weight(1f).clickable {
-                        menuState.show { AudioOutputMenuContent(nowPlaying) { menuState.dismiss() } }
-                    },
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        painterResource(if (output.isBluetooth) R.drawable.bluetooth else if (output.isWired) R.drawable.headphones else R.drawable.smartphone),
-                        null,
-                        tint = Color.White,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        output.name,
-                        color = Color.White,
-                        fontSize = 12.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                IconButton(onClick = onToggleLyrics) {
-                    Icon(
-                        painterResource(R.drawable.lyrics),
-                        null,
-                        tint = if (showLyrics) MaterialTheme.colorScheme.primary else Color.White,
-                    )
-                }
-                IconButton(onClick = onQueue) {
-                    Icon(painterResource(R.drawable.queue_music), null, tint = Color.White)
+                    val output = rememberAudioOutput()
+                    val menuState = LocalMenuState.current
+                    val nowPlaying = listOf(title.uppercase(), artist).filter { it.isNotBlank() }.joinToString(" – ")
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Row(
+                            Modifier.weight(1f).clickable {
+                                menuState.show { AudioOutputMenuContent(nowPlaying) { menuState.dismiss() } }
+                            },
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                painterResource(if (output.isBluetooth) R.drawable.bluetooth else if (output.isWired) R.drawable.headphones else R.drawable.smartphone),
+                                null,
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                output.name,
+                                color = Color.White,
+                                fontSize = 12.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        IconButton(onClick = onToggleLyrics) {
+                            Icon(
+                                painterResource(R.drawable.lyrics),
+                                null,
+                                tint = if (showLyrics) MaterialTheme.colorScheme.primary else Color.White,
+                            )
+                        }
+                        IconButton(onClick = onSleepTimer) {
+                            Icon(painterResource(R.drawable.bedtime), null, tint = Color.White)
+                        }
+                        IconButton(onClick = onQueue) {
+                            Icon(painterResource(R.drawable.queue_music), null, tint = Color.White)
+                        }
+                    }
                 }
             }
         }

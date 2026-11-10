@@ -61,6 +61,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -68,7 +70,10 @@ import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedIconButton
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderState
@@ -627,13 +632,9 @@ fun BottomSheetPlayer(
         .getDownload(mediaMetadata?.id ?: "")
         .collectAsStateWithLifecycle(initialValue = null)
 
-    val sleepTimerEnabled =
-        remember(
-            playerConnection.service.sleepTimer?.triggerTime,
-            playerConnection.service.sleepTimer?.pauseWhenSongEnd,
-        ) {
-            playerConnection.service.sleepTimer?.isActive ?: false
-        }
+    // Single source of truth: the service emits true on start() and false on
+    // clear()/natural expiry, so the cancel button and countdown stay in sync.
+    val sleepTimerEnabled by playerConnection.service.sleepTimerActive.collectAsStateWithLifecycle()
 
     var sleepTimerTimeLeft by remember {
         mutableLongStateOf(0L)
@@ -660,10 +661,18 @@ fun BottomSheetPlayer(
 
     val sleepTimerDefault by rememberPreference(SleepTimerDefaultKey, 30f)
     var sleepTimerValue by remember { mutableFloatStateOf(sleepTimerDefault) }
+    var customMinutesText by remember { mutableStateOf(sleepTimerDefault.roundToInt().toString()) }
     val isAtDefault by remember {
         derivedStateOf { sleepTimerValue.roundToInt() == sleepTimerDefault.roundToInt() }
     }
-    LaunchedEffect(sleepTimerDefault) { sleepTimerValue = sleepTimerDefault }
+    LaunchedEffect(sleepTimerDefault) {
+        sleepTimerValue = sleepTimerDefault
+        customMinutesText = sleepTimerDefault.roundToInt().toString()
+    }
+    LaunchedEffect(sleepTimerValue) {
+        val shown = sleepTimerValue.roundToInt().toString()
+        if (customMinutesText != shown) customMinutesText = shown
+    }
     val sleepTimerStopAfterCurrentSong by rememberPreference(SleepTimerStopAfterCurrentSongKey, false)
     val sleepTimerFadeOut by rememberPreference(SleepTimerFadeOutKey, false)
 
@@ -683,8 +692,10 @@ fun BottomSheetPlayer(
                 TextButton(
                     onClick = {
                         showSleepTimerDialog = false
+                        val minutes = customMinutesText.toIntOrNull()?.coerceIn(1, 600)
+                            ?: sleepTimerValue.roundToInt()
                         playerConnection.service.sleepTimer?.start(
-                            minute = sleepTimerValue.roundToInt(),
+                            minute = minutes,
                             stopAfterCurrentSong = sleepTimerStopAfterCurrentSong,
                             fadeOut = sleepTimerFadeOut,
                         )
@@ -713,18 +724,38 @@ fun BottomSheetPlayer(
                     )
 
                     Slider(
-                        value = sleepTimerValue,
-                        onValueChange = { sleepTimerValue = it },
+                        value = sleepTimerValue.coerceIn(5f, 120f),
+                        onValueChange = {
+                            sleepTimerValue = it
+                            customMinutesText = it.roundToInt().toString()
+                        },
                         valueRange = 5f..120f,
                         steps = (120 - 5) / 5 - 1,
                     )
 
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
+                    OutlinedTextField(
+                        value = customMinutesText,
+                        onValueChange = { input ->
+                            val filtered = input.filter { it.isDigit() }.take(3)
+                            customMinutesText = filtered
+                            filtered.toIntOrNull()?.coerceIn(1, 600)?.toFloat()?.let {
+                                sleepTimerValue = it
+                            }
+                        },
+                        label = { Text(stringResource(R.string.sleep_timer_custom_minutes)) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+
+                    Spacer(Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         if (isAtDefault) {
-                            FilledIconButton(
+                            Button(
                                 onClick = {
                                     scope.launch {
                                         context.safeDataStoreEdit { settings ->
@@ -737,15 +768,20 @@ fun BottomSheetPlayer(
                                         Toast.LENGTH_SHORT,
                                     ).show()
                                 },
-                                colors = IconButtonDefaults.filledIconButtonColors(
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.buttonColors(
                                     containerColor = MaterialTheme.colorScheme.primary,
                                     contentColor = MaterialTheme.colorScheme.onPrimary,
                                 ),
                             ) {
-                                Text(stringResource(R.string.set_as_default))
+                                Text(
+                                    stringResource(R.string.set_as_default),
+                                    textAlign = TextAlign.Center,
+                                    maxLines = 2,
+                                )
                             }
                         } else {
-                            OutlinedIconButton(
+                            OutlinedButton(
                                 onClick = {
                                     scope.launch {
                                         context.safeDataStoreEdit { settings ->
@@ -758,19 +794,42 @@ fun BottomSheetPlayer(
                                         Toast.LENGTH_SHORT,
                                     ).show()
                                 },
+                                modifier = Modifier.weight(1f),
                             ) {
-                                Text(stringResource(R.string.set_as_default))
+                                Text(
+                                    stringResource(R.string.set_as_default),
+                                    textAlign = TextAlign.Center,
+                                    maxLines = 2,
+                                )
                             }
                         }
 
-                        OutlinedIconButton(
+                        OutlinedButton(
                             onClick = {
                                 showSleepTimerDialog = false
                                 playerConnection.service.sleepTimer?.start(minute = -1)
                             },
+                            modifier = Modifier.weight(1f),
                         ) {
-                            Text(stringResource(R.string.end_of_song))
+                            Text(
+                                stringResource(R.string.end_of_song),
+                                textAlign = TextAlign.Center,
+                                maxLines = 2,
+                            )
                         }
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = {
+                            // clear() is idempotent: always allow cancelling, even if the
+                            // enabled snapshot hasn't caught up yet.
+                            playerConnection.service.sleepTimer?.clear()
+                            showSleepTimerDialog = false
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(stringResource(R.string.sleep_timer_off))
                     }
                 }
             },
@@ -909,16 +968,18 @@ fun BottomSheetPlayer(
                             },
                             label = "blurBackground",
                         ) { thumbnailUrl ->
+                            val blurImageRequest = remember(thumbnailUrl) {
+                                ImageRequest
+                                    .Builder(context)
+                                    .data(thumbnailUrl)
+                                    .size(300, 300)
+                                    .allowHardware(false)
+                                    .build()
+                            }
                             if (thumbnailUrl != null) {
                                 Box(modifier = Modifier.alpha(backgroundAlpha * playerBlurOpacity)) {
                                     AsyncImage(
-                                        model =
-                                            ImageRequest
-                                                .Builder(context)
-                                                .data(thumbnailUrl)
-                                                .size(300, 300)
-                                                .allowHardware(false)
-                                                .build(),
+                                        model = blurImageRequest,
                                         contentDescription = null,
                                         contentScale = ContentScale.Crop,
                                         modifier =
@@ -2146,6 +2207,8 @@ fun BottomSheetPlayer(
                                             }
                                         },
                                         onDismiss = menuState::dismiss,
+                                        isFullScreen = isFullScreen,
+                                        onToggleFullScreen = { isFullScreen = !isFullScreen },
                                     )
                                 }
                             }
@@ -2165,9 +2228,18 @@ fun BottomSheetPlayer(
                         onPrevious = playerConnection::seekToPrevious,
                         onNext = playerConnection::seekToNext,
                         onFavorite = playerConnection::toggleLike,
+                        onSleepTimer = {
+                            if (sleepTimerEnabled) {
+                                playerConnection.service.sleepTimer?.clear()
+                            } else {
+                                showSleepTimerDialog = true
+                            }
+                        },
                         onShuffle = { playerConnection.player.shuffleModeEnabled = !shuffleModeEnabled },
                         onRepeat = { playerConnection.player.toggleRepeatMode() },
                         onQueue = { queueSheetState.expandSoft() },
+                        isFullScreen = isFullScreen,
+                        onFullScreen = { isFullScreen = !isFullScreen },
                         showLyrics = showInlineLyrics,
                         onToggleLyrics = { showInlineLyrics = !showInlineLyrics },
                         queueProgress = { queueSheetState.progress },
@@ -2222,7 +2294,6 @@ fun BottomSheetPlayer(
                     )
                 } else if (useFullArtTest) {
                     val fullArtLyrics by playerConnection.currentLyrics.collectAsStateWithLifecycle(initialValue = null)
-                    LaunchedEffect(showInlineLyrics) { if (!showInlineLyrics) isFullScreen = false }
                     FullArtPlayerContent(
                         artworkUrl = mediaMetadata?.thumbnailUrl,
                         title = mediaMetadata?.title ?: "",
@@ -2246,6 +2317,13 @@ fun BottomSheetPlayer(
                                          onPrevious = playerConnection::seekToPrevious,
                                          onNext = playerConnection::seekToNext,
                                          onFavorite = playerConnection::toggleLike,
+                                         onSleepTimer = {
+                                             if (sleepTimerEnabled) {
+                                                 playerConnection.service.sleepTimer?.clear()
+                                             } else {
+                                                 showSleepTimerDialog = true
+                                             }
+                                         },
                                          onMore = {
                             mediaMetadata?.let { md ->
                                 menuState.show {
@@ -2271,6 +2349,8 @@ fun BottomSheetPlayer(
                                             }
                                         },
                                         onDismiss = menuState::dismiss,
+                                        isFullScreen = isFullScreen,
+                                        onToggleFullScreen = { isFullScreen = !isFullScreen },
                                     )
                                 }
                             }

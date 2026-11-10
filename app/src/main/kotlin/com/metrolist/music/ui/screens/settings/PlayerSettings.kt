@@ -192,7 +192,7 @@ fun PlayerSettings(
     )
     val (persistentShuffleAcrossQueues, onPersistentShuffleAcrossQueuesChange) = rememberPreference(
         PersistentShuffleAcrossQueuesKey,
-        defaultValue = false
+        defaultValue = true
     )
     val (rememberShuffleAndRepeat, onRememberShuffleAndRepeatChange) = rememberPreference(
         RememberShuffleAndRepeatKey,

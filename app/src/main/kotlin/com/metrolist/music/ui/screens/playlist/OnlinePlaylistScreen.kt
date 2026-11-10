@@ -45,6 +45,7 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -95,6 +96,7 @@ import com.metrolist.music.db.entities.PlaylistSongMap
 import com.metrolist.music.models.toMediaMetadata
 import com.metrolist.music.playback.queues.YouTubePlaylistQueue
 import com.metrolist.music.ui.component.ExpandableText
+import com.metrolist.music.ui.component.HideOnScrollFAB
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.YouTubeListItem
@@ -116,6 +118,7 @@ fun OnlinePlaylistScreen(
     navController: NavController,
     viewModel: OnlinePlaylistViewModel = hiltViewModel(),
 ) {
+    val context = LocalContext.current
     val menuState = LocalMenuState.current
     val database = LocalDatabase.current
     val haptic = LocalHapticFeedback.current
@@ -138,6 +141,9 @@ fun OnlinePlaylistScreen(
     val hideExplicit by rememberPreference(key = HideExplicitKey, defaultValue = false)
 
     val lazyListState = rememberLazyListState()
+    val showTopBarTitle by remember {
+        derivedStateOf { lazyListState.firstVisibleItemIndex > 0 }
+    }
     val snackbarHostState = remember { SnackbarHostState() }
 
     var isSearching by rememberSaveable { mutableStateOf(false) }
@@ -154,6 +160,13 @@ fun OnlinePlaylistScreen(
                 }
             }
         }
+
+    val locateVisible by remember(filteredSongs, mediaMetadata?.id) {
+        derivedStateOf {
+            val id = mediaMetadata?.id
+            id != null && filteredSongs.any { it.second.id == id }
+        }
+    }
 
     var inSelectMode by remember { mutableStateOf(false) }
     val selection =
@@ -262,7 +275,7 @@ fun OnlinePlaylistScreen(
                         }
                     }
 
-                    itemsIndexed(filteredSongs) { index, (_, songItem) ->
+                    itemsIndexed(filteredSongs, key = { _, pair -> pair.second.id }) { index, (_, songItem) ->
                         val onCheckedChange: (Boolean) -> Unit = {
                             if (it) {
                                 selection.add(songItem.id)
@@ -398,7 +411,7 @@ fun OnlinePlaylistScreen(
                                 .fillMaxWidth()
                                 .focusRequester(focusRequester),
                     )
-                } else if (lazyListState.firstVisibleItemIndex > 0) {
+                } else if (showTopBarTitle) {
                     Text(playlist?.title ?: "")
                 }
             },
@@ -470,6 +483,25 @@ fun OnlinePlaylistScreen(
                             painter = painterResource(R.drawable.search),
                             contentDescription = null,
                         )
+                    }
+                }
+            },
+        )
+
+        HideOnScrollFAB(
+            lazyListState = lazyListState,
+            locateOnly = true,
+            locateVisible = locateVisible,
+            onLocateClick = {
+                val id = mediaMetadata?.id ?: return@HideOnScrollFAB
+                val index = filteredSongs.indexOfFirst { it.second.id == id }
+                if (index >= 0) {
+                    coroutineScope.launch {
+                        lazyListState.animateScrollToItem((if (isSearching) 0 else 1) + index)
+                    }
+                } else {
+                    coroutineScope.launch {
+                        snackbarHostState.showSnackbar(context.getString(R.string.playing_song_not_in_playlist))
                     }
                 }
             },

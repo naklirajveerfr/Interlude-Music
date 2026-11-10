@@ -86,6 +86,12 @@ constructor(
                         .build()
                 } ?: response.request
             }
+            // Stream hosts are remote; a slightly larger pool and tolerant timeout keep
+            // repeated song switches from paying for a fresh TLS handshake each time.
+            .connectionPool(okhttp3.ConnectionPool(8, 5, java.util.concurrent.TimeUnit.MINUTES))
+            .connectTimeout(20, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
             .build()
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)

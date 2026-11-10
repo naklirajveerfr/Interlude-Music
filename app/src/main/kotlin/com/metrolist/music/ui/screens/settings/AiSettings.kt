@@ -66,11 +66,11 @@ import com.metrolist.music.utils.rememberPreference
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AiSettings(navController: NavController) {
-    var aiProvider by rememberPreference(AiProviderKey, "OpenRouter")
+    var aiProvider by rememberPreference(AiProviderKey, "Free")
     var openRouterApiKey by rememberPreference(OpenRouterApiKey, "")
     var openRouterBaseUrl by rememberPreference(OpenRouterBaseUrlKey, "https://openrouter.ai/api/v1/chat/completions")
     var openRouterModel by rememberPreference(OpenRouterModelKey, "google/gemini-2.5-flash-lite")
-    var translateLanguage by rememberPreference(TranslateLanguageKey, "en")
+    var translateLanguage by rememberPreference(TranslateLanguageKey, "zh-CN")
     var translateMode by rememberPreference(TranslateModeKey, "Literal")
     var deeplApiKey by rememberPreference(DeeplApiKey, "")
     var deeplFormality by rememberPreference(DeeplFormalityKey, "default")
@@ -78,6 +78,7 @@ fun AiSettings(navController: NavController) {
 
     val aiProviders =
         mapOf(
+            "Free" to "",
             "OpenRouter" to "https://openrouter.ai/api/v1/chat/completions",
             "OpenAI" to "https://api.openai.com/v1/chat/completions",
             "Perplexity" to "https://api.perplexity.ai/chat/completions",
@@ -92,6 +93,7 @@ fun AiSettings(navController: NavController) {
 
     val providerHelpText =
         mapOf(
+            "Free" to stringResource(R.string.ai_provider_builtin_help),
             "OpenRouter" to stringResource(R.string.ai_provider_openrouter_help),
             "OpenAI" to stringResource(R.string.ai_provider_openai_help),
             "Perplexity" to stringResource(R.string.ai_provider_perplexity_help),
@@ -289,7 +291,7 @@ fun AiSettings(navController: NavController) {
             onDismiss = { showProviderDialog = false },
             onSelect = {
                 aiProvider = it
-                if (it != "Custom" && it != "DeepL") {
+                if (it != "Custom" && it != "DeepL" && it != "Free") {
                     openRouterBaseUrl = aiProviders[it] ?: ""
                 } else {
                     openRouterBaseUrl = ""
@@ -307,7 +309,9 @@ fun AiSettings(navController: NavController) {
             title = stringResource(R.string.ai_provider),
             current = aiProvider,
             values = aiProviders.keys.toList(),
-            valueText = { it },
+            valueText = {
+                if (it == "Free") stringResource(R.string.ai_provider_builtin) else it
+            },
         )
     }
 
@@ -499,7 +503,11 @@ fun AiSettings(navController: NavController) {
                     Material3SettingsItem(
                         icon = painterResource(R.drawable.explore_outlined),
                         title = { Text(stringResource(R.string.ai_provider)) },
-                        description = { Text(aiProvider) },
+                        description = {
+                            Text(
+                                if (aiProvider == "Free") stringResource(R.string.ai_provider_builtin) else aiProvider
+                            )
+                        },
                         onClick = { showProviderDialog = true },
                         trailingContent = {
                             IconButton(onClick = { showProviderHelpDialog = true }) {
@@ -527,7 +535,11 @@ fun AiSettings(navController: NavController) {
         Spacer(modifier = Modifier.height(27.dp))
 
         Material3SettingsGroup(
-            title = stringResource(R.string.ai_setup_guide),
+            title = if (aiProvider == "Free") {
+                stringResource(R.string.ai_credentials_optional)
+            } else {
+                stringResource(R.string.ai_setup_guide)
+            },
             items =
                 buildList {
                     if (aiProvider == "DeepL") {
@@ -581,14 +593,16 @@ fun AiSettings(navController: NavController) {
                                 onClick = { showApiKeyDialog = true },
                             ),
                         )
-                        add(
-                            Material3SettingsItem(
-                                icon = painterResource(R.drawable.discover_tune),
-                                title = { Text(stringResource(R.string.ai_model)) },
-                                description = { Text(openRouterModel.ifBlank { stringResource(R.string.not_set) }) },
-                                onClick = { showModelDialog = true },
-                            ),
-                        )
+                        if (aiProvider != "Free") {
+                            add(
+                                Material3SettingsItem(
+                                    icon = painterResource(R.drawable.discover_tune),
+                                    title = { Text(stringResource(R.string.ai_model)) },
+                                    description = { Text(openRouterModel.ifBlank { stringResource(R.string.not_set) }) },
+                                    onClick = { showModelDialog = true },
+                                ),
+                            )
+                        }
                     }
                 },
         )
@@ -625,24 +639,26 @@ fun AiSettings(navController: NavController) {
                                 },
                             ),
                         )
-                        add(
-                            Material3SettingsItem(
-                                icon = painterResource(R.drawable.edit),
-                                title = { Text(stringResource(R.string.ai_system_prompt)) },
-                                description = {
-                                    Text(
-                                        if (aiSystemPrompt.isNotBlank()) {
-                                            aiSystemPrompt.take(60).let {
-                                                if (aiSystemPrompt.length > 60) "$it…" else it
-                                            }
-                                        } else {
-                                            stringResource(R.string.ai_system_prompt_default)
-                                        },
-                                    )
-                                },
-                                onClick = { showSystemPromptDialog = true },
-                            ),
-                        )
+                        if (aiProvider != "Free") {
+                            add(
+                                Material3SettingsItem(
+                                    icon = painterResource(R.drawable.edit),
+                                    title = { Text(stringResource(R.string.ai_system_prompt)) },
+                                    description = {
+                                        Text(
+                                            if (aiSystemPrompt.isNotBlank()) {
+                                                aiSystemPrompt.take(60).let {
+                                                    if (aiSystemPrompt.length > 60) "$it…" else it
+                                                }
+                                            } else {
+                                                stringResource(R.string.ai_system_prompt_default)
+                                            },
+                                        )
+                                    },
+                                    onClick = { showSystemPromptDialog = true },
+                                ),
+                            )
+                        }
                     }
                     add(
                         Material3SettingsItem(

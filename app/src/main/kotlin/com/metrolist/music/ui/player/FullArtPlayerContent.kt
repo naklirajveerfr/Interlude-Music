@@ -15,13 +15,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -148,6 +148,7 @@ fun FullArtPlayerContent(
     onMore: () -> Unit,
     onLyrics: () -> Unit,
     onQueue: () -> Unit,
+    onSleepTimer: () -> Unit = {},
     onShuffle: () -> Unit,
     onRepeat: () -> Unit,
     textColor: Color,
@@ -188,6 +189,11 @@ fun FullArtPlayerContent(
     // The live artwork (canvas video included) is blurred and dimmed in place when lyrics or the queue open.
     val lyricsBackdrop = animateFloatAsState(if (showLyrics) 1f else 0f, tween(300), label = "lyricsBackdrop")
     val backdrop = { maxOf(lyricsBackdrop.value, queueProgress().coerceIn(0f, 1f)) }
+    // Density lookup is hoisted out of the graphicsLayer block, and the RenderEffect is reused
+    // while the animated radius is unchanged. Plain holder (no snapshot state) so it is safe to
+    // write from a draw-phase lambda.
+    val blurRadiusPx = with(LocalDensity.current) { 24.dp.toPx() }
+    val blurCache = remember { object { var radius = Float.NaN; var effect: RenderEffect? = null } }
 
     Box(modifier.fillMaxSize()) {
         if (showArt) {
@@ -195,8 +201,12 @@ fun FullArtPlayerContent(
                 Modifier.fillMaxSize().graphicsLayer {
                     val amount = backdrop()
                     renderEffect = if (amount > 0f && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-                        val radius = 24.dp.toPx() * amount
-                        BlurEffect(radius, radius, TileMode.Clamp)
+                        val radius = blurRadiusPx * amount
+                        if (radius != blurCache.radius) {
+                            blurCache.radius = radius
+                            blurCache.effect = BlurEffect(radius, radius, TileMode.Clamp)
+                        }
+                        blurCache.effect
                     } else {
                         null
                     }
@@ -240,20 +250,19 @@ fun FullArtPlayerContent(
                         style = MaterialTheme.typography.titleMedium,
                     )
                 }
-                // Like button; while lyrics are showing it quickly fades into a fullscreen toggle.
-                Crossfade(targetState = showLyrics, animationSpec = tween(150), label = "favOrFullscreen") { lyricsOn ->
-                    val res = when {
-                        !lyricsOn -> favRes
-                        isFullScreen -> R.drawable.fullscreen_exit
-                        else -> R.drawable.fullscreen
-                    }
-                    val click = if (lyricsOn) onFullScreen else onFavorite
+                val actionButton: @Composable (Int, () -> Unit) -> Unit = { res, click ->
                     when (buttonShape) {
                         PlayerButtonShape.APPLE -> BareButton(res, appleTint(textColor, appleButtonColor), 26.dp, 44.dp, click)
                         PlayerButtonShape.PILL -> BareButton(res, textColor, 26.dp, 44.dp, click)
                         PlayerButtonShape.ROUND -> FilledSmall(res, buttonColor, iconColor, click)
                     }
                 }
+                // Like and fullscreen stay side by side so both are reachable at any time.
+                actionButton(favRes, onFavorite)
+                actionButton(
+                    if (isFullScreen) R.drawable.fullscreen_exit else R.drawable.fullscreen,
+                    onFullScreen,
+                )
                 when (buttonShape) {
                     PlayerButtonShape.APPLE -> BareButton(R.drawable.more_horiz, appleTint(textColor, appleButtonColor), 26.dp, 44.dp, onMore)
                     PlayerButtonShape.PILL -> BareButton(R.drawable.more_horiz, textColor, 26.dp, 44.dp, onMore)
@@ -354,6 +363,7 @@ fun FullArtPlayerContent(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                SmallIcon(R.drawable.bedtime, textColor, 0.8f, onSleepTimer)
                 SmallIcon(R.drawable.lyrics, textColor, 0.8f, onLyrics)
                 SmallIcon(R.drawable.queue_music, textColor, 0.8f, onQueue)
             }

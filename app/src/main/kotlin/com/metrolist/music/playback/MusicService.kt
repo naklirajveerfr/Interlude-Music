@@ -421,6 +421,7 @@ class MusicService :
     }
 
     var sleepTimer: SleepTimer? = null
+    val sleepTimerActive = MutableStateFlow(false)
 
     @Inject
     @PlayerCache
@@ -727,9 +728,12 @@ class MusicService :
         player = createExoPlayer(prefs = startupPrefs!!)
         player.addListener(this@MusicService)
         sleepTimer =
-            SleepTimer(scope, player) { multiplier ->
-                sleepTimerVolumeMultiplier.value = multiplier
-            }
+            SleepTimer(
+                scope,
+                player,
+                { multiplier -> sleepTimerVolumeMultiplier.value = multiplier },
+                { active -> sleepTimerActive.value = active },
+            )
         player.addListener(sleepTimer!!)
 
         playerInitialized.value = true
@@ -1702,20 +1706,8 @@ class MusicService :
     private fun updateNotification(isLiked: Boolean? = currentSong.value?.song?.let { if (it.isEpisode) it.inLibrary != null else it.liked }) {
         mediaSession?.setCustomLayout(
             listOf(
-                CommandButton
-                    .Builder()
-                    .setDisplayName(
-                        getString(
-                            if (isLiked == true) {
-                                R.string.action_remove_like
-                            } else {
-                                R.string.action_like
-                            },
-                        ),
-                    ).setIconResId(if (isLiked == true) R.drawable.ic_heart else R.drawable.ic_heart_outline)
-                    .setSessionCommand(CommandToggleLike)
-                    .setEnabled(currentSong.value != null)
-                    .build(),
+                // Playback-mode toggles come first: system media notifications only surface a
+                // few custom actions, so shuffle/repeat must be among them to stay reachable.
                 CommandButton
                     .Builder()
                     .setDisplayName(
@@ -1741,6 +1733,20 @@ class MusicService :
                     .setDisplayName(getString(if (player.shuffleModeEnabled) R.string.action_shuffle_off else R.string.action_shuffle_on))
                     .setIconResId(if (player.shuffleModeEnabled) R.drawable.shuffle_on else R.drawable.shuffle)
                     .setSessionCommand(CommandToggleShuffle)
+                    .build(),
+                CommandButton
+                    .Builder()
+                    .setDisplayName(
+                        getString(
+                            if (isLiked == true) {
+                                R.string.action_remove_like
+                            } else {
+                                R.string.action_like
+                            },
+                        ),
+                    ).setIconResId(if (isLiked == true) R.drawable.ic_heart else R.drawable.ic_heart_outline)
+                    .setSessionCommand(CommandToggleLike)
+                    .setEnabled(currentSong.value != null)
                     .build(),
                 CommandButton
                     .Builder()
@@ -1920,8 +1926,9 @@ class MusicService :
 
         currentQueue = queue
         queueTitle = null
-        val persistShuffleAcrossQueues = dataStore.get(PersistentShuffleAcrossQueuesKey, false)
-        if (!persistShuffleAcrossQueues && !restoringQueue) {
+        val rememberShuffleAndRepeat = dataStore.get(RememberShuffleAndRepeatKey, true)
+        val persistShuffleAcrossQueues = dataStore.get(PersistentShuffleAcrossQueuesKey, true)
+        if (!persistShuffleAcrossQueues && !rememberShuffleAndRepeat && !restoringQueue) {
             player.shuffleModeEnabled = false
         }
         originalQueueSize = 0

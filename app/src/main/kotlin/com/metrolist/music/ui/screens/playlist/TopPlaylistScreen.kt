@@ -42,11 +42,13 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -88,6 +90,7 @@ import com.metrolist.music.playback.queues.ListQueue
 import com.metrolist.music.ui.component.DefaultDialog
 import com.metrolist.music.ui.component.DraggableScrollbar
 import com.metrolist.music.ui.component.EmptyPlaceholder
+import com.metrolist.music.ui.component.HideOnScrollFAB
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.LocalMenuState
 import com.metrolist.music.ui.component.SongListItem
@@ -98,6 +101,7 @@ import com.metrolist.music.ui.menu.TopPlaylistMenu
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.utils.makeTimeString
 import com.metrolist.music.viewmodels.TopPlaylistViewModel
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -151,6 +155,13 @@ fun TopPlaylistScreen(
             song.title.contains(query.text, true) ||
                 song.artists.any { it.name.contains(query.text, true) }
         } ?: emptyList()
+    }
+
+    val locateVisible by remember(filteredSongs, mediaMetadata?.id) {
+        derivedStateOf {
+            val id = mediaMetadata?.id
+            id != null && filteredSongs.any { it.id == id }
+        }
     }
 
     LaunchedEffect(filteredSongs) {
@@ -242,6 +253,7 @@ fun TopPlaylistScreen(
     }
 
     val state = rememberLazyListState()
+    val scope = rememberCoroutineScope()
 
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -304,7 +316,7 @@ fun TopPlaylistScreen(
                 if (filteredSongs.isNotEmpty()) {
                     itemsIndexed(
                         items = filteredSongs,
-                        key = { index, song -> "${song.id}_$index" },
+                        key = { _, song -> song.id },
                     ) { index, song ->
                         val onCheckedChange: (Boolean) -> Unit = {
                             if (it) {
@@ -404,6 +416,21 @@ fun TopPlaylistScreen(
                 .align(Alignment.CenterEnd),
             scrollState = state,
             headerItems = 2
+        )
+
+        HideOnScrollFAB(
+            lazyListState = state,
+            locateOnly = true,
+            locateVisible = locateVisible,
+            onLocateClick = {
+                val id = mediaMetadata?.id ?: return@HideOnScrollFAB
+                val index = filteredSongs.indexOfFirst { it.id == id }
+                if (index >= 0) {
+                    scope.launch {
+                        state.animateScrollToItem((if (isSearching) 1 else 2) + index)
+                    }
+                }
+            },
         )
 
         GlassTopAppBar(

@@ -54,6 +54,7 @@ import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -470,6 +471,13 @@ fun AutoPlaylistScreen(
             }
         }
 
+    val locateVisible by remember(filteredSongs, mediaMetadata?.id) {
+        derivedStateOf {
+            val id = mediaMetadata?.id
+            id != null && filteredSongs.any { it.id == id }
+        }
+    }
+
     LaunchedEffect(filteredSongs) {
         selection.fastForEachReversed { songId ->
             if (filteredSongs.find { it.id == songId } == null) {
@@ -558,7 +566,7 @@ fun AutoPlaylistScreen(
                 if (filteredSongs.isNotEmpty()) {
                     itemsIndexed(
                         items = filteredSongs,
-                        key = { index, song -> "${song.id}_$index" },
+                        key = { _, song -> song.id },
                     ) { index, song ->
                         val onCheckedChange: (Boolean) -> Unit = {
                             if (it) {
@@ -707,6 +715,21 @@ fun AutoPlaylistScreen(
                 }
             }
         }
+
+        HideOnScrollFAB(
+            lazyListState = state,
+            locateOnly = true,
+            locateVisible = locateVisible,
+            onLocateClick = {
+                val id = mediaMetadata?.id ?: return@HideOnScrollFAB
+                val index = filteredSongs.indexOfFirst { it.id == id }
+                if (index >= 0) {
+                    scope.launch {
+                        state.animateScrollToItem((if (isSearching) 1 else 2) + index)
+                    }
+                }
+            },
+        )
 
         GlassTopAppBar(
             title = {
