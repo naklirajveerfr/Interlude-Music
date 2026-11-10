@@ -50,20 +50,13 @@ Interlude is a fork of [Metrolist](https://github.com/MetrolistGroup/Metrolist).
   </tr>
   <tr>
     <td align="center">
-      <img src="assets/screenshots/player-pill.jpeg" height="450" alt="Player">
-    </td>
-    <td align="center">
       <img src="assets/screenshots/search-screen.jpeg" height="450" alt="Search">
     </td>
     <td align="center">
       <img src="assets/screenshots/stats.jpeg" height="450" alt="Statistics">
     </td>
-  </tr>
-  <tr>
-    <td align="center" colspan="3">
+    <td align="center">
       <img src="assets/screenshots/spotify-canvas.gif" height="450" alt="Spotify Canvas">
-      <br>
-      <sub>Spotify Canvas</sub>
     </td>
   </tr>
 </table>
