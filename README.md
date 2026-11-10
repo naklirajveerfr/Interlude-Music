@@ -59,6 +59,13 @@ Interlude is a fork of [Metrolist](https://github.com/MetrolistGroup/Metrolist).
       <img src="assets/screenshots/stats.jpeg" height="450" alt="Statistics">
     </td>
   </tr>
+  <tr>
+    <td align="center" colspan="3">
+      <img src="assets/screenshots/spotify-canvas.gif" height="450" alt="Spotify Canvas">
+      <br>
+      <sub>Spotify Canvas</sub>
+    </td>
+  </tr>
 </table>
 
 <i>Experience Interlude — designed with Material 3 Expressive.</i>
