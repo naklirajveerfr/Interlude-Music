@@ -22,6 +22,7 @@ import android.app.PendingIntent
 import android.content.ComponentName
 import android.content.Intent
 import android.content.ServiceConnection
+import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -164,6 +165,7 @@ import com.metrolist.music.constants.EnableHighRefreshRateKey
 import com.metrolist.music.constants.EnableLandscapeScalingKey
 import com.metrolist.music.constants.ExperimentalLyricsKey
 import com.metrolist.music.constants.ForceBottomNavBarKey
+import com.metrolist.music.constants.ForcePortraitUiKey
 import com.metrolist.music.constants.LastSeenVersionKey
 import com.metrolist.music.constants.ListenTogetherInTopBarKey
 import com.metrolist.music.constants.ListenTogetherUsernameKey
@@ -787,6 +789,15 @@ class MainActivity : FragmentActivity() {
                     navigationItems.mapIndexed { i, s -> s.route to i }.toMap()
                 }
                 val (forceBottomNav) = rememberPreference(ForceBottomNavBarKey, defaultValue = false)
+                val (forcePortraitUi) = rememberPreference(ForcePortraitUiKey, defaultValue = false)
+                LaunchedEffect(forcePortraitUi) {
+                    requestedOrientation =
+                        if (forcePortraitUi) {
+                            ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                        } else {
+                            ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                        }
+                }
                 val (slimNav) = rememberPreference(SlimNavBarKey, defaultValue = false)
                 val (defaultOpenTabInt) = rememberPreference(DefaultOpenTabKey, defaultValue = NavigationTab.HOME.name)
                 val defaultOpenTab = remember(defaultOpenTabInt) {

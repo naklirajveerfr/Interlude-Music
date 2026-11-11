@@ -78,6 +78,7 @@ import com.metrolist.music.constants.DynamicThemeKey
 import com.metrolist.music.constants.EnableHighRefreshRateKey
 import com.metrolist.music.constants.EnableLandscapeScalingKey
 import com.metrolist.music.constants.ForceBottomNavBarKey
+import com.metrolist.music.constants.ForcePortraitUiKey
 import com.metrolist.music.constants.GridItemSize
 import com.metrolist.music.constants.GridItemsSizeKey
 import com.metrolist.music.constants.HidePlayerThumbnailKey
@@ -327,6 +328,11 @@ fun AppearanceSettings(
     val (forceBottomNav, onForceBottomNavChange) =
         rememberPreference(
             ForceBottomNavBarKey,
+            defaultValue = false,
+        )
+    val (forcePortraitUi, onForcePortraitUiChange) =
+        rememberPreference(
+            ForcePortraitUiKey,
             defaultValue = false,
         )
     val (slimNav, onSlimNavChange) =
@@ -2255,6 +2261,27 @@ fun AppearanceSettings(
                             )
                         },
                         onClick = { onForceBottomNavChange(!forceBottomNav) },
+                    ),
+                    Material3SettingsItem(
+                        icon = painterResource(R.drawable.nav_bar),
+                        title = { Text(stringResource(R.string.force_portrait_ui)) },
+                        trailingContent = {
+                            Switch(
+                                checked = forcePortraitUi,
+                                onCheckedChange = onForcePortraitUiChange,
+                                thumbContent = {
+                                    Icon(
+                                        painter =
+                                            painterResource(
+                                                id = if (forcePortraitUi) R.drawable.check else R.drawable.close,
+                                            ),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(SwitchDefaults.IconSize),
+                                    )
+                                },
+                            )
+                        },
+                        onClick = { onForcePortraitUiChange(!forcePortraitUi) },
                     ),
                     Material3SettingsItem(
                         icon = painterResource(R.drawable.nav_bar),
