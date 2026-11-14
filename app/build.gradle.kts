@@ -35,7 +35,7 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 15
-        versionName = "1.5.1"
+        versionName = "1.6.0"
         val baseVersionName = requireNotNull(versionName)
         buildConfigField("String", "BASE_VERSION_NAME", "\"$baseVersionName\"")
         resValue("string", "app_name", appNameOverride ?: "Interlude Music")
