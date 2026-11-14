@@ -6,7 +6,7 @@ val IconRoundednessKey = floatPreferencesKey("iconRoundedness")
 
 @androidx.compose.runtime.Composable
 fun SyncIconRoundness() {
-    val (roundness, _) = com.metrolist.music.utils.rememberPreference(IconRoundednessKey, defaultValue = 3f)
+    val (roundness, _) = com.metrolist.music.utils.rememberPreference(IconRoundednessKey, defaultValue = 8f)
     androidx.compose.runtime.SideEffect {
         setThumbnailCornerRadius(androidx.compose.ui.unit.Dp(roundness))
     }

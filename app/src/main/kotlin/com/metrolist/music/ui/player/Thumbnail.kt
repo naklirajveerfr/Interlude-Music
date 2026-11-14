@@ -58,7 +58,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.res.painterResource
+import com.metrolist.music.ui.icons.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -376,7 +376,7 @@ fun Thumbnail(
                     }
                 ) {
                     // Calculate dimensions once per size change, considering landscape mode
-                    val (iconRoundedness, _) = rememberPreference(IconRoundednessKey, defaultValue = 3f)
+                    val (iconRoundedness, _) = rememberPreference(IconRoundednessKey, defaultValue = 8f)
                     val dimensions = remember(maxWidth, maxHeight, isLandscape, iconRoundedness) {
                         calculateThumbnailDimensions(
                             containerWidth = maxWidth,

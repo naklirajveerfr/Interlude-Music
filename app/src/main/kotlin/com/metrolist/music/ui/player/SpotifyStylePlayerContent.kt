@@ -11,6 +11,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -64,7 +65,7 @@ import androidx.compose.ui.graphics.RenderEffect
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
+import com.metrolist.music.ui.icons.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -294,6 +295,9 @@ fun SpotifyStylePlayerContent(
                 Text(formatTime(total), color = Color.White.copy(alpha = 0.7f), fontSize = 11.sp)
             }
 
+            // Fullscreen lyrics: hide the transport buttons and bottom row, keep title and seek bar.
+            AnimatedVisibility(visible = !isFullScreen) {
+            Column {
             Row(
                 Modifier.fillMaxWidth().padding(top = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -376,6 +380,8 @@ fun SpotifyStylePlayerContent(
                 IconButton(onClick = onQueue) {
                     Icon(painterResource(R.drawable.queue_music), null, tint = Color.White)
                 }
+            }
+            }
             }
         }
     }

@@ -36,7 +36,7 @@ val SmallGridThumbnailHeight = 104.dp
 val GridThumbnailHeight = 128.dp
 val AlbumThumbnailSize = 144.dp
 
-private val thumbnailCornerRadiusState = androidx.compose.runtime.mutableStateOf(3.dp)
+private val thumbnailCornerRadiusState = androidx.compose.runtime.mutableStateOf(8.dp)
 
 val ThumbnailCornerRadius: androidx.compose.ui.unit.Dp
     get() = thumbnailCornerRadiusState.value

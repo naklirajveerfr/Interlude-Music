@@ -13,6 +13,8 @@ import com.metrolist.music.constants.DefaultFrostedGlassBlurLevel
 import com.metrolist.music.constants.DefaultFrostedGlassUi
 import com.metrolist.music.constants.FrostedGlassBlurLevelKey
 import com.metrolist.music.constants.FrostedGlassUiKey
+import com.metrolist.music.constants.SoftIconsKey
+import com.metrolist.music.ui.icons.LocalSoftIcons
 import com.metrolist.music.ui.theme.LocalGlassChromeHaze
 import com.metrolist.music.ui.theme.fadingGlass
 import android.Manifest
@@ -109,7 +111,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalWindowInfo
-import androidx.compose.ui.res.painterResource
+import com.metrolist.music.ui.icons.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
@@ -662,6 +664,7 @@ class MainActivity : FragmentActivity() {
                 pureBlackEnabled && useDarkTheme
             }
         val frostedUi by rememberPreference(FrostedGlassUiKey, defaultValue = DefaultFrostedGlassUi)
+        val softIcons by rememberPreference(SoftIconsKey, defaultValue = true)
         val frostedBlurLevel by rememberPreference(FrostedGlassBlurLevelKey, defaultValue = DefaultFrostedGlassBlurLevel)
 
         val (selectedThemeColorInt) = rememberPreference(SelectedThemeColorKey, defaultValue = DefaultThemeColor.toArgb())
@@ -1098,6 +1101,7 @@ class MainActivity : FragmentActivity() {
 
                 CompositionLocalProvider(
                     LocalFrostedUi provides frostedUi,
+                    LocalSoftIcons provides softIcons,
                     LocalGlassBlur provides frostedBlurLevel.dp,
                     LocalGlassHaze provides menuHazeState,
                     LocalGlassChromeHaze provides contentHazeState,

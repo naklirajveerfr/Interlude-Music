@@ -1,0 +1,61 @@
+diff --git a/app/src/main/kotlin/com/metrolist/music/constants/Dimensions.kt b/app/src/main/kotlin/com/metrolist/music/constants/Dimensions.kt
+index 8adc776..93ad5dd 100644
+--- a/app/src/main/kotlin/com/metrolist/music/constants/Dimensions.kt
++++ b/app/src/main/kotlin/com/metrolist/music/constants/Dimensions.kt
+@@ -36,7 +36,7 @@ val SmallGridThumbnailHeight = 104.dp
+ val GridThumbnailHeight = 128.dp
+ val AlbumThumbnailSize = 144.dp
+ 
+-private val thumbnailCornerRadiusState = androidx.compose.runtime.mutableStateOf(3.dp)
++private val thumbnailCornerRadiusState = androidx.compose.runtime.mutableStateOf(8.dp)
+ 
+ val ThumbnailCornerRadius: androidx.compose.ui.unit.Dp
+     get() = thumbnailCornerRadiusState.value
+diff --git a/app/src/main/kotlin/com/metrolist/music/constants/IconRoundedness.kt b/app/src/main/kotlin/com/metrolist/music/constants/IconRoundedness.kt
+index 714a86a..e11b267 100644
+--- a/app/src/main/kotlin/com/metrolist/music/constants/IconRoundedness.kt
++++ b/app/src/main/kotlin/com/metrolist/music/constants/IconRoundedness.kt
+@@ -6,7 +6,7 @@ val IconRoundednessKey = floatPreferencesKey("iconRoundedness")
+ 
+ @androidx.compose.runtime.Composable
+ fun SyncIconRoundness() {
+-    val (roundness, _) = com.metrolist.music.utils.rememberPreference(IconRoundednessKey, defaultValue = 3f)
++    val (roundness, _) = com.metrolist.music.utils.rememberPreference(IconRoundednessKey, defaultValue = 8f)
+     androidx.compose.runtime.SideEffect {
+         setThumbnailCornerRadius(androidx.compose.ui.unit.Dp(roundness))
+     }
+diff --git a/app/src/main/kotlin/com/metrolist/music/ui/player/Thumbnail.kt b/app/src/main/kotlin/com/metrolist/music/ui/player/Thumbnail.kt
+index bc51a5a..f5097a2 100644
+--- a/app/src/main/kotlin/com/metrolist/music/ui/player/Thumbnail.kt
++++ b/app/src/main/kotlin/com/metrolist/music/ui/player/Thumbnail.kt
+@@ -376,7 +376,7 @@ fun Thumbnail(
+                     }
+                 ) {
+                     // Calculate dimensions once per size change, considering landscape mode
+-                    val (iconRoundedness, _) = rememberPreference(IconRoundednessKey, defaultValue = 3f)
++                    val (iconRoundedness, _) = rememberPreference(IconRoundednessKey, defaultValue = 8f)
+                     val dimensions = remember(maxWidth, maxHeight, isLandscape, iconRoundedness) {
+                         calculateThumbnailDimensions(
+                             containerWidth = maxWidth,
+diff --git a/app/src/main/kotlin/com/metrolist/music/ui/screens/settings/AppearanceSettings.kt b/app/src/main/kotlin/com/metrolist/music/ui/screens/settings/AppearanceSettings.kt
+index a6cce34..44f2ce1 100644
+--- a/app/src/main/kotlin/com/metrolist/music/ui/screens/settings/AppearanceSettings.kt
++++ b/app/src/main/kotlin/com/metrolist/music/ui/screens/settings/AppearanceSettings.kt
+@@ -242,7 +242,7 @@ fun AppearanceSettings(
+     val (spotifyConnected) = rememberPreference(SpotifyConnectedKey, defaultValue = false)
+     val spotifyCanvasActive = spotifyCanvasEnabled && (isFullArtStyle || isImmersiveStyle)
+     val (speedDialCarouselOutline, onSpeedDialCarouselOutlineChange) = rememberPreference(SpeedDialCarouselOutlineKey, defaultValue = false)
+-    val (iconRoundedness, onIconRoundednessChange) = rememberPreference(IconRoundednessKey, defaultValue = 3f)
++    val (iconRoundedness, onIconRoundednessChange) = rememberPreference(IconRoundednessKey, defaultValue = 8f)
+     var showIconRoundednessDialog by rememberSaveable { mutableStateOf(false) }
+     val (frostedUi, onFrostedUiChange) = rememberPreference(FrostedGlassUiKey, defaultValue = DefaultFrostedGlassUi)
+     val (frostedBlurLevel, onFrostedBlurLevelChange) = rememberPreference(FrostedGlassBlurLevelKey, defaultValue = DefaultFrostedGlassBlurLevel)
+@@ -707,7 +707,7 @@ fun AppearanceSettings(
+                 showIconRoundednessDialog = false
+             },
+             buttons = {
+-                TextButton(onClick = { tempRoundedness = 3f }) {
++                TextButton(onClick = { tempRoundedness = 8f }) {
+                     Text(stringResource(R.string.reset))
+                 }
+                 Spacer(modifier = Modifier.weight(1f))

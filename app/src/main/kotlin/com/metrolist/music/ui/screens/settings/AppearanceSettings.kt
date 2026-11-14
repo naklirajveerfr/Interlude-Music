@@ -56,7 +56,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
+import com.metrolist.music.ui.icons.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -83,6 +83,7 @@ import com.metrolist.music.constants.GridItemSize
 import com.metrolist.music.constants.GridItemsSizeKey
 import com.metrolist.music.constants.HidePlayerThumbnailKey
 import com.metrolist.music.constants.HideStatusBarOnFullscreenKey
+import com.metrolist.music.constants.SoftIconsKey
 import com.metrolist.music.constants.LibraryFilter
 import com.metrolist.music.constants.ListenTogetherInTopBarKey
 import com.metrolist.music.constants.LyricsAnimationStyle
@@ -241,7 +242,7 @@ fun AppearanceSettings(
     val (spotifyConnected) = rememberPreference(SpotifyConnectedKey, defaultValue = false)
     val spotifyCanvasActive = spotifyCanvasEnabled && (isFullArtStyle || isImmersiveStyle)
     val (speedDialCarouselOutline, onSpeedDialCarouselOutlineChange) = rememberPreference(SpeedDialCarouselOutlineKey, defaultValue = false)
-    val (iconRoundedness, onIconRoundednessChange) = rememberPreference(IconRoundednessKey, defaultValue = 3f)
+    val (iconRoundedness, onIconRoundednessChange) = rememberPreference(IconRoundednessKey, defaultValue = 8f)
     var showIconRoundednessDialog by rememberSaveable { mutableStateOf(false) }
     val (frostedUi, onFrostedUiChange) = rememberPreference(FrostedGlassUiKey, defaultValue = DefaultFrostedGlassUi)
     val (frostedBlurLevel, onFrostedBlurLevelChange) = rememberPreference(FrostedGlassBlurLevelKey, defaultValue = DefaultFrostedGlassBlurLevel)
@@ -279,6 +280,7 @@ fun AppearanceSettings(
             HideStatusBarOnFullscreenKey,
             defaultValue = false,
         )
+    val (softIcons, onSoftIconsChange) = rememberPreference(SoftIconsKey, defaultValue = true)
     val (respectAgentPositioning, onRespectAgentPositioningChange) = rememberPreference(RespectAgentPositioningKey, defaultValue = true)
 
     val (lyricsGlowEffect, onLyricsGlowEffectChange) = rememberPreference(LyricsGlowEffectKey, defaultValue = false)
@@ -705,7 +707,7 @@ fun AppearanceSettings(
                 showIconRoundednessDialog = false
             },
             buttons = {
-                TextButton(onClick = { tempRoundedness = 3f }) {
+                TextButton(onClick = { tempRoundedness = 8f }) {
                     Text(stringResource(R.string.reset))
                 }
                 Spacer(modifier = Modifier.weight(1f))
@@ -1527,6 +1529,30 @@ fun AppearanceSettings(
                                 )
                             },
                             onClick = { onFrostedToggle(!frostedUi) },
+                        ),
+                    )
+                    add(
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.palette),
+                            title = { Text(stringResource(R.string.soft_icons)) },
+                            description = { Text(stringResource(R.string.soft_icons_desc)) },
+                            trailingContent = {
+                                Switch(
+                                    checked = softIcons,
+                                    onCheckedChange = onSoftIconsChange,
+                                    thumbContent = {
+                                        Icon(
+                                            painter =
+                                                painterResource(
+                                                    id = if (softIcons) R.drawable.check else R.drawable.close,
+                                                ),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(SwitchDefaults.IconSize),
+                                        )
+                                    },
+                                )
+                            },
+                            onClick = { onSoftIconsChange(!softIcons) },
                         ),
                     )
                     if (frostedUi) {
