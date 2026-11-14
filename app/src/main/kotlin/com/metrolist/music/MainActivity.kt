@@ -33,9 +33,6 @@ import androidx.fragment.app.FragmentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -501,13 +498,6 @@ class MainActivity : FragmentActivity() {
                     settings[com.metrolist.music.constants.AiProviderKey] = "Free"
                 }
             }
-
-            // Lyrics translation should produce Chinese by default; migrate the old English default.
-            if (preferences[com.metrolist.music.constants.TranslateLanguageKey] == "en") {
-                safeDataStoreEdit { settings ->
-                    settings[com.metrolist.music.constants.TranslateLanguageKey] = "zh-CN"
-                }
-            }
         }
 
         lifecycleScope.launch(Dispatchers.IO) {
@@ -937,34 +927,18 @@ class MainActivity : FragmentActivity() {
                     }
                 appBarScrollBehavior(
                     canScroll = {
-                        playerBottomSheetState.isCollapsed || playerBottomSheetState.isDismissed
+                        !inSearchScreen &&
+                            (playerBottomSheetState.isCollapsed || playerBottomSheetState.isDismissed)
                     },
                 )
 
                 val topAppBarScrollBehavior =
                     appBarScrollBehavior(
                         canScroll = {
-                            playerBottomSheetState.isCollapsed || playerBottomSheetState.isDismissed
+                            !inSearchScreen &&
+                                (playerBottomSheetState.isCollapsed || playerBottomSheetState.isDismissed)
                         },
                     )
-
-                // A single bouncy progress drives both the nav bar sliding away and the mini
-                // player settling to the very bottom, so they move together without a gap.
-                val navBarHideTarget by remember {
-                    derivedStateOf {
-                        val state = topAppBarScrollBehavior.state
-                        val limit = state.heightOffsetLimit
-                        limit < 0f && state.heightOffset <= limit * 0.5f
-                    }
-                }
-                val hideProgress by animateFloatAsState(
-                    targetValue = if (navBarHideTarget) 1f else 0f,
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                        stiffness = Spring.StiffnessMediumLow,
-                    ),
-                    label = "navBarHideProgress",
-                )
 
                 // Navigation tracking
                 LaunchedEffect(navBackStackEntry) {
@@ -1323,17 +1297,6 @@ class MainActivity : FragmentActivity() {
                                             state = playerBottomSheetState,
                                             navController = navController,
                                             pureBlack = pureBlack,
-                                            modifier = Modifier.graphicsLayer {
-                                                // As the nav bar springs away, let the mini player settle
-                                                // down into the freed space so no gap is left below it.
-                                                // Only while collapsed; the expanded player fills the screen.
-                                                translationY =
-                                                    if (playerBottomSheetState.isCollapsed) {
-                                                        navPadding.toPx() * hideProgress
-                                                    } else {
-                                                        0f
-                                                    }
-                                            },
                                         )
                                     }
 
@@ -1355,10 +1318,6 @@ class MainActivity : FragmentActivity() {
                                                     val navBarHeightPx = navigationBarHeight.toPx()
                                                     val totalHeightPx = navBarTotalHeight.toPx()
 
-                                                    // Bouncy spring progress shared with the mini player below.
-                                                    val scrollHideFraction = hideProgress
-                                                    val scrollHideOffset = totalHeightPx * scrollHideFraction
-
                                                     translationY =
                                                         if (navBarHeightPx == 0f) {
                                                             totalHeightPx
@@ -1368,19 +1327,19 @@ class MainActivity : FragmentActivity() {
                                                             val slideOffset = totalHeightPx * progress
                                                             val hideOffset =
                                                                 totalHeightPx * (1 - navBarHeightPx / NavigationBarHeight.toPx())
-                                                            slideOffset + hideOffset + scrollHideOffset
+                                                            slideOffset + hideOffset
                                                         }
 
                                                     // The glass fade reaches above the bar, so hide the whole
                                                     // bar while it is slid away or the player is open.
                                                     alpha =
                                                         if (!frostedUi) {
-                                                            (1f - scrollHideFraction)
+                                                            1f
                                                         } else if (navBarHeightPx == 0f) {
                                                             0f
                                                         } else {
                                                             val shown = (navBarHeightPx / NavigationBarHeight.toPx()).coerceIn(0f, 1f)
-                                                            shown * (1f - playerBottomSheetState.progress.coerceIn(0f, 1f)) * (1f - scrollHideFraction)
+                                                            shown * (1f - playerBottomSheetState.progress.coerceIn(0f, 1f))
                                                         }
                                                 },
                                     )

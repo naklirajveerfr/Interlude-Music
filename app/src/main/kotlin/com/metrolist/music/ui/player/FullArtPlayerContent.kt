@@ -22,6 +22,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -148,7 +149,6 @@ fun FullArtPlayerContent(
     onMore: () -> Unit,
     onLyrics: () -> Unit,
     onQueue: () -> Unit,
-    onSleepTimer: () -> Unit = {},
     onShuffle: () -> Unit,
     onRepeat: () -> Unit,
     textColor: Color,
@@ -226,7 +226,10 @@ fun FullArtPlayerContent(
             )
         }
 
-        overlay()
+        // The lyrics overlay fades out as the queue opens, so it does not sit sharp on top of the blurred queue backdrop.
+        Box(Modifier.fillMaxSize().graphicsLayer { alpha = (1f - queueProgress() * 2f).coerceIn(0f, 1f) }) {
+            overlay()
+        }
 
         Column(
             Modifier
@@ -250,19 +253,20 @@ fun FullArtPlayerContent(
                         style = MaterialTheme.typography.titleMedium,
                     )
                 }
-                val actionButton: @Composable (Int, () -> Unit) -> Unit = { res, click ->
+                // Like button; while lyrics are showing it quickly fades into a fullscreen toggle.
+                Crossfade(targetState = showLyrics, animationSpec = tween(150), label = "favOrFullscreen") { lyricsOn ->
+                    val res = when {
+                        !lyricsOn -> favRes
+                        isFullScreen -> R.drawable.fullscreen_exit
+                        else -> R.drawable.fullscreen
+                    }
+                    val click = if (lyricsOn) onFullScreen else onFavorite
                     when (buttonShape) {
                         PlayerButtonShape.APPLE -> BareButton(res, appleTint(textColor, appleButtonColor), 26.dp, 44.dp, click)
                         PlayerButtonShape.PILL -> BareButton(res, textColor, 26.dp, 44.dp, click)
                         PlayerButtonShape.ROUND -> FilledSmall(res, buttonColor, iconColor, click)
                     }
                 }
-                // Like and fullscreen stay side by side so both are reachable at any time.
-                actionButton(favRes, onFavorite)
-                actionButton(
-                    if (isFullScreen) R.drawable.fullscreen_exit else R.drawable.fullscreen,
-                    onFullScreen,
-                )
                 when (buttonShape) {
                     PlayerButtonShape.APPLE -> BareButton(R.drawable.more_horiz, appleTint(textColor, appleButtonColor), 26.dp, 44.dp, onMore)
                     PlayerButtonShape.PILL -> BareButton(R.drawable.more_horiz, textColor, 26.dp, 44.dp, onMore)
@@ -363,7 +367,6 @@ fun FullArtPlayerContent(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                SmallIcon(R.drawable.bedtime, textColor, 0.8f, onSleepTimer)
                 SmallIcon(R.drawable.lyrics, textColor, 0.8f, onLyrics)
                 SmallIcon(R.drawable.queue_music, textColor, 0.8f, onQueue)
             }

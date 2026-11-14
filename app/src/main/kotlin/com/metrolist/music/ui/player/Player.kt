@@ -2207,8 +2207,7 @@ fun BottomSheetPlayer(
                                             }
                                         },
                                         onDismiss = menuState::dismiss,
-                                        isFullScreen = isFullScreen,
-                                        onToggleFullScreen = { isFullScreen = !isFullScreen },
+                                        onShowSleepTimer = { showSleepTimerDialog = true },
                                     )
                                 }
                             }
@@ -2228,20 +2227,13 @@ fun BottomSheetPlayer(
                         onPrevious = playerConnection::seekToPrevious,
                         onNext = playerConnection::seekToNext,
                         onFavorite = playerConnection::toggleLike,
-                        onSleepTimer = {
-                            if (sleepTimerEnabled) {
-                                playerConnection.service.sleepTimer?.clear()
-                            } else {
-                                showSleepTimerDialog = true
-                            }
-                        },
                         onShuffle = { playerConnection.player.shuffleModeEnabled = !shuffleModeEnabled },
                         onRepeat = { playerConnection.player.toggleRepeatMode() },
                         onQueue = { queueSheetState.expandSoft() },
-                        isFullScreen = isFullScreen,
-                        onFullScreen = { isFullScreen = !isFullScreen },
                         showLyrics = showInlineLyrics,
                         onToggleLyrics = { showInlineLyrics = !showInlineLyrics },
+                        isFullScreen = isFullScreen,
+                        onFullScreen = { isFullScreen = !isFullScreen },
                         queueProgress = { queueSheetState.progress },
                         overlay = {
                             androidx.compose.animation.AnimatedVisibility(
@@ -2250,11 +2242,15 @@ fun BottomSheetPlayer(
                                 exit = androidx.compose.animation.fadeOut(),
                             ) {
                                 Box(Modifier.fillMaxSize()) {
+                                    val lyricsHeightFraction by animateFloatAsState(
+                                        targetValue = if (isFullScreen) 0.8f else 0.7f,
+                                        label = "immersiveLyricsHeight",
+                                    )
                                     Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f)))
                                     Box(
                                         Modifier
                                             .fillMaxWidth()
-                                            .fillMaxHeight(0.7f)
+                                            .fillMaxHeight(lyricsHeightFraction)
                                             .align(Alignment.TopCenter)
                                             .padding(top = 72.dp)
                                             .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
@@ -2294,6 +2290,7 @@ fun BottomSheetPlayer(
                     )
                 } else if (useFullArtTest) {
                     val fullArtLyrics by playerConnection.currentLyrics.collectAsStateWithLifecycle(initialValue = null)
+                    LaunchedEffect(showInlineLyrics) { if (!showInlineLyrics) isFullScreen = false }
                     FullArtPlayerContent(
                         artworkUrl = mediaMetadata?.thumbnailUrl,
                         title = mediaMetadata?.title ?: "",
@@ -2317,13 +2314,6 @@ fun BottomSheetPlayer(
                                          onPrevious = playerConnection::seekToPrevious,
                                          onNext = playerConnection::seekToNext,
                                          onFavorite = playerConnection::toggleLike,
-                                         onSleepTimer = {
-                                             if (sleepTimerEnabled) {
-                                                 playerConnection.service.sleepTimer?.clear()
-                                             } else {
-                                                 showSleepTimerDialog = true
-                                             }
-                                         },
                                          onMore = {
                             mediaMetadata?.let { md ->
                                 menuState.show {
@@ -2349,8 +2339,7 @@ fun BottomSheetPlayer(
                                             }
                                         },
                                         onDismiss = menuState::dismiss,
-                                        isFullScreen = isFullScreen,
-                                        onToggleFullScreen = { isFullScreen = !isFullScreen },
+                                        onShowSleepTimer = { showSleepTimerDialog = true },
                                     )
                                 }
                             }

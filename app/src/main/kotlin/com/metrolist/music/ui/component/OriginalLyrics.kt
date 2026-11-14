@@ -223,9 +223,9 @@ fun OriginalLyrics(
     val aiProvider by rememberPreference(AiProviderKey, "Free")
     val openRouterBaseUrl by rememberPreference(OpenRouterBaseUrlKey, "https://openrouter.ai/api/v1/chat/completions")
     val openRouterModel by rememberPreference(OpenRouterModelKey, "google/gemini-2.5-flash-lite")
-    val translateLanguage by rememberPreference(TranslateLanguageKey, "zh-CN")
+    val translateLanguage by rememberPreference(TranslateLanguageKey, "en")
     val translateMode by rememberPreference(TranslateModeKey, "Literal")
-    val autoTranslateLyrics by rememberPreference(AutoTranslateLyricsKey, true)
+    val autoTranslateLyrics by rememberPreference(AutoTranslateLyricsKey, false)
     val deeplFormality by rememberPreference(DeeplFormalityKey, "default")
     val aiSystemPrompt by rememberPreference(AiSystemPromptKey, "")
 

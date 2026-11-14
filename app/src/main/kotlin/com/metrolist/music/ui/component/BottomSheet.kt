@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -34,7 +35,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
@@ -66,11 +66,21 @@ fun BottomSheet(
     collapsedContent: @Composable BoxScope.() -> Unit,
     isExpandable: Boolean = true,
     collapsedClickable: Boolean = true,
-    collapsedDragHeight: Dp = 140.dp,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val density = LocalDensity.current
-    
+
+    // Sheets with no collapsed bar (the immersive players) open by button only, so a resting sheet must not put
+    // anything that takes touches over the controls beneath it. An almost-collapsed sheet counts as collapsed.
+    val restingCollapsed by remember(state, collapsedClickable) {
+        derivedStateOf { !collapsedClickable && state.value - state.collapsedBound <= 1.dp }
+    }
+    LaunchedEffect(restingCollapsed) {
+        if (restingCollapsed && !state.isCollapsed && !state.isDismissed) {
+            state.snapToAndWait(state.collapsedBound)
+        }
+    }
+
     Box(
         modifier = modifier
             .graphicsLayer {
@@ -91,7 +101,7 @@ fun BottomSheet(
                 translationY = y
             }
             .then(
-                if (state.isCollapsed && !collapsedClickable) {
+                if (restingCollapsed) {
                     Modifier
                 } else {
                     Modifier.pointerInput(state, isExpandable) {
@@ -122,7 +132,7 @@ fun BottomSheet(
                 clip = true
             }
     ) {
-        if (!state.isCollapsed && !state.isDismissed) {
+        if (!state.isCollapsed && !restingCollapsed && !state.isDismissed) {
             PredictiveBackHandler { progress ->
                 val initialValue = state.value
                 try {
@@ -140,7 +150,7 @@ fun BottomSheet(
         }
 
         // main content
-        if (!state.isCollapsed) {
+        if (!state.isCollapsed && !restingCollapsed) {
             BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxSize()
@@ -169,32 +179,6 @@ fun BottomSheet(
             )
         }
 
-        if (state.isCollapsed && !collapsedClickable) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .height(collapsedDragHeight)
-                    .pointerInput(state, collapsedDragHeight) {
-                        val velocityTracker = VelocityTracker()
-                        detectVerticalDragGestures(
-                            onVerticalDrag = { change, dragAmount ->
-                                velocityTracker.addPointerInputChange(change)
-                                state.dispatchRawDelta(dragAmount)
-                            },
-                            onDragCancel = {
-                                velocityTracker.resetTracking()
-                                state.snapTo(state.collapsedBound)
-                            },
-                            onDragEnd = {
-                                val velocity = -velocityTracker.calculateVelocity().y
-                                velocityTracker.resetTracking()
-                                state.performFling(velocity, onDismiss)
-                            }
-                        )
-                    }
-            )
-        }
     }
 }
 

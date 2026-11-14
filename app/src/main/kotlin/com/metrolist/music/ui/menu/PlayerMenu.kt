@@ -115,8 +115,7 @@ fun PlayerMenu(
     isQueueTrigger: Boolean? = false,
     onShowDetailsDialog: () -> Unit,
     onDismiss: () -> Unit,
-    isFullScreen: Boolean = false,
-    onToggleFullScreen: (() -> Unit)? = null,
+    onShowSleepTimer: (() -> Unit)? = null,
 ) {
     mediaMetadata ?: return
     val navController = LocalNavController.current
@@ -143,6 +142,7 @@ fun PlayerMenu(
     val varispeedMode by rememberPreference(VarispeedKey, defaultValue = false)
     val nmShuffle by playerConnection.shuffleModeEnabled.collectAsStateWithLifecycle()
     val nmRepeat by playerConnection.repeatMode.collectAsStateWithLifecycle()
+    val sleepTimerActive by playerConnection.service.sleepTimerActive.collectAsStateWithLifecycle()
 
     val librarySong by database.song(mediaMetadata.id).collectAsStateWithLifecycle(initialValue = null)
     val coroutineScope = rememberCoroutineScope()
@@ -440,26 +440,43 @@ fun PlayerMenu(
                         } else {
                             null
                         },
-                        if (onToggleFullScreen != null) {
+                        if (onShowSleepTimer != null) {
                             NewAction(
                                 icon = {
                                     Icon(
-                                        painter = painterResource(
-                                            if (isFullScreen) R.drawable.fullscreen_exit else R.drawable.fullscreen,
-                                        ),
+                                        painter = painterResource(R.drawable.bedtime),
                                         contentDescription = null,
                                         modifier = Modifier.size(32.dp),
                                         tint =
-                                            if (isFullScreen) {
+                                            if (sleepTimerActive) {
                                                 MaterialTheme.colorScheme.primary
                                             } else {
                                                 MaterialTheme.colorScheme.onSurfaceVariant
                                             },
                                     )
                                 },
-                                text = if (isFullScreen) "Exit fullscreen" else "Fullscreen",
+                                text = stringResource(R.string.sleep_timer),
                                 onClick = {
-                                    onToggleFullScreen()
+                                    onShowSleepTimer()
+                                    onDismiss()
+                                },
+                            )
+                        } else {
+                            null
+                        },
+                        if (onShowSleepTimer != null && sleepTimerActive) {
+                            NewAction(
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.close),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(32.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                },
+                                text = stringResource(R.string.sleep_timer_off),
+                                onClick = {
+                                    playerConnection.service.sleepTimer?.clear()
                                     onDismiss()
                                 },
                             )

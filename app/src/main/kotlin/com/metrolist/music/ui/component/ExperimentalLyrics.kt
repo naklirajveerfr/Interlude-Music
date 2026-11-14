@@ -182,9 +182,9 @@ fun ExperimentalLyrics(
     val aiProvider by rememberPreference(AiProviderKey, "Free")
     val openRouterBaseUrl by rememberPreference(OpenRouterBaseUrlKey, OpenRouterDefaultBaseUrl)
     val openRouterModel by rememberPreference(OpenRouterModelKey, OpenRouterDefaultModel)
-    val translateLanguage by rememberPreference(TranslateLanguageKey, "zh-CN")
+    val translateLanguage by rememberPreference(TranslateLanguageKey, "en")
     val translateMode by rememberPreference(TranslateModeKey, "Literal")
-    val autoTranslateLyrics by rememberPreference(AutoTranslateLyricsKey, true)
+    val autoTranslateLyrics by rememberPreference(AutoTranslateLyricsKey, false)
     val deeplFormality by rememberPreference(DeeplFormalityKey, "default")
     val aiSystemPrompt by rememberPreference(AiSystemPromptKey, "")
     

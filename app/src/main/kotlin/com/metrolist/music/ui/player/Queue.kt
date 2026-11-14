@@ -1195,19 +1195,6 @@ fun Queue(
                             )
                         }
                         IconButton(
-                            enabled = currentWindowIndex >= 0,
-                            onClick = {
-                                coroutineScope.launch {
-                                    lazyListState.animateScrollToItem(headerItems + currentWindowIndex)
-                                }
-                            },
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.location_on),
-                                contentDescription = stringResource(R.string.locate_playing_song),
-                            )
-                        }
-                        IconButton(
                             enabled = queueWindows.isNotEmpty(),
                             onClick = { showSaveQueueDialog = true },
                         ) {

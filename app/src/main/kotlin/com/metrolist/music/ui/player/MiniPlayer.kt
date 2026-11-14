@@ -187,8 +187,6 @@ private fun NewMiniPlayer(
     // Player states - only collect what's needed at this level
     val playbackState by playerConnection.playbackState.collectAsState()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
-    val isPlaying by playerConnection.isPlaying.collectAsState()
-    val isMuted by playerConnection.isMuted.collectAsStateWithLifecycle()
     val canSkipNext by playerConnection.canSkipNext.collectAsStateWithLifecycle()
     val canSkipPrevious by playerConnection.canSkipPrevious.collectAsStateWithLifecycle()
 
@@ -475,43 +473,20 @@ private fun NewMiniPlayer(
                     Spacer(modifier = Modifier.width(12.dp))
                 }
 
-                // Transport controls - isolated composables. Play/pause replaces the former
-                // follow-artist button; prev/next are shown when there is room.
-                val showSkipButtons = configuration.screenWidthDp >= 380
-                MiniTransportPlayPauseButton(
-                    playbackState = playbackState,
-                    isPlaying = isPlaying,
-                    isMuted = isMuted,
-                    isCasting = isCasting,
-                    castHandler = castHandler,
-                    playerConnection = playerConnection,
-                    isListenTogetherGuest = isListenTogetherGuest,
-                    outlineColor = outlineColor,
-                    onSurfaceColor = onSurfaceColor,
-                )
-                if (showSkipButtons) {
-                    Spacer(modifier = Modifier.width(4.dp))
-                    MiniTransportSkipButton(
-                        icon = R.drawable.skip_previous,
-                        contentDescription = stringResource(R.string.previous),
+// Subscribe button - isolated composable
+                mediaMetadata?.artists?.firstOrNull()?.id?.let { artistId ->
+                    SubscribeButton(
+                        artistId = artistId,
+                        metadata = mediaMetadata!!,
+                        primaryColor = primaryColor,
                         outlineColor = outlineColor,
                         onSurfaceColor = onSurfaceColor,
-                        onClick = { playerConnection.seekToPrevious() },
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    MiniTransportSkipButton(
-                        icon = R.drawable.skip_next,
-                        contentDescription = stringResource(R.string.next),
-                        outlineColor = outlineColor,
-                        onSurfaceColor = onSurfaceColor,
-                        onClick = { playerConnection.seekToNext() },
-                        modifier = Modifier.smoothSkipOnHold(),
                     )
                 }
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                // Favorite button - isolated composable
+// Favorite button - isolated composable
                 mediaMetadata?.let { FavoriteButton(
                     songId = it.id,
                     errorColor = errorColor,
@@ -1112,96 +1087,6 @@ private fun SubscribeButton(
             painter = painterResource(if (isSubscribed) R.drawable.subscribed else R.drawable.subscribe),
             contentDescription = null,
             tint = if (isSubscribed) primaryColor else onSurfaceColor.copy(alpha = 0.7f),
-            modifier = Modifier.size(20.dp),
-        )
-    }
-}
-
-@Composable
-private fun MiniTransportPlayPauseButton(
-    playbackState: Int,
-    isPlaying: Boolean,
-    isMuted: Boolean,
-    isCasting: Boolean,
-    castHandler: CastConnectionHandler?,
-    playerConnection: PlayerConnection,
-    isListenTogetherGuest: Boolean,
-    outlineColor: Color,
-    onSurfaceColor: Color,
-) {
-    val castIsPlaying by castHandler?.castIsPlaying?.collectAsState() ?: remember { mutableStateOf(false) }
-    val icon =
-        when {
-            isListenTogetherGuest -> if (isMuted) R.drawable.volume_off else R.drawable.volume_up
-            playbackState == Player.STATE_ENDED -> R.drawable.replay
-            isPlaying -> R.drawable.pause
-            else -> R.drawable.play
-        }
-    MiniTransportCircleButton(
-        outlineColor = outlineColor,
-        onSurfaceColor = onSurfaceColor,
-        contentDescription = stringResource(R.string.play_pause),
-        icon = icon,
-        onClick = {
-            if (isListenTogetherGuest) {
-                playerConnection.toggleMute()
-            } else if (isCasting) {
-                if (castIsPlaying) castHandler?.pause() else castHandler?.play()
-            } else if (playbackState == Player.STATE_ENDED) {
-                playerConnection.player.seekTo(0, 0)
-                playerConnection.player.playWhenReady = true
-            } else {
-                playerConnection.togglePlayPause()
-            }
-        },
-    )
-}
-
-@Composable
-private fun MiniTransportSkipButton(
-    icon: Int,
-    contentDescription: String?,
-    outlineColor: Color,
-    onSurfaceColor: Color,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    MiniTransportCircleButton(
-        outlineColor = outlineColor,
-        onSurfaceColor = onSurfaceColor,
-        contentDescription = contentDescription,
-        icon = icon,
-        onClick = onClick,
-        modifier = modifier,
-    )
-}
-
-@Composable
-private fun MiniTransportCircleButton(
-    outlineColor: Color,
-    onSurfaceColor: Color,
-    contentDescription: String?,
-    icon: Int,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier =
-            modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .border(
-                    width = 1.dp,
-                    color = outlineColor.copy(alpha = 0.3f),
-                    shape = CircleShape,
-                ).background(Color.Transparent, CircleShape)
-                .clickable(onClick = onClick),
-    ) {
-        Icon(
-            painter = painterResource(icon),
-            contentDescription = contentDescription,
-            tint = onSurfaceColor.copy(alpha = 0.7f),
             modifier = Modifier.size(20.dp),
         )
     }

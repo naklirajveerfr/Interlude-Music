@@ -96,7 +96,7 @@ fun LyricsMenu(
 
     var respectAgentPositioning by rememberPreference(RespectAgentPositioningKey, true)
     var showIntervalIndicator by rememberPreference(ShowIntervalIndicatorKey, true)
-    var autoTranslateLyrics by rememberPreference(AutoTranslateLyricsKey, true)
+    var autoTranslateLyrics by rememberPreference(AutoTranslateLyricsKey, false)
 
     // Observe the authoritative translation-active state from the singleton; this persists
     // correctly across menu open/close cycles and avoids the lyricsProvider() race condition.

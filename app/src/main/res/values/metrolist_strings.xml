@@ -1147,10 +1147,6 @@
     <string name="sleep_timer_off">Turn off timer</string>
     <string name="sleep_timer_custom_minutes">Custom minutes</string>
 
-    <!-- Locate the currently playing song inside a playlist -->
-    <string name="locate_playing_song">Locate playing song</string>
-    <string name="playing_song_not_in_playlist">The playing song isn\'t in this playlist</string>
-
     <!-- Built-in lyrics translation (no API key required) -->
     <string name="ai_provider_builtin">Built-in (free)</string>
     <string name="ai_provider_builtin_help">Free translation works out of the box, with no API key. You can optionally add your own key below for higher quality.</string>

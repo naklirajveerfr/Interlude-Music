@@ -223,7 +223,6 @@ import com.metrolist.music.utils.NetworkConnectivityObserver
 import com.metrolist.music.utils.NotInterested
 import com.metrolist.music.utils.ScrobbleManager
 import com.metrolist.music.utils.SyncUtils
-import com.metrolist.music.utils.TasteProfile
 import com.metrolist.music.utils.getArtistSeparator
 import com.metrolist.music.utils.joinToArtistString
 import com.metrolist.music.utils.InnerTubeXPlayer
@@ -1706,8 +1705,20 @@ class MusicService :
     private fun updateNotification(isLiked: Boolean? = currentSong.value?.song?.let { if (it.isEpisode) it.inLibrary != null else it.liked }) {
         mediaSession?.setCustomLayout(
             listOf(
-                // Playback-mode toggles come first: system media notifications only surface a
-                // few custom actions, so shuffle/repeat must be among them to stay reachable.
+                CommandButton
+                    .Builder()
+                    .setDisplayName(
+                        getString(
+                            if (isLiked == true) {
+                                R.string.action_remove_like
+                            } else {
+                                R.string.action_like
+                            },
+                        ),
+                    ).setIconResId(if (isLiked == true) R.drawable.ic_heart else R.drawable.ic_heart_outline)
+                    .setSessionCommand(CommandToggleLike)
+                    .setEnabled(currentSong.value != null)
+                    .build(),
                 CommandButton
                     .Builder()
                     .setDisplayName(
@@ -1733,20 +1744,6 @@ class MusicService :
                     .setDisplayName(getString(if (player.shuffleModeEnabled) R.string.action_shuffle_off else R.string.action_shuffle_on))
                     .setIconResId(if (player.shuffleModeEnabled) R.drawable.shuffle_on else R.drawable.shuffle)
                     .setSessionCommand(CommandToggleShuffle)
-                    .build(),
-                CommandButton
-                    .Builder()
-                    .setDisplayName(
-                        getString(
-                            if (isLiked == true) {
-                                R.string.action_remove_like
-                            } else {
-                                R.string.action_like
-                            },
-                        ),
-                    ).setIconResId(if (isLiked == true) R.drawable.ic_heart else R.drawable.ic_heart_outline)
-                    .setSessionCommand(CommandToggleLike)
-                    .setEnabled(currentSong.value != null)
                     .build(),
                 CommandButton
                     .Builder()
@@ -1897,16 +1894,12 @@ class MusicService :
     ): List<MediaItem> =
         withContext(Dispatchers.IO) {
             val blocked = NotInterested.current(this@MusicService)
-            val scores = TasteProfile.artistScores(database, blocked.artists)
-            val tail =
+            // Keep YouTube's similarity order so the queue stays close to the mood of the played song.
+            items.take(keep) +
                 items.drop(keep).filterNot { item ->
                     item.metadata?.let { m ->
                         m.id in blocked.songs || m.artists.any { it.id != null && it.id in blocked.artists }
                     } == true
-                }
-            items.take(keep) +
-                TasteProfile.weightedOrder(tail) { item ->
-                    1.0 + (item.metadata?.artists?.maxOfOrNull { a -> a.id?.let { scores[it] } ?: 0.0 } ?: 0.0)
                 }
         }
 
