@@ -71,9 +71,9 @@ Interlude is a fork of [Metrolist](https://github.com/MetrolistGroup/Metrolist).
 
 ### Playback
 
-* **Seamless transition (beta):** analyzes the BPM of the ending and upcoming songs on your device, gradually matching their tempos before the mix. The next song begins after any silent intro, with the transition timed around fade-outs.
+* **Smooth Skip** analyzes the BPM of the ending and upcoming songs on your device, gradually matching their tempos before the mix. The next song begins after any silent intro, with the transition timed around fade-outs.
 * Listening cache and downloads.
-* Built-in equalizer.
+* Spotify Canvas
 * Sleep timer.
   
 
@@ -89,8 +89,8 @@ Interlude is a fork of [Metrolist](https://github.com/MetrolistGroup/Metrolist).
 * **Spotify Canvas:** looping Canvas videos play full-screen behind the player in the Full Art and Immersive styles. The next song's Canvas is prefetched and cached on disk. Canvas requires a connected Spotify account. Animated artwork from Apple Music is supported too.
 * **Material 3 Expressive** design with wavy progress components.
 * **Frosted Glass UI**
-* Three player styles: **Default**,**Full Art**. and Immersive
-* **Player button shapes:** Round, Pill, or Apple Music style.
+* Three player styles: **Default**,**Full Art**. and **Immersive**
+* **Player button shapes:** Round, Pill, or Soft.
 * Custom player button colours.
 * Customizable backgrounds for the player, mini player, and menus:
 
@@ -98,9 +98,10 @@ Interlude is a fork of [Metrolist](https://github.com/MetrolistGroup/Metrolist).
   * Transparent
   * Gradient
   * Opaque
+    
 * Adjustable roundedness for song thumbnails.
 * Redesigned bottom navigation bar with a subtle fade into the content above.
-* Home screen loading animation that smoothly fades content in when ready.
+
 
 ### More
 
@@ -145,8 +146,7 @@ If multiple APKs are present in the directory, install the desired APK by its fi
 
 Interlude is actively being developed.
 
-* **Seamless Transition** is currently in beta.
-* **Musixmatch** lyrics are currently in beta.
+
 
 
   
@@ -172,6 +172,6 @@ When opening an issue, please include:
 
 ## License
 
-Interlude is licensed under the **GPL-3.0**, the same license as Metrolist.
+Interlude is licensed under the **GPL-3.0**.
 
 See the [LICENSE](LICENSE) file for details.
