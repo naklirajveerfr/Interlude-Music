@@ -489,6 +489,17 @@ class MainActivity : FragmentActivity() {
                     settings[VideoThumbnailMigrationDoneKey] = true
                 }
             }
+
+            // Users who never configured a translation key keep the old OpenRouter default,
+            // which would still demand an API key. Point them at the built-in free provider once.
+            if (preferences[com.metrolist.music.constants.AiProviderKey] == "OpenRouter" &&
+                preferences[com.metrolist.music.constants.OpenRouterApiKey].isNullOrBlank() &&
+                preferences[com.metrolist.music.constants.DeeplApiKey].isNullOrBlank()
+            ) {
+                safeDataStoreEdit { settings ->
+                    settings[com.metrolist.music.constants.AiProviderKey] = "Free"
+                }
+            }
         }
 
         lifecycleScope.launch(Dispatchers.IO) {

@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -188,6 +189,11 @@ fun FullArtPlayerContent(
     // The live artwork (canvas video included) is blurred and dimmed in place when lyrics or the queue open.
     val lyricsBackdrop = animateFloatAsState(if (showLyrics) 1f else 0f, tween(300), label = "lyricsBackdrop")
     val backdrop = { maxOf(lyricsBackdrop.value, queueProgress().coerceIn(0f, 1f)) }
+    // Density lookup is hoisted out of the graphicsLayer block, and the RenderEffect is reused
+    // while the animated radius is unchanged. Plain holder (no snapshot state) so it is safe to
+    // write from a draw-phase lambda.
+    val blurRadiusPx = with(LocalDensity.current) { 24.dp.toPx() }
+    val blurCache = remember { object { var radius = Float.NaN; var effect: RenderEffect? = null } }
 
     Box(modifier.fillMaxSize()) {
         if (showArt) {
@@ -195,8 +201,12 @@ fun FullArtPlayerContent(
                 Modifier.fillMaxSize().graphicsLayer {
                     val amount = backdrop()
                     renderEffect = if (amount > 0f && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-                        val radius = 24.dp.toPx() * amount
-                        BlurEffect(radius, radius, TileMode.Clamp)
+                        val radius = blurRadiusPx * amount
+                        if (radius != blurCache.radius) {
+                            blurCache.radius = radius
+                            blurCache.effect = BlurEffect(radius, radius, TileMode.Clamp)
+                        }
+                        blurCache.effect
                     } else {
                         null
                     }
@@ -216,7 +226,10 @@ fun FullArtPlayerContent(
             )
         }
 
-        overlay()
+        // The lyrics overlay fades out as the queue opens, so it does not sit sharp on top of the blurred queue backdrop.
+        Box(Modifier.fillMaxSize().graphicsLayer { alpha = (1f - queueProgress() * 2f).coerceIn(0f, 1f) }) {
+            overlay()
+        }
 
         Column(
             Modifier

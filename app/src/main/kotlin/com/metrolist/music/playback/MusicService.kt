@@ -223,7 +223,6 @@ import com.metrolist.music.utils.NetworkConnectivityObserver
 import com.metrolist.music.utils.NotInterested
 import com.metrolist.music.utils.ScrobbleManager
 import com.metrolist.music.utils.SyncUtils
-import com.metrolist.music.utils.TasteProfile
 import com.metrolist.music.utils.getArtistSeparator
 import com.metrolist.music.utils.joinToArtistString
 import com.metrolist.music.utils.InnerTubeXPlayer
@@ -421,6 +420,7 @@ class MusicService :
     }
 
     var sleepTimer: SleepTimer? = null
+    val sleepTimerActive = MutableStateFlow(false)
 
     @Inject
     @PlayerCache
@@ -727,9 +727,12 @@ class MusicService :
         player = createExoPlayer(prefs = startupPrefs!!)
         player.addListener(this@MusicService)
         sleepTimer =
-            SleepTimer(scope, player) { multiplier ->
-                sleepTimerVolumeMultiplier.value = multiplier
-            }
+            SleepTimer(
+                scope,
+                player,
+                { multiplier -> sleepTimerVolumeMultiplier.value = multiplier },
+                { active -> sleepTimerActive.value = active },
+            )
         player.addListener(sleepTimer!!)
 
         playerInitialized.value = true
@@ -1891,16 +1894,12 @@ class MusicService :
     ): List<MediaItem> =
         withContext(Dispatchers.IO) {
             val blocked = NotInterested.current(this@MusicService)
-            val scores = TasteProfile.artistScores(database, blocked.artists)
-            val tail =
+            // Keep YouTube's similarity order so the queue stays close to the mood of the played song.
+            items.take(keep) +
                 items.drop(keep).filterNot { item ->
                     item.metadata?.let { m ->
                         m.id in blocked.songs || m.artists.any { it.id != null && it.id in blocked.artists }
                     } == true
-                }
-            items.take(keep) +
-                TasteProfile.weightedOrder(tail) { item ->
-                    1.0 + (item.metadata?.artists?.maxOfOrNull { a -> a.id?.let { scores[it] } ?: 0.0 } ?: 0.0)
                 }
         }
 
@@ -1920,8 +1919,9 @@ class MusicService :
 
         currentQueue = queue
         queueTitle = null
-        val persistShuffleAcrossQueues = dataStore.get(PersistentShuffleAcrossQueuesKey, false)
-        if (!persistShuffleAcrossQueues && !restoringQueue) {
+        val rememberShuffleAndRepeat = dataStore.get(RememberShuffleAndRepeatKey, true)
+        val persistShuffleAcrossQueues = dataStore.get(PersistentShuffleAcrossQueuesKey, true)
+        if (!persistShuffleAcrossQueues && !rememberShuffleAndRepeat && !restoringQueue) {
             player.shuffleModeEnabled = false
         }
         originalQueueSize = 0

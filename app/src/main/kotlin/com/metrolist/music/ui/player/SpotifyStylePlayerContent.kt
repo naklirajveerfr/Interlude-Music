@@ -60,6 +60,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.BlurEffect
+import androidx.compose.ui.graphics.RenderEffect
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -117,6 +119,8 @@ fun SpotifyStylePlayerContent(
     onSeek: (Long) -> Unit,
     showLyrics: Boolean = false,
     onToggleLyrics: () -> Unit = {},
+    isFullScreen: Boolean = false,
+    onFullScreen: () -> Unit = {},
     queueProgress: () -> Float = { 0f },
     overlay: @Composable BoxScope.() -> Unit = {},
     modifier: Modifier = Modifier,
@@ -129,14 +133,21 @@ fun SpotifyStylePlayerContent(
     // The live artwork (canvas video included) is blurred and dimmed in place when lyrics or the queue open.
     val lyricsBackdrop = animateFloatAsState(if (showLyrics) 1f else 0f, tween(300), label = "lyricsBackdrop")
     val backdrop = { maxOf(lyricsBackdrop.value, queueProgress().coerceIn(0f, 1f)) }
+    // Hoist the density lookup and reuse the RenderEffect while the animated radius is unchanged.
+    val blurRadiusPx = with(LocalDensity.current) { 24.dp.toPx() }
+    val blurCache = remember { object { var radius = Float.NaN; var effect: RenderEffect? = null } }
 
     Box(modifier.fillMaxSize().background(Color.Black)) {
         Box(
             Modifier.fillMaxSize().graphicsLayer {
                 val amount = backdrop()
                 renderEffect = if (amount > 0f && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    val radius = 24.dp.toPx() * amount
-                    BlurEffect(radius, radius, TileMode.Clamp)
+                    val radius = blurRadiusPx * amount
+                    if (radius != blurCache.radius) {
+                        blurCache.radius = radius
+                        blurCache.effect = BlurEffect(radius, radius, TileMode.Clamp)
+                    }
+                    blurCache.effect
                 } else {
                     null
                 }
@@ -174,7 +185,10 @@ fun SpotifyStylePlayerContent(
                 .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.8f)))),
         )
 
-        overlay()
+        // The lyrics overlay fades out as the queue opens, so it does not sit sharp on top of the blurred queue backdrop.
+        Box(Modifier.fillMaxSize().graphicsLayer { alpha = (1f - queueProgress() * 2f).coerceIn(0f, 1f) }) {
+            overlay()
+        }
 
         Row(
             Modifier.align(Alignment.TopCenter).fillMaxWidth()
@@ -236,13 +250,27 @@ fun SpotifyStylePlayerContent(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                IconButton(onClick = onFavorite) {
-                    Icon(
-                        painterResource(if (isFavorite) R.drawable.favorite else R.drawable.favorite_border),
-                        null,
-                        tint = Color.White,
-                        modifier = Modifier.size(28.dp),
-                    )
+                // With lyrics open the like button becomes the lyrics fullscreen toggle.
+                AnimatedContent(targetState = showLyrics, label = "likeOrFullscreen") { lyricsOpen ->
+                    if (lyricsOpen) {
+                        IconButton(onClick = onFullScreen) {
+                            Icon(
+                                painterResource(if (isFullScreen) R.drawable.fullscreen_exit else R.drawable.fullscreen),
+                                null,
+                                tint = Color.White,
+                                modifier = Modifier.size(28.dp),
+                            )
+                        }
+                    } else {
+                        IconButton(onClick = onFavorite) {
+                            Icon(
+                                painterResource(if (isFavorite) R.drawable.favorite else R.drawable.favorite_border),
+                                null,
+                                tint = Color.White,
+                                modifier = Modifier.size(28.dp),
+                            )
+                        }
+                    }
                 }
             }
 

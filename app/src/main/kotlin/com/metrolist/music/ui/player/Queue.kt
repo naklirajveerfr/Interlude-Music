@@ -54,6 +54,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -241,18 +244,21 @@ fun Queue(
     var showSleepTimerDialog by remember { mutableStateOf(false) }
     val sleepTimerDefault by rememberPreference(SleepTimerDefaultKey, 30f)
     var sleepTimerValue by remember { mutableFloatStateOf(sleepTimerDefault) }
+    var customMinutesText by remember { mutableStateOf(sleepTimerDefault.roundToInt().toString()) }
     val isAtDefault by remember {
         derivedStateOf { sleepTimerValue.roundToInt() == sleepTimerDefault.roundToInt() }
     }
-    LaunchedEffect(sleepTimerDefault) { sleepTimerValue = sleepTimerDefault }
+    LaunchedEffect(sleepTimerDefault) {
+        sleepTimerValue = sleepTimerDefault
+        customMinutesText = sleepTimerDefault.roundToInt().toString()
+    }
+    LaunchedEffect(sleepTimerValue) {
+        val shown = sleepTimerValue.roundToInt().toString()
+        if (customMinutesText != shown) customMinutesText = shown
+    }
     val sleepTimerStopAfterCurrentSong by rememberPreference(SleepTimerStopAfterCurrentSongKey, false)
     val sleepTimerFadeOut by rememberPreference(SleepTimerFadeOutKey, false)
-    val sleepTimerEnabled = remember(
-        playerConnection.service.sleepTimer?.triggerTime,
-        playerConnection.service.sleepTimer?.pauseWhenSongEnd
-    ) {
-        playerConnection.service.sleepTimer?.isActive ?: false
-    }
+    val sleepTimerEnabled by playerConnection.service.sleepTimerActive.collectAsStateWithLifecycle()
     var sleepTimerTimeLeft by remember { mutableLongStateOf(0L) }
 
     LaunchedEffect(sleepTimerEnabled) {
@@ -587,8 +593,10 @@ fun Queue(
                     onDismiss = { showSleepTimerDialog = false },
                     onConfirm = {
                         showSleepTimerDialog = false
+                        val minutes = customMinutesText.toIntOrNull()?.coerceIn(1, 600)
+                            ?: sleepTimerValue.roundToInt()
                         playerConnection.service.sleepTimer?.start(
-                            minute = sleepTimerValue.roundToInt(),
+                            minute = minutes,
                             stopAfterCurrentSong = sleepTimerStopAfterCurrentSong,
                             fadeOut = sleepTimerFadeOut,
                         )
@@ -598,6 +606,7 @@ fun Queue(
                     },
                     onReset = {
                         sleepTimerValue = sleepTimerDefault
+                        customMinutesText = sleepTimerDefault.roundToInt().toString()
                     },
                     content = {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -614,18 +623,36 @@ fun Queue(
                             Spacer(Modifier.height(16.dp))
 
                             Slider(
-                                value = sleepTimerValue,
-                                onValueChange = { sleepTimerValue = it },
+                                value = sleepTimerValue.coerceIn(5f, 120f),
+                                onValueChange = {
+                                    sleepTimerValue = it
+                                    customMinutesText = it.roundToInt().toString()
+                                },
                                 valueRange = 5f..120f,
                                 steps = (120 - 5) / 5 - 1,
                                 modifier = Modifier.fillMaxWidth(),
                             )
 
+                            OutlinedTextField(
+                                value = customMinutesText,
+                                onValueChange = { input ->
+                                    val filtered = input.filter { it.isDigit() }.take(3)
+                                    customMinutesText = filtered
+                                    filtered.toIntOrNull()?.coerceIn(1, 600)?.toFloat()?.let {
+                                        sleepTimerValue = it
+                                    }
+                                },
+                                label = { Text(stringResource(R.string.sleep_timer_custom_minutes)) },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+
                             Spacer(Modifier.height(8.dp))
 
-                            Column(
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
                                 if (isAtDefault) {
                                     Button(
@@ -641,12 +668,17 @@ fun Queue(
                                                 Toast.LENGTH_SHORT,
                                             ).show()
                                         },
+                                        modifier = Modifier.weight(1f),
                                         colors = androidx.compose.material3.ButtonDefaults.buttonColors(
                                             containerColor = MaterialTheme.colorScheme.primary,
                                             contentColor = MaterialTheme.colorScheme.onPrimary,
                                         ),
                                     ) {
-                                        Text(stringResource(R.string.set_as_default))
+                                        Text(
+                                            stringResource(R.string.set_as_default),
+                                            textAlign = TextAlign.Center,
+                                            maxLines = 2,
+                                        )
                                     }
                                 } else {
                                     OutlinedButton(
@@ -662,8 +694,13 @@ fun Queue(
                                                 Toast.LENGTH_SHORT,
                                             ).show()
                                         },
+                                        modifier = Modifier.weight(1f),
                                     ) {
-                                        Text(stringResource(R.string.set_as_default))
+                                        Text(
+                                            stringResource(R.string.set_as_default),
+                                            textAlign = TextAlign.Center,
+                                            maxLines = 2,
+                                        )
                                     }
                                 }
 
@@ -674,9 +711,26 @@ fun Queue(
                                             minute = -1,
                                         )
                                     },
+                                    modifier = Modifier.weight(1f),
                                 ) {
-                                    Text(stringResource(R.string.end_of_song))
+                                    Text(
+                                        stringResource(R.string.end_of_song),
+                                        textAlign = TextAlign.Center,
+                                        maxLines = 2,
+                                    )
                                 }
+                            }
+
+                            Spacer(Modifier.height(8.dp))
+                            OutlinedButton(
+                                onClick = {
+                                    // clear() is idempotent: always allow cancelling.
+                                    playerConnection.service.sleepTimer?.clear()
+                                    showSleepTimerDialog = false
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text(stringResource(R.string.sleep_timer_off))
                             }
                         }
                     },

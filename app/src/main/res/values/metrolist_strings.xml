@@ -697,6 +697,8 @@
 
     <!-- AI Lyrics Translation -->
     <string name="ai_lyrics_translation">AI lyrics translation</string>
+    <string name="ai_lyrics_translation_always">Auto-translate lyrics</string>
+    <string name="ai_lyrics_translation_always_desc">Automatically translate the lyrics of every song into the target language</string>
     <string name="ai_translating_lyrics">Translating lyrics…</string>
     <string name="ai_lyrics_translated">Lyrics translated</string>
     <string name="ai_provider">Provider</string>
@@ -1141,4 +1143,14 @@
     <string name="support_upi_id">naklirajveer@fam</string>
     <string name="support_upi_desc">Tap to copy the UPI ID</string>
     <string name="support_thanks">Thank you for using Interlude!</string>
+
+    <!-- Sleep timer -->
+    <string name="sleep_timer_off">Turn off timer</string>
+    <string name="sleep_timer_custom_minutes">Custom minutes</string>
+
+    <!-- Built-in lyrics translation (no API key required) -->
+    <string name="ai_provider_builtin">Built-in (free)</string>
+    <string name="ai_provider_builtin_help">Free translation works out of the box, with no API key. You can optionally add your own key below for higher quality.</string>
+    <string name="ai_credentials_optional">Optional: your own API key</string>
+    <string name="ai_error_translation_unavailable">Built-in translation is unavailable. Try again later or set an API key.</string>
 </resources>

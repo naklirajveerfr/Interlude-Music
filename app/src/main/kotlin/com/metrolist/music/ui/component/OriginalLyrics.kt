@@ -141,6 +141,7 @@ import com.metrolist.music.constants.PlayerBackgroundStyle
 import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.constants.TranslateLanguageKey
 import com.metrolist.music.constants.TranslateModeKey
+import com.metrolist.music.constants.AutoTranslateLyricsKey
 import com.metrolist.music.db.entities.LyricsEntity.Companion.LYRICS_NOT_FOUND
 import com.metrolist.music.lyrics.LyricsEntry
 import com.metrolist.music.lyrics.LyricsTranslationHelper
@@ -219,11 +220,12 @@ fun OriginalLyrics(
 
     val openRouterApiKey by rememberPreference(OpenRouterApiKey, "")
     val deeplApiKey by rememberPreference(DeeplApiKey, "")
-    val aiProvider by rememberPreference(AiProviderKey, "OpenRouter")
+    val aiProvider by rememberPreference(AiProviderKey, "Free")
     val openRouterBaseUrl by rememberPreference(OpenRouterBaseUrlKey, "https://openrouter.ai/api/v1/chat/completions")
     val openRouterModel by rememberPreference(OpenRouterModelKey, "google/gemini-2.5-flash-lite")
     val translateLanguage by rememberPreference(TranslateLanguageKey, "en")
     val translateMode by rememberPreference(TranslateModeKey, "Literal")
+    val autoTranslateLyrics by rememberPreference(AutoTranslateLyricsKey, false)
     val deeplFormality by rememberPreference(DeeplFormalityKey, "default")
     val aiSystemPrompt by rememberPreference(AiSystemPromptKey, "")
 
@@ -383,13 +385,62 @@ fun OriginalLyrics(
         }
     }
 
+    // When "always translate" is on, translate any song that doesn't yet have a
+    // translation for the current language/mode. Cached/DB results are shown by
+    // loadTranslationsFromDatabase above, so this only fires for genuinely new songs.
+    val autoTranslatedSongId = remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(
+        autoTranslateLyrics,
+        showLyrics,
+        lines,
+        lyricsEntity?.id,
+        translateLanguage,
+        translateMode,
+        aiProvider,
+    ) {
+        val entity = lyricsEntity
+        val songId = entity?.id
+        val hasMatchingTranslation = entity != null &&
+            entity.translatedLyrics.isNotBlank() &&
+            entity.translationLanguage == translateLanguage &&
+            entity.translationMode == translateMode
+        if (
+            autoTranslateLyrics &&
+            showLyrics &&
+            lines.isNotEmpty() &&
+            songId != null &&
+            !hasMatchingTranslation &&
+            autoTranslatedSongId.value != songId &&
+            (aiProvider == "Free" || (if (aiProvider == "DeepL") deeplApiKey else openRouterApiKey).isNotBlank())
+        ) {
+            autoTranslatedSongId.value = songId
+            LyricsTranslationHelper.translateLyrics(
+                lyrics = lines,
+                targetLanguage = translateLanguage,
+                apiKey = openRouterApiKey,
+                baseUrl = openRouterBaseUrl,
+                model = openRouterModel,
+                mode = translateMode,
+                scope = scope,
+                context = context,
+                provider = aiProvider,
+                deeplApiKey = deeplApiKey,
+                deeplFormality = deeplFormality,
+                useStreaming = true,
+                songId = currentSong?.id ?: "",
+                database = database,
+                systemPrompt = aiSystemPrompt,
+            )
+        }
+    }
+
     val aiApiKeyRequiredStr = stringResource(R.string.ai_api_key_required)
 
     // Listen for manual trigger
     LaunchedEffect(showLyrics, lines.size) {
         LyricsTranslationHelper.manualTrigger.collect {
             val effectiveApiKey = if (aiProvider == "DeepL") deeplApiKey else openRouterApiKey
-            if (showLyrics && lines.isNotEmpty() && effectiveApiKey.isNotBlank()) {
+            if (showLyrics && lines.isNotEmpty() && (aiProvider == "Free" || effectiveApiKey.isNotBlank())) {
                 LyricsTranslationHelper.translateLyrics(
                     lyrics = lines,
                     targetLanguage = translateLanguage,
@@ -407,7 +458,7 @@ fun OriginalLyrics(
                     database = database,
                     systemPrompt = aiSystemPrompt,
                 )
-            } else if (effectiveApiKey.isBlank()) {
+            } else if (aiProvider != "Free" && effectiveApiKey.isBlank()) {
                 Toast.makeText(context, aiApiKeyRequiredStr, Toast.LENGTH_SHORT).show()
             }
         }

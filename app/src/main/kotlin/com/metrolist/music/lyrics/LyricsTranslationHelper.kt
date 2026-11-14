@@ -10,6 +10,7 @@ import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.db.entities.LyricsEntity
 import com.metrolist.music.db.entities.SongEntity
 import com.metrolist.music.api.DeepLService
+import com.metrolist.music.api.FreeTranslationService
 import com.metrolist.music.api.OpenRouterService
 import com.metrolist.music.api.OpenRouterStreamingService
 import kotlinx.coroutines.CoroutineScope
@@ -61,6 +62,8 @@ object LyricsTranslationHelper {
         "ja" to "Japanese",
         "ko" to "Korean",
         "zh" to "Chinese",
+        "zh-CN" to "Chinese (Simplified)",
+        "zh-TW" to "Chinese (Traditional)",
         "ar" to "Arabic",
         "hi" to "Hindi",
         "bn" to "Bengali",
@@ -174,7 +177,7 @@ object LyricsTranslationHelper {
         mode: String,
         scope: CoroutineScope,
         context: Context,
-        provider: String = "OpenRouter",
+        provider: String = "Free",
         deeplApiKey: String = "",
         deeplFormality: String = "default",
         useStreaming: Boolean = true,
@@ -193,7 +196,7 @@ object LyricsTranslationHelper {
                 try {
                     // Validate inputs
                     val effectiveApiKey = if (provider == "DeepL") deeplApiKey else apiKey
-                    if (effectiveApiKey.isBlank()) {
+                    if (provider != "Free" && effectiveApiKey.isBlank()) {
                         _status.value = TranslationStatus.Error(context.getString(com.metrolist.music.R.string.ai_error_api_key_required))
                         return@launch
                     }
@@ -275,7 +278,14 @@ object LyricsTranslationHelper {
                             ?: targetLanguage
 
                     val result =
-                        if (provider == "DeepL") {
+                        if (provider == "Free") {
+                            Timber.d("Using built-in free translation")
+                            FreeTranslationService.translate(
+                                text = fullText,
+                                targetLanguage = targetLanguage,
+                                mode = mode,
+                            )
+                        } else if (provider == "DeepL") {
                             Timber.d("Using DeepL for translation")
                             // DeepL only supports translation mode
                             DeepLService.translate(
@@ -284,7 +294,7 @@ object LyricsTranslationHelper {
                                 apiKey = deeplApiKey,
                                 formality = deeplFormality,
                             )
-                        } else if (useStreaming && provider != "Custom") {
+                        } else if (useStreaming && provider != "Custom" && provider != "Free") {
                             Timber.d("Using streaming for translation with provider: $provider")
                             // Use streaming for supported providers
                             var translatedLines: List<String>? = null
@@ -426,7 +436,12 @@ object LyricsTranslationHelper {
                                 return@onFailure
                             }
 
-                            val errorMessage = error.message ?: context.getString(com.metrolist.music.R.string.ai_error_unknown)
+                            val errorMessage =
+                                if (provider == "Free") {
+                                    context.getString(com.metrolist.music.R.string.ai_error_translation_unavailable)
+                                } else {
+                                    error.message ?: context.getString(com.metrolist.music.R.string.ai_error_unknown)
+                                }
 
                             // Show error in UI
                             _status.value = TranslationStatus.Error(errorMessage)

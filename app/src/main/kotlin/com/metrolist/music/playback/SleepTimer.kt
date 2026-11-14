@@ -22,6 +22,7 @@ class SleepTimer(
     private val scope: CoroutineScope,
     var player: Player,
     private val onVolumeMultiplierChanged: (Float) -> Unit = {},
+    private val onActiveChanged: (Boolean) -> Unit = {},
 ) : Player.Listener {
     private companion object {
         private const val TIMER_TICK_MS = 1000L
@@ -39,6 +40,8 @@ class SleepTimer(
         private set
     val isActive: Boolean
         get() = triggerTime != -1L || pauseWhenSongEnd
+
+    private fun notifyActive() = onActiveChanged(isActive)
 
     fun start(minute: Int) {
         start(
@@ -103,6 +106,7 @@ class SleepTimer(
                     }
                 }
         }
+        notifyActive()
     }
 
     /**
@@ -124,6 +128,7 @@ class SleepTimer(
         fadeOutEnabled = false
         triggerTime = -1L
         updateVolumeMultiplier(1f)
+        notifyActive()
     }
 
     override fun onMediaItemTransition(
@@ -151,6 +156,7 @@ class SleepTimer(
         fadeOutEnabled = false
         triggerTime = -1L
         updateVolumeMultiplier(1f)
+        notifyActive()
         player.pause()
     }
 
