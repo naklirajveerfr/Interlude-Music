@@ -174,7 +174,7 @@ private fun NewMiniPlayer(
     // Theme settings - these rarely change
     val miniPlayerBackground by rememberEnumPreference(
         MiniPlayerBackgroundStyleKey,
-        defaultValue = MiniPlayerBackgroundStyle.BLUR,
+        defaultValue = MiniPlayerBackgroundStyle.FROSTED_GLASS,
     )
     val miniPlayerCornerRadius by rememberPreference(
         MiniPlayerCornerRadiusKey,

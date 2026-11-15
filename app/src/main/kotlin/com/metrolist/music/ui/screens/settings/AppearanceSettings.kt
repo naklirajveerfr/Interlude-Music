@@ -189,7 +189,7 @@ fun AppearanceSettings(
     val (miniPlayerBackground, onMiniPlayerBackgroundChange) =
         rememberEnumPreference(
             MiniPlayerBackgroundStyleKey,
-            defaultValue = MiniPlayerBackgroundStyle.BLUR,
+            defaultValue = MiniPlayerBackgroundStyle.FROSTED_GLASS,
         )
 
     val availableMiniPlayerBackgroundStyles =

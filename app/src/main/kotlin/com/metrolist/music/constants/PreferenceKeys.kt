@@ -36,7 +36,7 @@ enum class MiniPlayerBackgroundStyle {
 }
 
 val MiniPlayerCornerRadiusKey = floatPreferencesKey("miniPlayerCornerRadius")
-const val DefaultMiniPlayerCornerRadius = 32f
+const val DefaultMiniPlayerCornerRadius = 26f
 
 val DensityScaleKey = floatPreferencesKey("density_scale_factor")
 
