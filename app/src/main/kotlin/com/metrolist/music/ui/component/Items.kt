@@ -89,7 +89,11 @@ import androidx.media3.exoplayer.offline.Download.STATE_COMPLETED
 import androidx.media3.exoplayer.offline.Download.STATE_DOWNLOADING
 import androidx.media3.exoplayer.offline.Download.STATE_QUEUED
 import coil3.compose.AsyncImage
+import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
+import androidx.compose.foundation.border
+import androidx.compose.ui.draw.drawBehind
+import com.metrolist.music.ui.theme.LocalFrostedUi
 import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.models.AlbumItem
 import com.metrolist.innertube.models.ArtistItem
@@ -259,7 +263,16 @@ inline fun ListItem(
     isSelected: Boolean? = false,
     isActive: Boolean = false,
     isAvailable: Boolean = true,
+    activeBackdropUrl: String? = null,
 ) {
+    // A tiny copy of the cover, stretched across the row, gives a soft colour wash that reads as the cover shining through frosted glass.
+    val glassPainter =
+        activeBackdropUrl
+            ?.takeIf { it.isNotEmpty() && isActive && isSelected != true && LocalFrostedUi.current }
+            ?.let { url ->
+                rememberAsyncImagePainter(ImageRequest.Builder(LocalContext.current).data(url).size(16, 16).build())
+            }
+    val frost = MaterialTheme.colorScheme.surface
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = if (isActive) {
@@ -270,6 +283,27 @@ inline fun ListItem(
                 .then(
                     if (isSelected == true) {
                         Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.4f))
+                    } else if (glassPainter != null) {
+                        Modifier
+                            .drawBehind {
+                                with(glassPainter) { draw(size, alpha = 0.75f) }
+                                drawRect(frost.copy(alpha = 0.3f))
+                                drawRect(
+                                    Brush.linearGradient(
+                                        listOf(
+                                            Color.White.copy(alpha = 0.2f),
+                                            Color.Transparent,
+                                            Color.White.copy(alpha = 0.07f),
+                                        ),
+                                    ),
+                                )
+                            }.border(
+                                1.dp,
+                                Brush.linearGradient(
+                                    listOf(Color.White.copy(alpha = 0.5f), Color.White.copy(alpha = 0.08f)),
+                                ),
+                                RoundedCornerShape(8.dp),
+                            )
                     } else {
                         val glow = MaterialTheme.colorScheme.primary
                         Modifier.background(
@@ -386,6 +420,7 @@ fun ListItem(
     trailingContent: @Composable RowScope.() -> Unit = {},
     isSelected: Boolean? = false,
     isActive: Boolean = false,
+    activeBackdropUrl: String? = null,
 ) = ListItem(
     title = title,
     subtitle = {
@@ -405,7 +440,8 @@ fun ListItem(
     trailingContent = trailingContent,
     modifier = modifier,
     isSelected = isSelected,
-    isActive = isActive
+    isActive = isActive,
+    activeBackdropUrl = activeBackdropUrl,
 )
 
 @Composable
@@ -569,7 +605,8 @@ fun SongListItem(
              trailingContent = trailingContent,
              modifier = modifier,
              isSelected = isSelected,
-             isActive = isActive
+             isActive = isActive,
+             activeBackdropUrl = song.song.thumbnailUrl,
          )
      }
 
@@ -1123,7 +1160,8 @@ fun MediaMetadataListItem(
         },
         trailingContent = trailingContent,
         modifier = modifier,
-        isActive = isActive
+        isActive = isActive,
+        activeBackdropUrl = mediaMetadata.thumbnailUrl,
     )
 }
 
@@ -1224,7 +1262,8 @@ fun YouTubeListItem(
             },
             trailingContent = trailingContent,
             modifier = modifier,
-            isActive = isActive
+            isActive = isActive,
+            activeBackdropUrl = if (item is SongItem) item.thumbnail else null,
         )
     }
 
