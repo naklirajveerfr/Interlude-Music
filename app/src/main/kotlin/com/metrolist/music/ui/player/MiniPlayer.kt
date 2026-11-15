@@ -390,7 +390,7 @@ private fun NewMiniPlayer(
                     )
                     .border(
                         1.dp,
-                        outlineColor.copy(alpha = if (useGlass) 0.1f else 0.3f),
+                        outlineColor.copy(alpha = if (useGlass && miniPlayerBackground != MiniPlayerBackgroundStyle.FROSTED_GLASS) 0.1f else 0.3f),
                         RoundedCornerShape(32.dp),
                     )
                     .clickable(
