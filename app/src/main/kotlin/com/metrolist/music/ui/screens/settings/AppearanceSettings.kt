@@ -1091,6 +1091,7 @@ fun AppearanceSettings(
                     MiniPlayerBackgroundStyle.BLUR -> stringResource(R.string.player_background_blur)
                     MiniPlayerBackgroundStyle.GRADIENT -> stringResource(R.string.gradient)
                     MiniPlayerBackgroundStyle.PURE_BLACK -> stringResource(R.string.pure_black)
+                    MiniPlayerBackgroundStyle.FROSTED_GLASS -> stringResource(R.string.frosted_glass)
                 }
             },
         )
@@ -1634,6 +1635,7 @@ fun AppearanceSettings(
                                             MiniPlayerBackgroundStyle.BLUR -> stringResource(R.string.player_background_blur)
                                             MiniPlayerBackgroundStyle.GRADIENT -> stringResource(R.string.gradient)
                                             MiniPlayerBackgroundStyle.PURE_BLACK -> stringResource(R.string.pure_black)
+                                            MiniPlayerBackgroundStyle.FROSTED_GLASS -> stringResource(R.string.frosted_glass)
                                         },
                                 )
                             },

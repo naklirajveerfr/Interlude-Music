@@ -466,6 +466,7 @@
     <string name="mini_player">Mini-player</string>
     <string name="mini_player_background_style">Mini-player background style</string>
     <string name="transparent">Transparent</string>
+    <string name="frosted_glass">Frosted glass</string>
     <string name="mini_player_background_not_available">Unavailable when the new mini-player design is disabled</string>
     <string name="cache_size_warning_title">Hold on!</string>
     <string name="cache_size_warning_message">The limit you\'ve chosen (%1$s) is smaller than what the app is currently using. Continuing may cause some cached %2$s to be removed. Proceed anyway?</string>

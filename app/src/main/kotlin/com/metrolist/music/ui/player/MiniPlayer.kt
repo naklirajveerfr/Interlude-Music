@@ -290,7 +290,10 @@ private fun NewMiniPlayer(
         MiniPlayerBackgroundStyle.BLUR       -> MaterialTheme.colorScheme.surfaceContainer
         MiniPlayerBackgroundStyle.GRADIENT   -> MaterialTheme.colorScheme.surfaceContainer
         MiniPlayerBackgroundStyle.PURE_BLACK -> Color.Black
+        MiniPlayerBackgroundStyle.FROSTED_GLASS -> MaterialTheme.colorScheme.surfaceContainer
     }
+    val useGlass = miniPlayerBackground == MiniPlayerBackgroundStyle.FROSTED_GLASS ||
+        (LocalFrostedUi.current && miniPlayerBackground == MiniPlayerBackgroundStyle.DEFAULT)
     val forceLightColors = !useDarkTheme && (miniPlayerBackground == MiniPlayerBackgroundStyle.PURE_BLACK ||
             miniPlayerBackground == MiniPlayerBackgroundStyle.BLUR ||
             miniPlayerBackground == MiniPlayerBackgroundStyle.GRADIENT)
@@ -379,15 +382,15 @@ private fun NewMiniPlayer(
                     .offset { IntOffset(offsetXAnimatable.value.roundToInt(), 0) }
                     .clip(RoundedCornerShape(32.dp))
                     .then(
-                        if (LocalFrostedUi.current && miniPlayerBackground == MiniPlayerBackgroundStyle.DEFAULT) {
-                            Modifier.glass(RoundedCornerShape(32.dp), tintAlpha = 0.45f, bordered = false, chrome = true)
+                        if (useGlass) {
+                            Modifier.glass(RoundedCornerShape(32.dp), tintAlpha = 0.45f, bordered = false, chrome = true, force = true)
                         } else {
                             Modifier.background(color = backgroundColor)
                         },
                     )
                     .border(
                         1.dp,
-                        outlineColor.copy(alpha = if (LocalFrostedUi.current && miniPlayerBackground == MiniPlayerBackgroundStyle.DEFAULT) 0.1f else 0.3f),
+                        outlineColor.copy(alpha = if (useGlass) 0.1f else 0.3f),
                         RoundedCornerShape(32.dp),
                     )
                     .clickable(

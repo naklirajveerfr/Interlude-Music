@@ -61,8 +61,9 @@ fun Modifier.glass(
     tintAlpha: Float = 0.45f,
     bordered: Boolean = true,
     chrome: Boolean = false,
+    force: Boolean = false,
 ): Modifier {
-    if (!LocalFrostedUi.current) return this
+    if (!LocalFrostedUi.current && !force) return this
     val blur = LocalGlassBlur.current
     val haze = if (chrome) LocalGlassChromeHaze.current else LocalGlassHaze.current
     val filled =
