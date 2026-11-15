@@ -98,6 +98,8 @@ import com.metrolist.music.constants.LyricsFadeInDurationKey
 import com.metrolist.music.constants.LyricsFadeOutDurationKey
 import com.metrolist.music.constants.MiniPlayerBackgroundStyle
 import com.metrolist.music.constants.MiniPlayerBackgroundStyleKey
+import com.metrolist.music.constants.DefaultMiniPlayerCornerRadius
+import com.metrolist.music.constants.MiniPlayerCornerRadiusKey
 import com.metrolist.music.constants.PlayerBackgroundStyle
 import com.metrolist.music.constants.PlayerBackgroundStyleKey
 import com.metrolist.music.constants.PlayerButtonsStyle
@@ -196,6 +198,13 @@ fun AppearanceSettings(
         }
 
     var showMiniPlayerBackgroundDialog by rememberSaveable { mutableStateOf(false) }
+
+    val (miniPlayerCornerRadius, onMiniPlayerCornerRadiusChange) =
+        rememberPreference(
+            MiniPlayerCornerRadiusKey,
+            defaultValue = DefaultMiniPlayerCornerRadius,
+        )
+    var showMiniPlayerCornerRadiusDialog by rememberSaveable { mutableStateOf(false) }
 
     val (hidePlayerThumbnail, onHidePlayerThumbnailChange) =
         rememberPreference(
@@ -814,6 +823,51 @@ fun AppearanceSettings(
                     value = tempBlurLevel,
                     onValueChange = { tempBlurLevel = it },
                     valueRange = 5f..100f,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+    }
+
+    if (showMiniPlayerCornerRadiusDialog) {
+        var tempRadius by remember { mutableFloatStateOf(miniPlayerCornerRadius) }
+
+        DefaultDialog(
+            onDismiss = { showMiniPlayerCornerRadiusDialog = false },
+            buttons = {
+                TextButton(onClick = { tempRadius = DefaultMiniPlayerCornerRadius }) {
+                    Text(stringResource(R.string.reset))
+                }
+                Spacer(modifier = Modifier.weight(1f))
+                TextButton(onClick = { showMiniPlayerCornerRadiusDialog = false }) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+                TextButton(onClick = {
+                    onMiniPlayerCornerRadiusChange(tempRadius.roundToInt().toFloat())
+                    showMiniPlayerCornerRadiusDialog = false
+                }) {
+                    Text(stringResource(android.R.string.ok))
+                }
+            },
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(16.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.mini_player_corner_radius),
+                    style = MaterialTheme.typography.headlineSmall,
+                    modifier = Modifier.padding(bottom = 16.dp),
+                )
+                Text(
+                    text = "${tempRadius.roundToInt()} dp",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(bottom = 16.dp),
+                )
+                Slider(
+                    value = tempRadius,
+                    onValueChange = { tempRadius = it },
+                    valueRange = 0f..32f,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -1640,6 +1694,14 @@ fun AppearanceSettings(
                                 )
                             },
                             onClick = { showMiniPlayerBackgroundDialog = true },
+                        ),
+                    )
+                    add(
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.gradient),
+                            title = { Text(text = stringResource(R.string.mini_player_corner_radius)) },
+                            description = { Text("${miniPlayerCornerRadius.roundToInt()} dp") },
+                            onClick = { showMiniPlayerCornerRadiusDialog = true },
                         ),
                     )
                 },

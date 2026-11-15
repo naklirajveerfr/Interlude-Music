@@ -112,6 +112,8 @@ import com.metrolist.music.ui.component.Icon as MIcon
 import androidx.compose.ui.draw.blur
 import com.metrolist.music.constants.MiniPlayerBackgroundStyle
 import com.metrolist.music.constants.MiniPlayerBackgroundStyleKey
+import com.metrolist.music.constants.DefaultMiniPlayerCornerRadius
+import com.metrolist.music.constants.MiniPlayerCornerRadiusKey
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
@@ -174,6 +176,11 @@ private fun NewMiniPlayer(
         MiniPlayerBackgroundStyleKey,
         defaultValue = MiniPlayerBackgroundStyle.BLUR,
     )
+    val miniPlayerCornerRadius by rememberPreference(
+        MiniPlayerCornerRadiusKey,
+        defaultValue = DefaultMiniPlayerCornerRadius,
+    )
+    val miniPlayerShape = RoundedCornerShape(miniPlayerCornerRadius.dp)
     val context = LocalContext.current
     var gradientColors by remember { mutableStateOf<List<Color>>(emptyList()) }
     val gradientColorsCache = remember { mutableMapOf<String, List<Color>>() }
@@ -380,10 +387,10 @@ private fun NewMiniPlayer(
                     .then(if (isTabletLandscape) Modifier.width(500.dp).align(Alignment.Center) else Modifier.fillMaxWidth())
                     .height(64.dp)
                     .offset { IntOffset(offsetXAnimatable.value.roundToInt(), 0) }
-                    .clip(RoundedCornerShape(32.dp))
+                    .clip(miniPlayerShape)
                     .then(
                         if (useGlass) {
-                            Modifier.glass(RoundedCornerShape(32.dp), tintAlpha = if (miniPlayerBackground == MiniPlayerBackgroundStyle.FROSTED_GLASS) 0.3f else 0.45f, bordered = false, chrome = true, force = true)
+                            Modifier.glass(miniPlayerShape, tintAlpha = if (miniPlayerBackground == MiniPlayerBackgroundStyle.FROSTED_GLASS) 0.3f else 0.45f, bordered = false, chrome = true, force = true)
                         } else {
                             Modifier.background(color = backgroundColor)
                         },
@@ -391,7 +398,7 @@ private fun NewMiniPlayer(
                     .border(
                         1.dp,
                         outlineColor.copy(alpha = if (useGlass && miniPlayerBackground != MiniPlayerBackgroundStyle.FROSTED_GLASS) 0.1f else 0.3f),
-                        RoundedCornerShape(32.dp),
+                        miniPlayerShape,
                     )
                     .clickable(
                         interactionSource = interactionSource,
