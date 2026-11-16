@@ -35,6 +35,7 @@ import android.widget.Toast
 import androidx.fragment.app.FragmentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -163,6 +164,7 @@ import com.metrolist.music.constants.DismissedStandaloneUpdateKey
 import com.metrolist.music.constants.DensityScaleKey
 import com.metrolist.music.constants.DisableScreenshotKey
 import com.metrolist.music.constants.DynamicThemeKey
+import com.metrolist.music.constants.ForceDynamicColorKey
 import com.metrolist.music.constants.EnableHighRefreshRateKey
 import com.metrolist.music.constants.EnableLandscapeScalingKey
 import com.metrolist.music.constants.ExperimentalLyricsKey
@@ -615,6 +617,7 @@ class MainActivity : FragmentActivity() {
         }
 
         val enableDynamicTheme by rememberPreference(DynamicThemeKey, defaultValue = true)
+        val forceDynamicColor by rememberPreference(ForceDynamicColorKey, defaultValue = false)
         val enableHighRefreshRate by rememberPreference(EnableHighRefreshRateKey, defaultValue = true)
 
         LaunchedEffect(enableHighRefreshRate) {
@@ -730,11 +733,18 @@ class MainActivity : FragmentActivity() {
                 }
         }
 
+        val animatedThemeColor by animateColorAsState(
+            targetValue = themeColor,
+            animationSpec = tween(durationMillis = 700),
+            label = "themeColor",
+        )
+
         MetrolistTheme(
             darkTheme = useDarkTheme,
             pureBlack = pureBlack,
-            themeColor = themeColor,
+            themeColor = animatedThemeColor,
             frostedUi = frostedUi,
+            forceColor = enableDynamicTheme && forceDynamicColor,
         ) {
             val currentDensity = LocalDensity.current
             val windowInfo = LocalWindowInfo.current

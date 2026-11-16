@@ -1089,6 +1089,8 @@
     <string name="smooth_skip_exit_fx_desc">Adds an echo tail to the song leaving when the beats of the two songs are not matched</string>
     <string name="smooth_skip_configuration">Smooth Skip Configuration</string>
     <string name="smooth_skip_configuration_desc">Duration, tempo matching, bass swap and vocal muting</string>
+    <string name="force_dynamic_color">Force exact colour</string>
+    <string name="force_dynamic_color_desc">Use the song\'s real colour for the theme instead of the closest muted Material 3 shade</string>
     <string name="soft_icons">Soft icons</string>
     <string name="soft_icons_desc">Use rounded Material Symbols icons across the app. Turn off for the original icon style</string>
     <string name="frosted_glass_ui">Frosted Glass UI</string>

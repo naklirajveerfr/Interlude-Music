@@ -74,6 +74,7 @@ import com.metrolist.music.constants.DefaultOpenTabKey
 import com.metrolist.music.constants.DensityScale
 import com.metrolist.music.constants.DensityScaleKey
 import com.metrolist.music.constants.DynamicThemeKey
+import com.metrolist.music.constants.ForceDynamicColorKey
 
 import com.metrolist.music.constants.EnableHighRefreshRateKey
 import com.metrolist.music.constants.EnableLandscapeScalingKey
@@ -161,6 +162,12 @@ fun AppearanceSettings(
         rememberPreference(
             DynamicThemeKey,
             defaultValue = true,
+        )
+
+    val (forceDynamicColor, onForceDynamicColorChange) =
+        rememberPreference(
+            ForceDynamicColorKey,
+            defaultValue = false,
         )
 
     val (enableHighRefreshRate, onEnableHighRefreshRateChange) =
@@ -1552,6 +1559,32 @@ fun AppearanceSettings(
                                 onClick = { onDynamicThemeChange(!dynamicTheme) },
                             ),
                         )
+                        if (dynamicTheme) {
+                            add(
+                                Material3SettingsItem(
+                                    icon = painterResource(R.drawable.palette),
+                                    title = { Text(stringResource(R.string.force_dynamic_color)) },
+                                    description = { Text(stringResource(R.string.force_dynamic_color_desc)) },
+                                    trailingContent = {
+                                        Switch(
+                                            checked = forceDynamicColor,
+                                            onCheckedChange = onForceDynamicColorChange,
+                                            thumbContent = {
+                                                Icon(
+                                                    painter =
+                                                        painterResource(
+                                                            id = if (forceDynamicColor) R.drawable.check else R.drawable.close,
+                                                        ),
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(SwitchDefaults.IconSize),
+                                                )
+                                            },
+                                        )
+                                    },
+                                    onClick = { onForceDynamicColorChange(!forceDynamicColor) },
+                                ),
+                            )
+                        }
                     }
 
                     add(
