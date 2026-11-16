@@ -97,10 +97,13 @@ android {
         }
         create("release") {
             val rootKeystore = rootProject.file("interlude.keystore")
-            storeFile = if (rootKeystore.exists()) rootKeystore else file("keystore/release.keystore")
-            storePassword = localProperties.getProperty("STORE_PASSWORD") ?: System.getenv("STORE_PASSWORD")
-            keyAlias = localProperties.getProperty("KEY_ALIAS") ?: System.getenv("KEY_ALIAS")
-            keyPassword = localProperties.getProperty("KEY_PASSWORD") ?: System.getenv("KEY_PASSWORD")
+            val releaseKeystore = if (rootKeystore.exists()) rootKeystore else file("keystore/release.keystore")
+            if (releaseKeystore.exists()) {
+                storeFile = releaseKeystore
+                storePassword = localProperties.getProperty("STORE_PASSWORD") ?: System.getenv("STORE_PASSWORD")
+                keyAlias = localProperties.getProperty("KEY_ALIAS") ?: System.getenv("KEY_ALIAS")
+                keyPassword = localProperties.getProperty("KEY_PASSWORD") ?: System.getenv("KEY_PASSWORD")
+            }
         }
         getByName("debug") {
             keyAlias = "androiddebugkey"
@@ -112,7 +115,10 @@ android {
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("release")
+            val releaseSigning = signingConfigs.getByName("release")
+            if (releaseSigning.storeFile != null) {
+                signingConfig = releaseSigning
+            }
             isMinifyEnabled = true
             isShrinkResources = true
             isCrunchPngs = false
