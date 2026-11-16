@@ -118,3 +118,7 @@ app/src/main/cpp/coverart/
 .cortexkit
 .mcp.json
 *.har
+
+
+# patch files
+*.patch
