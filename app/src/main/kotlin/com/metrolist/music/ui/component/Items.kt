@@ -89,8 +89,14 @@ import androidx.media3.exoplayer.offline.Download.STATE_COMPLETED
 import androidx.media3.exoplayer.offline.Download.STATE_DOWNLOADING
 import androidx.media3.exoplayer.offline.Download.STATE_QUEUED
 import coil3.compose.AsyncImage
-import coil3.compose.rememberAsyncImagePainter
+import coil3.imageLoader
 import coil3.request.ImageRequest
+import coil3.request.allowHardware
+import coil3.toBitmap
+import android.content.Context
+import android.graphics.Bitmap
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.lerp as lerpColor
 import androidx.compose.foundation.border
 import androidx.compose.ui.draw.drawBehind
 import com.metrolist.music.ui.theme.LocalFrostedUi
@@ -253,6 +259,37 @@ private fun ArtistLinksText(
     )
 }
 
+@PublishedApi internal const val AMBIENT_ROWS = 4
+@PublishedApi internal const val AMBIENT_STRIPS = 24
+private const val AMBIENT_SAMPLE_W = 16
+private const val AMBIENT_EDGE_COLS = 8
+
+/** Colours down the cover's right edge, top to bottom. They are spread sideways from the cover as the playing row's ambient light. */
+@PublishedApi
+internal suspend fun sampleAmbientColors(
+    context: Context,
+    url: String,
+): List<Color>? =
+    withContext(Dispatchers.IO) {
+        val request = ImageRequest.Builder(context).data(url).size(64, 64).allowHardware(false).build()
+        val bitmap =
+            runCatching { context.imageLoader.execute(request) }.getOrNull()?.image?.toBitmap()
+                ?: return@withContext null
+        val small = Bitmap.createScaledBitmap(bitmap, AMBIENT_SAMPLE_W, AMBIENT_ROWS, true)
+        List(AMBIENT_ROWS) { y ->
+            var r = 0
+            var g = 0
+            var b = 0
+            for (x in AMBIENT_SAMPLE_W - AMBIENT_EDGE_COLS until AMBIENT_SAMPLE_W) {
+                val p = small.getPixel(x, y)
+                r += (p shr 16) and 0xFF
+                g += (p shr 8) and 0xFF
+                b += p and 0xFF
+            }
+            Color(r / AMBIENT_EDGE_COLS, g / AMBIENT_EDGE_COLS, b / AMBIENT_EDGE_COLS)
+        }
+    }
+
 @Composable
 inline fun ListItem(
     modifier: Modifier = Modifier,
@@ -265,13 +302,15 @@ inline fun ListItem(
     isAvailable: Boolean = true,
     activeBackdropUrl: String? = null,
 ) {
-    // A tiny copy of the cover, stretched across the row, gives a soft colour wash that reads as the cover shining through frosted glass.
-    val glassPainter =
-        activeBackdropUrl
-            ?.takeIf { it.isNotEmpty() && isActive && isSelected != true && LocalFrostedUi.current }
-            ?.let { url ->
-                rememberAsyncImagePainter(ImageRequest.Builder(LocalContext.current).data(url).size(16, 16).build())
-            }
+    // Only the playing row samples its cover, so the other rows stay free.
+    val ambientUrl = activeBackdropUrl?.takeIf { it.isNotEmpty() && isActive && isSelected != true && LocalFrostedUi.current }
+    val ambient =
+        if (ambientUrl != null) {
+            val context = LocalContext.current
+            produceState<List<Color>?>(null, ambientUrl) { value = sampleAmbientColors(context, ambientUrl) }.value
+        } else {
+            null
+        }
     val frost = MaterialTheme.colorScheme.surface
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -283,24 +322,38 @@ inline fun ListItem(
                 .then(
                     if (isSelected == true) {
                         Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.4f))
-                    } else if (glassPainter != null) {
+                    } else if (ambient != null) {
                         Modifier
                             .drawBehind {
-                                with(glassPainter) { draw(size, alpha = 0.75f) }
-                                drawRect(frost.copy(alpha = 0.3f))
                                 drawRect(
-                                    Brush.linearGradient(
-                                        listOf(
-                                            Color.White.copy(alpha = 0.2f),
-                                            Color.Transparent,
-                                            Color.White.copy(alpha = 0.07f),
-                                        ),
+                                    Brush.horizontalGradient(
+                                        0f to frost.copy(alpha = 0.3f),
+                                        1f to Color.Transparent,
                                     ),
                                 )
+                                // The cover's edge colours spread sideways from the cover and fade out, like YouTube's ambient mode.
+                                val thumbEdge = ((6 + 6).dp + ListThumbnailSize).toPx().coerceAtMost(size.width * 0.9f)
+                                val edgeFrac = thumbEdge / size.width
+                                val stripH = size.height / AMBIENT_STRIPS
+                                for (k in 0 until AMBIENT_STRIPS) {
+                                    val pos = ((k + 0.5f) / AMBIENT_STRIPS * AMBIENT_ROWS - 0.5f).coerceIn(0f, AMBIENT_ROWS - 1f)
+                                    val lo = pos.toInt().coerceAtMost(AMBIENT_ROWS - 2)
+                                    val color = lerpColor(ambient[lo], ambient[lo + 1], pos - lo)
+                                    drawRect(
+                                        Brush.horizontalGradient(
+                                            0f to color.copy(alpha = 0.85f),
+                                            edgeFrac to color.copy(alpha = 0.85f),
+                                            edgeFrac + (1f - edgeFrac) * 0.45f to color.copy(alpha = 0.3f),
+                                            1f to Color.Transparent,
+                                        ),
+                                        topLeft = Offset(0f, (k * stripH).toInt().toFloat()),
+                                        size = androidx.compose.ui.geometry.Size(size.width, ((k + 1) * stripH).toInt() - (k * stripH).toInt().toFloat()),
+                                    )
+                                }
                             }.border(
                                 1.dp,
-                                Brush.linearGradient(
-                                    listOf(Color.White.copy(alpha = 0.5f), Color.White.copy(alpha = 0.08f)),
+                                Brush.horizontalGradient(
+                                    listOf(Color.White.copy(alpha = 0.5f), Color.White.copy(alpha = 0.1f), Color.Transparent),
                                 ),
                                 RoundedCornerShape(8.dp),
                             )
