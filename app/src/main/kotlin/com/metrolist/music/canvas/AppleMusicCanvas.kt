@@ -60,6 +60,9 @@ object AppleMusicCanvas {
             parameter("extend", "editorialVideo")
             parameter("include", "albums")
         }
+        if (response.status.value == 429 || response.status.value >= 500) {
+            throw java.io.IOException("Apple Music HTTP ${response.status.value}")
+        }
         if (response.status != HttpStatusCode.OK) return null
         val results = response.body<JsonObject>()["results"]?.jsonObject
             ?.get("songs")?.jsonObject?.get("data")?.jsonArray ?: return null

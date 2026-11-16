@@ -75,7 +75,7 @@ class CrashActivity : ComponentActivity() {
             // Create crash log file
             val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
             val fileName = "metrolist_crash_$timestamp.txt"
-            val crashFile = File(cacheDir, fileName)
+            val crashFile = File(File(cacheDir, "shared").apply { mkdirs() }, fileName)
             crashFile.writeText(crashLog)
             
             // Get URI using FileProvider

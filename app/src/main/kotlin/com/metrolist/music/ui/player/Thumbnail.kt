@@ -86,7 +86,6 @@ import com.metrolist.music.constants.SeekExtraSeconds
 import com.metrolist.music.constants.SwipeThumbnailKey
 import com.metrolist.music.constants.ThumbnailCornerRadius
 import com.metrolist.music.listentogether.RoomRole
-import com.metrolist.music.ui.component.CastButton
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.delay
@@ -624,14 +623,6 @@ private fun ThumbnailItem(
                     )
                 }
             }
-            
-            // Cast button at top-right corner of thumbnail
-            CastButton(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(8.dp),
-                tintColor = textBackgroundColor
-            )
         }
     }
 }

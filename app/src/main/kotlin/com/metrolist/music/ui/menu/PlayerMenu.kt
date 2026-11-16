@@ -92,7 +92,11 @@ import com.metrolist.music.models.MediaMetadata
 import com.metrolist.music.playback.ExoDownloadService
 import com.metrolist.music.db.entities.Song
 import com.metrolist.music.db.entities.SpeedDialItem
+import com.metrolist.music.BuildConfig
+import com.metrolist.music.constants.EnableGoogleCastKey
 import com.metrolist.music.ui.component.BottomSheetState
+import com.metrolist.music.ui.component.CastMenuHandle
+import com.metrolist.music.ui.component.CastMenuIcon
 import com.metrolist.music.ui.component.LocalBottomSheetPageState
 import com.metrolist.music.ui.component.ListDialog
 import com.metrolist.music.ui.component.Material3MenuGroup
@@ -143,6 +147,8 @@ fun PlayerMenu(
     val nmShuffle by playerConnection.shuffleModeEnabled.collectAsStateWithLifecycle()
     val nmRepeat by playerConnection.repeatMode.collectAsStateWithLifecycle()
     val sleepTimerActive by playerConnection.service.sleepTimerActive.collectAsStateWithLifecycle()
+    val (castEnabled) = rememberPreference(EnableGoogleCastKey, defaultValue = true)
+    val castMenuHandle = remember { CastMenuHandle() }
 
     val librarySong by database.song(mediaMetadata.id).collectAsStateWithLifecycle(initialValue = null)
     val coroutineScope = rememberCoroutineScope()
@@ -458,6 +464,18 @@ fun PlayerMenu(
                                 text = stringResource(R.string.sleep_timer),
                                 onClick = {
                                     onShowSleepTimer()
+                                    onDismiss()
+                                },
+                            )
+                        } else {
+                            null
+                        },
+                        if (BuildConfig.CAST_AVAILABLE && castEnabled && !isListenTogetherGuest) {
+                            NewAction(
+                                icon = { CastMenuIcon(handle = castMenuHandle) },
+                                text = stringResource(R.string.google_cast),
+                                onClick = {
+                                    castMenuHandle.open()
                                     onDismiss()
                                 },
                             )

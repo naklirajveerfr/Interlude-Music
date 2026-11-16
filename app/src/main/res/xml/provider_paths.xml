@@ -1,14 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
-    <external-path
-        name="external_files"
-        path="." />
+    <!-- Only the folders the app actually shares from -->
     <cache-path
-        name="cache"
-        path="." />
-    <external-cache-path
-        name="external_cache"
-        path="." />
+        name="shared"
+        path="shared/" />
+    <cache-path
+        name="images"
+        path="images/" />
+    <cache-path
+        name="wrapped_share"
+        path="wrapped_share/" />
+    <cache-path
+        name="updates"
+        path="updates/" />
     <external-files-path
         name="external_files_documents"
         path="Documents/MetrolistExports/" />

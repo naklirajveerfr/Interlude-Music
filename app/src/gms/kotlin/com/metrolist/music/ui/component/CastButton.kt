@@ -81,6 +81,59 @@ fun CastButton(
     }
 }
 
+/**
+ * Lets a custom tile (e.g. the player menu) open the Cast dialog. The real MediaRouteButton
+ * must be attached to the window for its dialog to show, so [CastMenuIcon] hosts it and
+ * registers it here.
+ */
+class CastMenuHandle {
+    internal var button: MediaRouteButton? = null
+
+    fun open() {
+        button?.performClick()
+    }
+}
+
+@Composable
+fun CastMenuIcon(
+    handle: CastMenuHandle,
+    modifier: Modifier = Modifier,
+    tintColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+) {
+    val context = LocalContext.current
+    val playerConnection = LocalPlayerConnection.current
+    val castHandler = playerConnection?.service?.castConnectionHandler
+    val isCasting by castHandler?.isCasting?.collectAsStateWithLifecycle() ?: remember { mutableStateOf(false) }
+    val iconTint = if (isCasting) MaterialTheme.colorScheme.primary else tintColor
+
+    AndroidView(
+        factory = { viewContext ->
+            val themedContext = viewContext.castThemedContext()
+            MediaRouteButton(themedContext).apply {
+                CastButtonFactory.setUpMediaRouteButton(themedContext, this)
+                dialogFactory = CastDialogFactory
+                handle.button = this
+            }
+        },
+        update = { button ->
+            handle.button = button
+            ContextCompat
+                .getDrawable(
+                    context,
+                    if (isCasting) R.drawable.cast_connected else R.drawable.cast,
+                )?.mutate()
+                ?.let { drawable ->
+                    DrawableCompat.wrap(drawable).also {
+                        DrawableCompat.setTint(it, iconTint.toArgb())
+                        button.setRemoteIndicatorDrawable(it)
+                    }
+                }
+        },
+        onRelease = { handle.button = null },
+        modifier = modifier.size(28.dp),
+    )
+}
+
 private fun Context.castThemedContext() =
     ContextThemeWrapper(this, androidx.appcompat.R.style.Theme_AppCompat_Light_NoActionBar)
 

@@ -13,15 +13,18 @@ import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.parameter
+import io.ktor.client.statement.HttpResponse
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import timber.log.Timber
+import java.io.IOException
 import java.util.Locale
 
 /**
@@ -62,10 +65,12 @@ object CanvasRepository {
         val key = "${source.name}|${cleanTitle.lowercase(Locale.ROOT)}|${cleanArtist.lowercase(Locale.ROOT)}"
         synchronized(cache) { if (cache.containsKey(key)) return@withContext cache[key]?.animationUrl }
 
+        // A timeout or network error says nothing about the song, so it must not be cached as "no canvas"
+        var lookupFailed = false
         val found = providers.firstNotNullOfOrNull { provider ->
             if (!source.accepts(provider)) return@firstNotNullOfOrNull null
             val artwork = try {
-                withTimeoutOrNull(20_000L) {
+                withTimeout(20_000L) {
                     when (provider) {
                         CanvasSource.BETTER_LYRICS -> betterLyrics(cleanTitle, cleanArtist)
                         CanvasSource.APPLE_MUSIC -> AppleMusicCanvas.getBySongArtist(cleanTitle, cleanArtist)
@@ -73,15 +78,22 @@ object CanvasRepository {
                         CanvasSource.ALL -> null
                     }
                 }
+            } catch (e: TimeoutCancellationException) {
+                lookupFailed = true
+                Timber.tag(TAG).w("Canvas lookup timed out: %s", provider)
+                null
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                lookupFailed = true
                 Timber.tag(TAG).w(e, "Canvas lookup failed: %s", provider)
                 null
             }
             artwork?.takeIf { it.matchesSong(cleanTitle, cleanArtist) && !it.animationUrl.isNullOrBlank() }
         }
-        synchronized(cache) { cache[key] = found }
+        if (found != null || !lookupFailed) {
+            synchronized(cache) { cache[key] = found }
+        }
         found?.animationUrl
     }
 
@@ -91,17 +103,20 @@ object CanvasRepository {
             parameter("a", artist)
             parameter("storefront", "us")
         }
+        response.failIfTransient()
         return if (response.status == HttpStatusCode.OK) response.body<CanvasArtwork>() else null
     }
 
     private suspend fun tidal(song: String, artist: String): CanvasArtwork? {
-        val results = client.get("https://api.tidal.com/v1/search") {
+        val response = client.get("https://api.tidal.com/v1/search") {
             header("X-Tidal-Token", "vNVdglQOjFJJGG2U")
             parameter("query", "$artist $song")
             parameter("types", "TRACKS")
             parameter("countryCode", "US")
             parameter("limit", 10)
-        }.takeIf { it.status == HttpStatusCode.OK }?.body<TidalSearch>() ?: return null
+        }
+        response.failIfTransient()
+        val results = response.takeIf { it.status == HttpStatusCode.OK }?.body<TidalSearch>() ?: return null
 
         for (track in results.tracks.items) {
             val album = track.album ?: continue
@@ -116,6 +131,11 @@ object CanvasRepository {
             if (artwork.matchesSong(song, artist)) return artwork
         }
         return null
+    }
+
+    /** Rate limits and server errors are failures, not "this song has no canvas". */
+    private fun HttpResponse.failIfTransient() {
+        if (status.value == 429 || status.value >= 500) throw IOException("HTTP ${status.value}")
     }
 
     private val uuidPattern = Regex("[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}")

@@ -16,3 +16,19 @@ fun CastButton(
 ) {
     // No-op: Cast not available in Izzy build
 }
+
+
+/** Stub for builds without Google Cast. */
+class CastMenuHandle {
+    fun open() = Unit
+}
+
+/** Stub for builds without Google Cast: renders nothing. */
+@Composable
+@Suppress("UNUSED_PARAMETER")
+fun CastMenuIcon(
+    handle: CastMenuHandle,
+    modifier: Modifier = Modifier,
+    tintColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+) {
+}

@@ -393,6 +393,11 @@
     <string name="update_downloading">Downloading update…</string>
     <string name="update_download_failed">Couldn\'t download the update. Opening the releases page instead.</string>
     <string name="update_allow_install">Allow installing updates from Interlude Music, then tap update again.</string>
+    <string name="update_permission_title">Allow Interlude Music to install updates</string>
+    <string name="update_permission_message">Android only lets an app install other apps if you allow it. On the next screen, turn on \"Allow from this source\" for Interlude Music, then press back. The update will start downloading automatically.</string>
+    <string name="update_permission_open">Open settings</string>
+    <string name="update_download_progress">%1$s of %2$s · %3$d%%</string>
+    <string name="update_download_progress_unknown">%1$s downloaded</string>
     <string name="update_ready_title">Update ready</string>
     <string name="update_ready_message">Tap to install the new version.</string>
     <string name="update_channel_name">App updates</string>

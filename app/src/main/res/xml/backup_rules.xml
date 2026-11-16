@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <full-backup-content>
+    <!-- Settings and logins (YouTube cookie, Spotify token) stay out of cloud backups -->
+    <exclude
+        domain="file"
+        path="datastore" />
     <exclude
         domain="file"
         path="./exoplayer" />

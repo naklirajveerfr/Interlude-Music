@@ -953,7 +953,7 @@ fun LocalPlaylistHeader(
             ActivityResultContracts.PickVisualMedia(),
         ) { uri ->
             uri?.let { sourceUri ->
-                val destFile = java.io.File(context.cacheDir, "playlist_cover_crop_${System.currentTimeMillis()}.jpg")
+                val destFile = java.io.File(java.io.File(context.cacheDir, "shared").apply { mkdirs() }, "playlist_cover_crop_${System.currentTimeMillis()}.jpg")
                 val destUri = FileProvider.getUriForFile(context, "${context.packageName}.FileProvider", destFile)
                 pendingCropDestUri = destUri
 

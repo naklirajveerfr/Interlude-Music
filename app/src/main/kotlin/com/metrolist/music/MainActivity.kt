@@ -229,6 +229,7 @@ import com.metrolist.music.utils.ReleaseInfo
 import com.metrolist.music.utils.SearchRoutes
 import com.metrolist.music.utils.SyncUtils
 import com.metrolist.music.utils.ArtistNameAliases
+import com.metrolist.music.ui.component.UpdateInstallHost
 import com.metrolist.music.utils.UpdateInstaller
 import com.metrolist.music.utils.Updater
 import com.metrolist.music.utils.dataStore
@@ -1588,6 +1589,10 @@ class MainActivity : FragmentActivity() {
                                 }
                             }
                         }
+                    }
+
+                    if (BuildConfig.UPDATER_AVAILABLE) {
+                        UpdateInstallHost()
                     }
 
                     if (!showChangelog.value) {
