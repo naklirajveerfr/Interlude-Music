@@ -71,7 +71,7 @@ fun MetrolistTheme(
     )
 }
 
-private const val FORCED_COLOR_MAX_CHROMA = 40.0
+private const val FORCED_COLOR_MAX_CHROMA = 54.0
 private const val FORCED_COLOR_MIN_TONE = 55.0
 
 /**
