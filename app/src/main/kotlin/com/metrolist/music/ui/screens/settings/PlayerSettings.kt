@@ -244,7 +244,8 @@ fun PlayerSettings(
             },
             title = stringResource(R.string.audio_quality),
             current = audioQuality,
-            values = AudioQuality.values().toList(),
+            // High and Low stay supported for existing users but are no longer offered
+            values = listOf(AudioQuality.AUTO, AudioQuality.OPUS, AudioQuality.AAC),
             valueText = {
                 when (it) {
                     AudioQuality.AUTO -> stringResource(R.string.audio_quality_auto)
