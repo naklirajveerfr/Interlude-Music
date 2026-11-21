@@ -1094,6 +1094,8 @@
     <string name="smooth_skip_exit_fx_desc">Adds an echo tail to the song leaving when the beats of the two songs are not matched</string>
     <string name="smooth_skip_configuration">Smooth Skip Configuration</string>
     <string name="smooth_skip_configuration_desc">Duration, tempo matching, bass swap and vocal muting</string>
+    <string name="audio_quality_opus">Opus (WebM)</string>
+    <string name="audio_quality_aac">AAC (M4A)</string>
     <string name="force_dynamic_color">Force exact colour</string>
     <string name="force_dynamic_color_desc">Use the song\'s real colour for the theme instead of the closest muted Material 3 shade. Very strong colours are softened to a lighter shade</string>
     <string name="soft_icons">Soft icons</string>

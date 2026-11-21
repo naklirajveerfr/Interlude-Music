@@ -283,6 +283,9 @@ object InnerTubeXPlayer {
         when (this) {
             AudioQuality.HIGH -> InnerTubeXAudioQuality.HIGH
             AudioQuality.LOW -> InnerTubeXAudioQuality.LOW
+            // AUTO prefers the best WebM/Opus stream; MP4 picks the best AAC stream
+            AudioQuality.OPUS -> InnerTubeXAudioQuality.AUTO
+            AudioQuality.AAC -> InnerTubeXAudioQuality.MP4
             AudioQuality.AUTO ->
                 if (connectivityManager.isActiveNetworkMetered) {
                     InnerTubeXAudioQuality.LOW
