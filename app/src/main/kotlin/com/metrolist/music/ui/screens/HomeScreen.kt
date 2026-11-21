@@ -693,6 +693,21 @@ fun SpeedDialCarouselCard(
                 modifier = Modifier.fillMaxSize(),
             )
 
+            // Soft theme-colour glow, same recipe as the selected song row
+            val glow = MaterialTheme.colorScheme.primary
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.horizontalGradient(
+                            0f to glow.copy(alpha = 0.35f),
+                            0.35f to glow.copy(alpha = 0.16f),
+                            0.7f to glow.copy(alpha = 0.04f),
+                            1f to Color.Transparent,
+                        ),
+                    ),
+            )
+
             if (maxWidth > 200.dp) {
                 Box(
                     modifier = Modifier
