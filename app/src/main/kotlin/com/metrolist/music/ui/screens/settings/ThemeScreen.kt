@@ -47,6 +47,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.dynamicDarkColorScheme
@@ -76,6 +78,7 @@ import com.materialkolor.rememberDynamicColorScheme
 import com.metrolist.music.R
 import com.metrolist.music.constants.DarkModeKey
 import com.metrolist.music.constants.DynamicThemeKey
+import com.metrolist.music.constants.ForceDynamicColorKey
 import com.metrolist.music.constants.PureBlackKey
 import com.metrolist.music.constants.PureBlackMiniPlayerKey
 import com.metrolist.music.constants.SelectedThemeColorKey
@@ -295,6 +298,9 @@ fun ThemeControls(
     selectedThemeColor: Color,
     onSelectedThemeColorChange: (Color) -> Unit
 ) {
+    val (dynamicTheme, onDynamicThemeChange) = rememberPreference(DynamicThemeKey, defaultValue = true)
+    val (forceDynamicColor, onForceDynamicColorChange) = rememberPreference(ForceDynamicColorKey, defaultValue = false)
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -309,6 +315,24 @@ fun ThemeControls(
             modifier = Modifier.padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
+            // Dynamic colour only applies to the default palette; picking a custom colour turns it off
+            if (selectedThemeColor == DefaultThemeColor) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    ThemeSwitchRow(
+                        title = stringResource(R.string.enable_dynamic_theme),
+                        checked = dynamicTheme,
+                        onCheckedChange = onDynamicThemeChange
+                    )
+                    if (dynamicTheme) {
+                        ThemeSwitchRow(
+                            title = stringResource(R.string.force_dynamic_color),
+                            checked = forceDynamicColor,
+                            onCheckedChange = onForceDynamicColorChange
+                        )
+                    }
+                }
+            }
+
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
                     text = stringResource(R.string.theme_mode),
@@ -411,6 +435,39 @@ fun ThemeControls(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ThemeSwitchRow(
+    title: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onCheckedChange(!checked) },
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f)
+        )
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            thumbContent = {
+                Icon(
+                    painter = painterResource(id = if (checked) R.drawable.check else R.drawable.close),
+                    contentDescription = null,
+                    modifier = Modifier.size(SwitchDefaults.IconSize)
+                )
+            }
+        )
     }
 }
 
