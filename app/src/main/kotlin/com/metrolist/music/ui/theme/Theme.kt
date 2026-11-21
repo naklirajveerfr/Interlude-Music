@@ -22,6 +22,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.palette.graphics.Palette
 import com.materialkolor.PaletteStyle
 import com.materialkolor.dynamiccolor.ColorSpec
+import com.materialkolor.hct.Hct
 import com.materialkolor.rememberDynamicColorScheme
 import com.materialkolor.score.Score
 
@@ -47,7 +48,7 @@ fun MetrolistTheme(
     } else {
         // Use materialKolor only when a specific seed color is provided
         rememberDynamicColorScheme(
-            seedColor = themeColor, // themeColor is guaranteed non-default here
+            seedColor = if (forceColor) themeColor.softened() else themeColor, // themeColor is guaranteed non-default here
             isDark = darkTheme,
             specVersion = ColorSpec.SpecVersion.SPEC_2025,
             // Fidelity keeps the seed's own hue and saturation instead of muting it to a tonal palette
@@ -67,6 +68,21 @@ fun MetrolistTheme(
     MaterialTheme(
         colorScheme = if (frostedUi) colorScheme.frosted() else colorScheme,
         content = content,
+    )
+}
+
+private const val FORCED_COLOR_MAX_CHROMA = 40.0
+private const val FORCED_COLOR_MIN_TONE = 55.0
+
+/**
+ * Keeps "Force exact colour" from turning the whole app into a fully saturated cover colour:
+ * the hue is kept, but very strong colours get a capped chroma and a lighter tone.
+ */
+internal fun Color.softened(): Color {
+    val hct = Hct.fromInt(toArgb())
+    if (hct.chroma <= FORCED_COLOR_MAX_CHROMA) return this
+    return Color(
+        Hct.from(hct.hue, FORCED_COLOR_MAX_CHROMA, hct.tone.coerceAtLeast(FORCED_COLOR_MIN_TONE)).toInt()
     )
 }
 
