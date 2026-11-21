@@ -157,7 +157,7 @@ jobs:
 
   publish_nightly:
     name: Publish Nightly Release
-    if: github.event_name == 'push'
+    if: github.event_name == 'workflow_dispatch'
     needs: [build_release, build_debug]
     runs-on: ubuntu-latest
     timeout-minutes: 5
