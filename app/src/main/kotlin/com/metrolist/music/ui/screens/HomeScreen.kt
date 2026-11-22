@@ -75,6 +75,10 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -654,6 +658,30 @@ fun DailyDiscoverCard(
     }
 }
 
+/** Soft blurred halo around the card's edge, like ambient light spilling out from behind it. */
+private fun Modifier.ambientGlow(
+    color: Color,
+    radius: Dp = 14.dp,
+    cornerRadius: Dp = 28.dp,
+): Modifier =
+    drawBehind {
+        val paint =
+            android.graphics.Paint().apply {
+                isAntiAlias = true
+                this.color = color.copy(alpha = 0.7f).toArgb()
+                maskFilter = android.graphics.BlurMaskFilter(radius.toPx(), android.graphics.BlurMaskFilter.Blur.NORMAL)
+            }
+        drawContext.canvas.nativeCanvas.drawRoundRect(
+            0f,
+            0f,
+            size.width,
+            size.height,
+            cornerRadius.toPx(),
+            cornerRadius.toPx(),
+            paint,
+        )
+    }
+
 @Composable
 fun SpeedDialCarouselCard(
     item: YTItem,
@@ -691,21 +719,6 @@ fun SpeedDialCarouselCard(
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
-            )
-
-            // Soft theme-colour glow, same recipe as the selected song row
-            val glow = MaterialTheme.colorScheme.primary
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.horizontalGradient(
-                            0f to glow.copy(alpha = 0.35f),
-                            0.35f to glow.copy(alpha = 0.16f),
-                            0.7f to glow.copy(alpha = 0.04f),
-                            1f to Color.Transparent,
-                        ),
-                    ),
             )
 
             if (maxWidth > 200.dp) {
@@ -1602,7 +1615,7 @@ fun HomeScreen(
                                     Box(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .height(360.dp)
+                                            .height(368.dp)
                                             .padding(horizontal = 16.dp),
                                         contentAlignment = Alignment.Center,
                                     ) {
@@ -1612,7 +1625,7 @@ fun HomeScreen(
                                             itemSpacing = 16.dp,
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .height(340.dp),
+                                                .height(368.dp),
                                         ) { i ->
                                             val item = items[i]
                                             val isPinned by database.speedDialDao
@@ -1622,8 +1635,11 @@ fun HomeScreen(
                                             SpeedDialCarouselCard(
                                                 item = item,
                                                 showOutline = speedDialCarouselOutline,
+                                                // The padding leaves room for the glow, which the carousel would otherwise clip
                                                 modifier = Modifier
                                                     .fillMaxSize()
+                                                    .padding(vertical = 14.dp)
+                                                    .ambientGlow(MaterialTheme.colorScheme.primary)
                                                     .maskClip(MaterialTheme.shapes.extraLarge),
                                                 onClick = {
                                                     when (item) {
