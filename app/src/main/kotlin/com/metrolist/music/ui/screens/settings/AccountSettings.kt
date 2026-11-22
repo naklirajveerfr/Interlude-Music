@@ -82,13 +82,7 @@ fun AccountSettings(
 ) {
     val context = LocalContext.current
 
-    val (accountNamePref, onAccountNameChange) = rememberPreference(AccountNameKey, "")
-    val (accountEmail, onAccountEmailChange) = rememberPreference(AccountEmailKey, "")
-    val (accountChannelHandle, onAccountChannelHandleChange) = rememberPreference(AccountChannelHandleKey, "")
-    val (innerTubeCookie, onInnerTubeCookieChange) = rememberPreference(InnerTubeCookieKey, "")
-    val (visitorData, onVisitorDataChange) = rememberPreference(VisitorDataKey, "")
-    val (dataSyncId, onDataSyncIdChange) = rememberPreference(DataSyncIdKey, "")
-    val (authUser, onAuthUserChange) = rememberPreference(InnerTubeAuthUserKey, "0")
+    val (innerTubeCookie, _) = rememberPreference(InnerTubeCookieKey, "")
 
     val isLoggedIn = remember(innerTubeCookie) {
         "SAPISID" in parseCookieString(innerTubeCookie)
@@ -132,124 +126,18 @@ fun AccountSettings(
 
         Spacer(Modifier.height(12.dp))
 
-        // Logout confirmation dialog
         if (showLogoutDialog) {
-            DefaultDialog(
+            AccountLogoutDialog(
+                viewModel = accountSettingsViewModel,
                 onDismiss = { showLogoutDialog = false },
-                title = { Text(stringResource(R.string.logout_dialog_title)) },
-                content = {
-                    Text(
-                        text = stringResource(R.string.logout_dialog_message),
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier.padding(horizontal = 18.dp)
-                    )
-                },
-                buttons = {
-                    TextButton(
-                        onClick = {
-                            Timber.d("[LOGOUT_CLEAR] User chose to clear data")
-                            scope.launch {
-                                try {
-                                    Timber.d("[LOGOUT_CLEAR] Starting clear and logout process")
-                                    // Forget account first (stops all sync), then clear data.
-                                    // This prevents background syncs from re-adding songs.
-                                    accountSettingsViewModel.logoutAndClearLibraryData(context)
-                                    Timber.d("[LOGOUT_CLEAR] Library data cleared and account forgotten")
-                                } catch (e: Exception) {
-                                    Timber.e(e, "[LOGOUT_CLEAR] Error clearing library data, proceeding with logout")
-                                    reportException(e)
-                                }
-                                onInnerTubeCookieChange("")
-                                Timber.d("[LOGOUT_CLEAR] Logout complete")
-                                showLogoutDialog = false
-                                onClose()
-                            }
-                        }
-                    ) {
-                        Text(stringResource(R.string.logout_clear))
-                    }
-                    TextButton(
-                        onClick = {
-                            Timber.d("[LOGOUT_KEEP] User chose to keep data")
-                            scope.launch {
-                                Timber.d("[LOGOUT_KEEP] Starting logout process (keeping data)")
-                                accountSettingsViewModel.logoutKeepData(context, onInnerTubeCookieChange)
-                                Timber.d("[LOGOUT_KEEP] Logout complete")
-                                showLogoutDialog = false
-                                onClose()
-                            }
-                        }
-                    ) {
-                        Text(stringResource(R.string.logout_keep))
-                    }
-                }
+                onLoggedOut = onClose,
             )
         }
 
         if (showTokenEditor) {
-            val text = """
-                ***INNERTUBE COOKIE*** =$innerTubeCookie
-                ***VISITOR DATA*** =$visitorData
-                ***DATASYNC ID*** =$dataSyncId
-                ***AUTH USER*** =$authUser
-                ***ACCOUNT NAME*** =$accountNamePref
-                ***ACCOUNT EMAIL*** =$accountEmail
-                ***ACCOUNT CHANNEL HANDLE*** =$accountChannelHandle
-            """.trimIndent()
-
-            TextFieldDialog(
-                initialTextFieldValue = TextFieldValue(text),
-                onDone = { data ->
-                    var cookie = ""
-                    var visitorDataValue = ""
-                    var dataSyncIdValue = ""
-                    var authUserValue = "0"
-                    var accountNameValue = ""
-                    var accountEmailValue = ""
-                    var accountChannelHandleValue = ""
-
-                    data.split("\n").forEach {
-                        when {
-                            it.startsWith("***INNERTUBE COOKIE*** =") -> cookie = it.substringAfter("=")
-                            it.startsWith("***VISITOR DATA*** =") -> visitorDataValue = it.substringAfter("=")
-                            it.startsWith("***DATASYNC ID*** =") -> dataSyncIdValue = it.substringAfter("=")
-                            it.startsWith("***AUTH USER*** =") -> authUserValue = it.substringAfter("=")
-                            it.startsWith("***ACCOUNT NAME*** =") -> accountNameValue = it.substringAfter("=")
-                            it.startsWith("***ACCOUNT EMAIL*** =") -> accountEmailValue = it.substringAfter("=")
-                            it.startsWith("***ACCOUNT CHANNEL HANDLE*** =") -> accountChannelHandleValue = it.substringAfter("=")
-                        }
-                    }
-                    // Write all credentials atomically to DataStore and wait for completion
-                    // before restarting, preventing the race condition where the process
-                    // would be killed before async DataStore coroutines finished writing.
-                    accountSettingsViewModel.saveTokenAndRestart(
-                        context = context,
-                        cookie = cookie,
-                        visitorData = visitorDataValue,
-                        dataSyncId = dataSyncIdValue,
-                        authUser = authUserValue,
-                        accountName = accountNameValue,
-                        accountEmail = accountEmailValue,
-                        accountChannelHandle = accountChannelHandleValue,
-                    )
-                },
+            AccountTokenEditorDialog(
+                viewModel = accountSettingsViewModel,
                 onDismiss = { showTokenEditor = false },
-                singleLine = false,
-                maxLines = 20,
-                isInputValid = { fullText ->
-                    // Extract the cookie value from the formatted template line,
-                    // then validate it separately — avoids the bug where parseCookieString
-                    // received the entire multi-line template and failed to find "SAPISID"
-                    // as a key because the "***INNERTUBE COOKIE*** =" prefix shadowed it.
-                    val cookieLine = fullText.lines()
-                        .find { it.startsWith("***INNERTUBE COOKIE*** =") }
-                    val cookieValue = cookieLine?.substringAfter("***INNERTUBE COOKIE*** =")?.trim() ?: ""
-                    cookieValue.isNotEmpty() && "SAPISID" in parseCookieString(cookieValue)
-                },
-                extraContent = {
-                    Spacer(Modifier.height(8.dp))
-                    InfoLabel(text = stringResource(R.string.token_adv_login_description))
-                }
             )
         }
 
@@ -449,4 +337,147 @@ fun AccountSettings(
             }
         )
     }
+}
+
+
+@Composable
+internal fun AccountLogoutDialog(
+    viewModel: AccountSettingsViewModel,
+    onDismiss: () -> Unit,
+    onLoggedOut: () -> Unit,
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val (_, onInnerTubeCookieChange) = rememberPreference(InnerTubeCookieKey, "")
+
+    DefaultDialog(
+        onDismiss = onDismiss,
+        title = { Text(stringResource(R.string.logout_dialog_title)) },
+        content = {
+            Text(
+                text = stringResource(R.string.logout_dialog_message),
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.padding(horizontal = 18.dp)
+            )
+        },
+        buttons = {
+            TextButton(
+                onClick = {
+                    Timber.d("[LOGOUT_CLEAR] User chose to clear data")
+                    scope.launch {
+                        try {
+                            Timber.d("[LOGOUT_CLEAR] Starting clear and logout process")
+                            // Forget account first (stops all sync), then clear data.
+                            // This prevents background syncs from re-adding songs.
+                            viewModel.logoutAndClearLibraryData(context)
+                            Timber.d("[LOGOUT_CLEAR] Library data cleared and account forgotten")
+                        } catch (e: Exception) {
+                            Timber.e(e, "[LOGOUT_CLEAR] Error clearing library data, proceeding with logout")
+                            reportException(e)
+                        }
+                        onInnerTubeCookieChange("")
+                        Timber.d("[LOGOUT_CLEAR] Logout complete")
+                        onDismiss()
+                        onLoggedOut()
+                    }
+                }
+            ) {
+                Text(stringResource(R.string.logout_clear))
+            }
+            TextButton(
+                onClick = {
+                    Timber.d("[LOGOUT_KEEP] User chose to keep data")
+                    scope.launch {
+                        Timber.d("[LOGOUT_KEEP] Starting logout process (keeping data)")
+                        viewModel.logoutKeepData(context, onInnerTubeCookieChange)
+                        Timber.d("[LOGOUT_KEEP] Logout complete")
+                        onDismiss()
+                        onLoggedOut()
+                    }
+                }
+            ) {
+                Text(stringResource(R.string.logout_keep))
+            }
+        }
+    )
+}
+
+@Composable
+internal fun AccountTokenEditorDialog(
+    viewModel: AccountSettingsViewModel,
+    onDismiss: () -> Unit,
+) {
+    val context = LocalContext.current
+    val (accountNamePref, _) = rememberPreference(AccountNameKey, "")
+    val (accountEmail, _) = rememberPreference(AccountEmailKey, "")
+    val (accountChannelHandle, _) = rememberPreference(AccountChannelHandleKey, "")
+    val (innerTubeCookie, _) = rememberPreference(InnerTubeCookieKey, "")
+    val (visitorData, _) = rememberPreference(VisitorDataKey, "")
+    val (dataSyncId, _) = rememberPreference(DataSyncIdKey, "")
+    val (authUser, _) = rememberPreference(InnerTubeAuthUserKey, "0")
+
+    val text = """
+        ***INNERTUBE COOKIE*** =$innerTubeCookie
+        ***VISITOR DATA*** =$visitorData
+        ***DATASYNC ID*** =$dataSyncId
+        ***AUTH USER*** =$authUser
+        ***ACCOUNT NAME*** =$accountNamePref
+        ***ACCOUNT EMAIL*** =$accountEmail
+        ***ACCOUNT CHANNEL HANDLE*** =$accountChannelHandle
+    """.trimIndent()
+
+    TextFieldDialog(
+        initialTextFieldValue = TextFieldValue(text),
+        onDone = { data ->
+            var cookie = ""
+            var visitorDataValue = ""
+            var dataSyncIdValue = ""
+            var authUserValue = "0"
+            var accountNameValue = ""
+            var accountEmailValue = ""
+            var accountChannelHandleValue = ""
+
+            data.split("\n").forEach {
+                when {
+                    it.startsWith("***INNERTUBE COOKIE*** =") -> cookie = it.substringAfter("=")
+                    it.startsWith("***VISITOR DATA*** =") -> visitorDataValue = it.substringAfter("=")
+                    it.startsWith("***DATASYNC ID*** =") -> dataSyncIdValue = it.substringAfter("=")
+                    it.startsWith("***AUTH USER*** =") -> authUserValue = it.substringAfter("=")
+                    it.startsWith("***ACCOUNT NAME*** =") -> accountNameValue = it.substringAfter("=")
+                    it.startsWith("***ACCOUNT EMAIL*** =") -> accountEmailValue = it.substringAfter("=")
+                    it.startsWith("***ACCOUNT CHANNEL HANDLE*** =") -> accountChannelHandleValue = it.substringAfter("=")
+                }
+            }
+            // Write all credentials atomically to DataStore and wait for completion
+            // before restarting, preventing the race condition where the process
+            // would be killed before async DataStore coroutines finished writing.
+            viewModel.saveTokenAndRestart(
+                context = context,
+                cookie = cookie,
+                visitorData = visitorDataValue,
+                dataSyncId = dataSyncIdValue,
+                authUser = authUserValue,
+                accountName = accountNameValue,
+                accountEmail = accountEmailValue,
+                accountChannelHandle = accountChannelHandleValue,
+            )
+        },
+        onDismiss = onDismiss,
+        singleLine = false,
+        maxLines = 20,
+        isInputValid = { fullText ->
+            // Extract the cookie value from the formatted template line,
+            // then validate it separately — avoids the bug where parseCookieString
+            // received the entire multi-line template and failed to find "SAPISID"
+            // as a key because the "***INNERTUBE COOKIE*** =" prefix shadowed it.
+            val cookieLine = fullText.lines()
+                .find { it.startsWith("***INNERTUBE COOKIE*** =") }
+            val cookieValue = cookieLine?.substringAfter("***INNERTUBE COOKIE*** =")?.trim() ?: ""
+            cookieValue.isNotEmpty() && "SAPISID" in parseCookieString(cookieValue)
+        },
+        extraContent = {
+            Spacer(Modifier.height(8.dp))
+            InfoLabel(text = stringResource(R.string.token_adv_login_description))
+        }
+    )
 }

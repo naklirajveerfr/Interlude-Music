@@ -377,6 +377,10 @@
     <string name="lyrics_offset">Lyrics offset</string>
 
     <!-- Material 3 Settings Sections -->
+    <string name="settings_section_accounts">Accounts</string>
+    <string name="account_not_logged_in">Not logged in</string>
+    <string name="login_with_token">Login with token</string>
+    <string name="integrations_summary">Discord, Last.fm</string>
     <string name="settings_section_ui">Interface</string>
     <string name="settings_section_privacy">Privacy &amp; Security</string>
     <string name="settings_section_player_content">Player &amp; Content</string>
