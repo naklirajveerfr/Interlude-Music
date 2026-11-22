@@ -56,6 +56,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.carousel.CarouselItemDrawInfo
 import androidx.compose.material3.carousel.HorizontalMultiBrowseCarousel
 import androidx.compose.material3.carousel.rememberCarouselState
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -663,39 +664,45 @@ fun DailyDiscoverCard(
 /**
  * Soft blurred halo around the card's edge, like ambient light spilling out from behind it.
  * [edgeColors] are the cover's colours round its edge (see sampleCoverEdgeColors); until they load it uses [fallback].
+ * The glow follows the carousel's mask around the card, and grows from faint to full as the card grows
+ * from collapsed to its full size while scrolling.
  */
 private fun Modifier.ambientGlow(
     edgeColors: List<Color>?,
     fallback: Color,
+    drawInfo: CarouselItemDrawInfo,
     radius: Dp = 14.dp,
     cornerRadius: Dp = 28.dp,
 ): Modifier =
     drawBehind {
+        val span = drawInfo.maxSize - drawInfo.minSize
+        val growth = if (span > 0f) ((drawInfo.size - drawInfo.minSize) / span).coerceIn(0f, 1f) else 1f
+        val strength = 0.1f + 0.9f * growth
+        val card = drawInfo.maskRect.intersect(androidx.compose.ui.geometry.Rect(0f, 0f, size.width, size.height))
+        if (card.width <= 0f || card.height <= 0f) return@drawBehind
+
         val paint =
             android.graphics.Paint().apply {
                 isAntiAlias = true
                 if (edgeColors != null) {
                     shader =
                         android.graphics.SweepGradient(
-                            size.width / 2f,
-                            size.height / 2f,
-                            IntArray(edgeColors.size) { edgeColors[it].copy(alpha = 0.8f).toArgb() },
+                            card.center.x,
+                            card.center.y,
+                            IntArray(edgeColors.size) { edgeColors[it].copy(alpha = 0.8f * strength).toArgb() },
                             null,
                         )
                 } else {
-                    color = fallback.copy(alpha = 0.7f).toArgb()
+                    color = fallback.copy(alpha = 0.7f * strength).toArgb()
                 }
-                maskFilter = android.graphics.BlurMaskFilter(radius.toPx(), android.graphics.BlurMaskFilter.Blur.NORMAL)
+                maskFilter =
+                    android.graphics.BlurMaskFilter(
+                        radius.toPx() * (0.5f + 0.5f * growth),
+                        android.graphics.BlurMaskFilter.Blur.NORMAL,
+                    )
             }
-        drawContext.canvas.nativeCanvas.drawRoundRect(
-            0f,
-            0f,
-            size.width,
-            size.height,
-            cornerRadius.toPx(),
-            cornerRadius.toPx(),
-            paint,
-        )
+        val corner = minOf(cornerRadius.toPx(), card.width / 2f)
+        drawContext.canvas.nativeCanvas.drawRoundRect(card.left, card.top, card.right, card.bottom, corner, corner, paint)
     }
 
 @Composable
@@ -1631,14 +1638,15 @@ fun HomeScreen(
                                     Box(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .height(368.dp)
-                                            .padding(horizontal = 16.dp),
+                                            .height(368.dp),
                                         contentAlignment = Alignment.Center,
                                     ) {
                                         HorizontalMultiBrowseCarousel(
                                             state = carouselState,
                                             preferredItemWidth = 320.dp,
                                             itemSpacing = 16.dp,
+                                            // Side padding goes here, not on the Box, so the glow can spill into it instead of being clipped
+                                            contentPadding = PaddingValues(horizontal = 16.dp),
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .height(368.dp),
@@ -1659,7 +1667,7 @@ fun HomeScreen(
                                                 modifier = Modifier
                                                     .fillMaxSize()
                                                     .padding(vertical = 14.dp)
-                                                    .ambientGlow(glowColors, MaterialTheme.colorScheme.primary)
+                                                    .ambientGlow(glowColors, MaterialTheme.colorScheme.primary, carouselItemDrawInfo)
                                                     .maskClip(MaterialTheme.shapes.extraLarge),
                                                 onClick = {
                                                     when (item) {
