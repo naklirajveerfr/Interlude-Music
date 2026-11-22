@@ -65,6 +65,7 @@ import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -658,9 +659,13 @@ fun DailyDiscoverCard(
     }
 }
 
-/** Soft blurred halo around the card's edge, like ambient light spilling out from behind it. */
+/**
+ * Soft blurred halo around the card's edge, like ambient light spilling out from behind it.
+ * [edgeColors] are the cover's colours round its edge (see sampleCoverEdgeColors); until they load it uses [fallback].
+ */
 private fun Modifier.ambientGlow(
-    color: Color,
+    edgeColors: List<Color>?,
+    fallback: Color,
     radius: Dp = 14.dp,
     cornerRadius: Dp = 28.dp,
 ): Modifier =
@@ -668,7 +673,17 @@ private fun Modifier.ambientGlow(
         val paint =
             android.graphics.Paint().apply {
                 isAntiAlias = true
-                this.color = color.copy(alpha = 0.7f).toArgb()
+                if (edgeColors != null) {
+                    shader =
+                        android.graphics.SweepGradient(
+                            size.width / 2f,
+                            size.height / 2f,
+                            IntArray(edgeColors.size) { edgeColors[it].copy(alpha = 0.8f).toArgb() },
+                            null,
+                        )
+                } else {
+                    color = fallback.copy(alpha = 0.7f).toArgb()
+                }
                 maskFilter = android.graphics.BlurMaskFilter(radius.toPx(), android.graphics.BlurMaskFilter.Blur.NORMAL)
             }
         drawContext.canvas.nativeCanvas.drawRoundRect(
@@ -1631,6 +1646,10 @@ fun HomeScreen(
                                             val isPinned by database.speedDialDao
                                                 .isPinned(item.id)
                                                 .collectAsStateWithLifecycle(initialValue = false)
+                                            val glowContext = LocalContext.current
+                                            val glowColors by produceState<List<Color>?>(null, item.thumbnail) {
+                                                value = item.thumbnail?.resize(200, 200)?.let { sampleCoverEdgeColors(glowContext, it) }
+                                            }
 
                                             SpeedDialCarouselCard(
                                                 item = item,
@@ -1639,7 +1658,7 @@ fun HomeScreen(
                                                 modifier = Modifier
                                                     .fillMaxSize()
                                                     .padding(vertical = 14.dp)
-                                                    .ambientGlow(MaterialTheme.colorScheme.primary)
+                                                    .ambientGlow(glowColors, MaterialTheme.colorScheme.primary)
                                                     .maskClip(MaterialTheme.shapes.extraLarge),
                                                 onClick = {
                                                     when (item) {

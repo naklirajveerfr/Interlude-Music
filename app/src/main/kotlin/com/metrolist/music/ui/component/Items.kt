@@ -290,6 +290,24 @@ internal suspend fun sampleAmbientColors(
         }
     }
 
+/**
+ * The cover's colour all the way round its edge, clockwise from the right-middle, ending back on the right-middle
+ * so the list can drive a sweep gradient: right, bottom-right, bottom, bottom-left, left, top-left, top, top-right, right.
+ */
+internal suspend fun sampleCoverEdgeColors(
+    context: Context,
+    url: String,
+): List<Color>? =
+    withContext(Dispatchers.IO) {
+        val request = ImageRequest.Builder(context).data(url).size(64, 64).allowHardware(false).build()
+        val bitmap =
+            runCatching { context.imageLoader.execute(request) }.getOrNull()?.image?.toBitmap()
+                ?: return@withContext null
+        val grid = Bitmap.createScaledBitmap(bitmap, 3, 3, true)
+        listOf(2 to 1, 2 to 2, 1 to 2, 0 to 2, 0 to 1, 0 to 0, 1 to 0, 2 to 0, 2 to 1)
+            .map { (x, y) -> Color(grid.getPixel(x, y)) }
+    }
+
 @Composable
 inline fun ListItem(
     modifier: Modifier = Modifier,
