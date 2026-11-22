@@ -176,7 +176,13 @@ import com.metrolist.music.utils.ArtistNameAliases
 import com.metrolist.music.utils.makeTimeString
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
+import com.metrolist.music.constants.DefaultSpeedDialGlowBlur
+import com.metrolist.music.constants.DefaultSpeedDialGlowSpread
 import com.metrolist.music.constants.SpeedDialCarouselOutlineKey
+import com.metrolist.music.constants.SpeedDialGlowBlurKey
+import com.metrolist.music.constants.SpeedDialGlowKey
+import com.metrolist.music.constants.SpeedDialGlowSpreadKey
+import com.metrolist.music.ui.component.drawSpeedDialGlow
 import com.metrolist.music.viewmodels.CommunityPlaylistItem
 import com.metrolist.music.viewmodels.HomeViewModel
 import kotlinx.coroutines.Dispatchers
@@ -705,6 +711,7 @@ private fun Modifier.ambientGlow(
     drawInfo: CarouselItemDrawInfo,
     inset: Dp,
     radius: Dp = 14.dp,
+    spread: Dp = 0.dp,
     cornerRadius: Dp = 28.dp,
 ): Modifier =
     drawBehind {
@@ -712,30 +719,15 @@ private fun Modifier.ambientGlow(
         val growth = if (span > 0f) ((drawInfo.size - drawInfo.minSize) / span).coerceIn(0f, 1f) else 1f
         val strength = 0.1f + 0.9f * growth
         val card = drawInfo.cardRect(size, inset.toPx())
-        if (card.width <= 0f || card.height <= 0f) return@drawBehind
-
-        val paint =
-            android.graphics.Paint().apply {
-                isAntiAlias = true
-                if (edgeColors != null) {
-                    shader =
-                        android.graphics.SweepGradient(
-                            card.center.x,
-                            card.center.y,
-                            IntArray(edgeColors.size) { edgeColors[it].copy(alpha = 0.8f * strength).toArgb() },
-                            null,
-                        )
-                } else {
-                    color = fallback.copy(alpha = 0.7f * strength).toArgb()
-                }
-                maskFilter =
-                    android.graphics.BlurMaskFilter(
-                        radius.toPx() * (0.5f + 0.5f * growth),
-                        android.graphics.BlurMaskFilter.Blur.NORMAL,
-                    )
-            }
-        val corner = minOf(cornerRadius.toPx(), card.width / 2f)
-        drawContext.canvas.nativeCanvas.drawRoundRect(card.left, card.top, card.right, card.bottom, corner, corner, paint)
+        drawSpeedDialGlow(
+            card = card,
+            edgeColors = edgeColors,
+            fallback = fallback,
+            strength = strength,
+            blurPx = radius.toPx() * (0.5f + 0.5f * growth),
+            spreadPx = spread.toPx(),
+            cornerPx = minOf(cornerRadius.toPx(), card.width / 2f),
+        )
     }
 
 @Composable
@@ -748,7 +740,32 @@ fun SpeedDialCarouselCard(
 ) {
     val artistNameAliases = LocalArtistNameAliases.current
     val song = item as? SongItem
+    val andStr = stringResource(R.string.and)
 
+    SpeedDialCard(
+        title = item.title,
+        subtitle = song?.artists
+            ?.joinToArtistString(" $andStr ") {
+                ArtistNameAliases.resolve(artistNameAliases, it.id, it.name)
+            }.orEmpty(),
+        thumbnail = item.thumbnail,
+        onClick = onClick,
+        onLongClick = onLongClick,
+        modifier = modifier,
+        showOutline = showOutline,
+    )
+}
+
+@Composable
+fun SpeedDialCard(
+    title: String,
+    subtitle: String,
+    thumbnail: String?,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    showOutline: Boolean = true,
+) {
     Card(
         modifier = modifier
             .fillMaxSize()
@@ -769,7 +786,7 @@ fun SpeedDialCarouselCard(
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
-                    .data(item.thumbnail?.resize(1080, 1080))
+                    .data(thumbnail?.resize(1080, 1080))
                     .crossfade(true)
                     .build(),
                 contentDescription = null,
@@ -802,15 +819,12 @@ fun SpeedDialCarouselCard(
                     Spacer(Modifier)
                     Column {
                         Text(
-                            text = item.title,
+                            text = title,
                             style = MaterialTheme.typography.titleMedium,
                             color = Color.White,
                         )
                         Text(
-                            text = song?.artists
-                                ?.joinToArtistString(" ${stringResource(R.string.and)} ") {
-                                    ArtistNameAliases.resolve(artistNameAliases, it.id, it.name)
-                                }.orEmpty(),
+                            text = subtitle,
                             style = MaterialTheme.typography.bodyMedium,
                             color = Color.White.copy(alpha = 0.7f),
                             maxLines = 1,
@@ -883,6 +897,9 @@ fun HomeScreen(
     val innerTubeCookie by rememberPreference(InnerTubeCookieKey, "")
     val (randomizeHomeOrder) = rememberPreference(RandomizeHomeOrderKey, false)
     val (speedDialCarouselOutline) = rememberPreference(SpeedDialCarouselOutlineKey, false)
+    val (speedDialGlow) = rememberPreference(SpeedDialGlowKey, true)
+    val (speedDialGlowSpread) = rememberPreference(SpeedDialGlowSpreadKey, DefaultSpeedDialGlowSpread)
+    val (speedDialGlowBlur) = rememberPreference(SpeedDialGlowBlurKey, DefaultSpeedDialGlowBlur)
     val autoRadioQueue by rememberPreference(AutoRadioQueueKey, defaultValue = true)
 
     LaunchedEffect(Unit) { viewModel.loadHomeData() }
@@ -1700,7 +1717,20 @@ fun HomeScreen(
                                                 modifier = Modifier
                                                     .fillMaxSize()
                                                     .padding(horizontal = 16.dp, vertical = 14.dp)
-                                                    .ambientGlow(glowColors, MaterialTheme.colorScheme.primary, carouselItemDrawInfo, 16.dp)
+                                                    .then(
+                                                        if (speedDialGlow) {
+                                                            Modifier.ambientGlow(
+                                                                glowColors,
+                                                                MaterialTheme.colorScheme.primary,
+                                                                carouselItemDrawInfo,
+                                                                16.dp,
+                                                                radius = speedDialGlowBlur.dp,
+                                                                spread = speedDialGlowSpread.dp,
+                                                            )
+                                                        } else {
+                                                            Modifier
+                                                        },
+                                                    )
                                                     .insetMaskClip(carouselItemDrawInfo, MaterialTheme.shapes.extraLarge, 16.dp),
                                                 onClick = {
                                                     when (item) {

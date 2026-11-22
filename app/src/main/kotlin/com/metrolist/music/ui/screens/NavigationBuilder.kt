@@ -46,6 +46,7 @@ import com.metrolist.music.ui.screens.search.OnlineSearchResult
 import com.metrolist.music.ui.screens.search.SearchScreen
 import com.metrolist.music.ui.screens.settings.AboutScreen
 import com.metrolist.music.ui.screens.settings.AccountSettingsScreen
+import com.metrolist.music.ui.screens.settings.SpeedDialCustomizeScreen
 import com.metrolist.music.ui.screens.settings.SupportScreen
 import com.metrolist.music.ui.screens.settings.AiSettings
 import com.metrolist.music.ui.screens.settings.AndroidAutoSettings
@@ -364,6 +365,10 @@ fun NavGraphBuilder.navigationBuilder(
 
     composable("settings/appearance") {
         AppearanceSettings(navController, snackbarHostState)
+    }
+
+    composable("settings/appearance/speed_dial") {
+        SpeedDialCustomizeScreen(navController)
     }
 
     composable("settings/appearance/theme") {

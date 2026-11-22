@@ -1542,6 +1542,15 @@ fun AppearanceSettings(
                             onClick = { navController.navigate("settings/appearance/theme") },
                         ),
                     )
+
+                    add(
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.speed),
+                            title = { Text(stringResource(R.string.customize_speed_dial)) },
+                            description = { Text(stringResource(R.string.customize_speed_dial_desc)) },
+                            onClick = { navController.navigate("settings/appearance/speed_dial") },
+                        ),
+                    )
                 },
         )
 
