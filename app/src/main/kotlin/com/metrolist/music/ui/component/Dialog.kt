@@ -311,6 +311,8 @@ fun TextFieldDialog(
     onDismiss: () -> Unit,
     autoDismiss: Boolean = true,
     extraContent: (@Composable () -> Unit)? = null,
+    topContent: (@Composable () -> Unit)? = null,
+    extraButtons: (@Composable RowScope.() -> Unit)? = null,
 ) {
     val legacyFieldState = remember { mutableStateOf(initialTextFieldValue) }
 
@@ -329,6 +331,8 @@ fun TextFieldDialog(
         icon = icon,
         title = title,
         buttons = {
+            extraButtons?.invoke(this)
+
             TextButton(onClick = onDismiss) {
                 Text(text = stringResource(android.R.string.cancel))
             }
@@ -355,6 +359,8 @@ fun TextFieldDialog(
         Column(
             modifier = Modifier.weight(weight = 1f, fill = false),
         ) {
+            topContent?.invoke()
+
             if (textFields != null) {
                 textFields.forEachIndexed { index, (label, value) ->
                     TextField(
