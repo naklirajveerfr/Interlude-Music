@@ -77,6 +77,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.addOutline
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
@@ -662,6 +663,37 @@ fun DailyDiscoverCard(
 }
 
 /**
+ * The visible card in this node's own coordinates. The carousel's mask is in the coordinates of the whole item,
+ * and the card sits [insetPx] in from the item's left edge, so the mask is shifted back by that much.
+ */
+private fun CarouselItemDrawInfo.cardRect(
+    size: androidx.compose.ui.geometry.Size,
+    insetPx: Float,
+): androidx.compose.ui.geometry.Rect =
+    androidx.compose.ui.geometry.Rect(maskRect.left - insetPx, 0f, maskRect.right - insetPx, size.height)
+        .intersect(androidx.compose.ui.geometry.Rect(0f, 0f, size.width, size.height))
+
+/** Like the carousel's own maskClip, but for a card inset from its item's edges (see [cardRect]). */
+@Composable
+private fun Modifier.insetMaskClip(
+    drawInfo: CarouselItemDrawInfo,
+    shape: androidx.compose.ui.graphics.Shape,
+    inset: Dp,
+): Modifier {
+    val density = LocalDensity.current
+    val clipShape =
+        remember(drawInfo, shape, inset, density) {
+            androidx.compose.foundation.shape.GenericShape { size, direction ->
+                val rect = drawInfo.cardRect(size, with(density) { inset.toPx() })
+                if (rect.width <= 0f || rect.height <= 0f) return@GenericShape
+                addOutline(shape.createOutline(rect.size, direction, density))
+                translate(androidx.compose.ui.geometry.Offset(rect.left, rect.top))
+            }
+        }
+    return clip(clipShape)
+}
+
+/**
  * Soft blurred halo around the card's edge, like ambient light spilling out from behind it.
  * [edgeColors] are the cover's colours round its edge (see sampleCoverEdgeColors); until they load it uses [fallback].
  * The glow follows the carousel's mask around the card, and grows from faint to full as the card grows
@@ -671,6 +703,7 @@ private fun Modifier.ambientGlow(
     edgeColors: List<Color>?,
     fallback: Color,
     drawInfo: CarouselItemDrawInfo,
+    inset: Dp,
     radius: Dp = 14.dp,
     cornerRadius: Dp = 28.dp,
 ): Modifier =
@@ -678,7 +711,7 @@ private fun Modifier.ambientGlow(
         val span = drawInfo.maxSize - drawInfo.minSize
         val growth = if (span > 0f) ((drawInfo.size - drawInfo.minSize) / span).coerceIn(0f, 1f) else 1f
         val strength = 0.1f + 0.9f * growth
-        val card = drawInfo.maskRect.intersect(androidx.compose.ui.geometry.Rect(0f, 0f, size.width, size.height))
+        val card = drawInfo.cardRect(size, inset.toPx())
         if (card.width <= 0f || card.height <= 0f) return@drawBehind
 
         val paint =
@@ -1643,10 +1676,9 @@ fun HomeScreen(
                                     ) {
                                         HorizontalMultiBrowseCarousel(
                                             state = carouselState,
-                                            preferredItemWidth = 320.dp,
-                                            itemSpacing = 16.dp,
-                                            // Side padding goes here, not on the Box, so the glow can spill into it instead of being clipped
-                                            contentPadding = PaddingValues(horizontal = 16.dp),
+                                            // Each card is inset 16 dp inside its item (see below), so the item is 32 dp wider
+                                            preferredItemWidth = 352.dp,
+                                            itemSpacing = 0.dp,
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .height(368.dp),
@@ -1663,12 +1695,13 @@ fun HomeScreen(
                                             SpeedDialCarouselCard(
                                                 item = item,
                                                 showOutline = speedDialCarouselOutline,
-                                                // The padding leaves room for the glow, which the carousel would otherwise clip
+                                                // The padding keeps the card off the screen edge and leaves room for the glow,
+                                                // which the carousel would otherwise clip
                                                 modifier = Modifier
                                                     .fillMaxSize()
-                                                    .padding(vertical = 14.dp)
-                                                    .ambientGlow(glowColors, MaterialTheme.colorScheme.primary, carouselItemDrawInfo)
-                                                    .maskClip(MaterialTheme.shapes.extraLarge),
+                                                    .padding(horizontal = 16.dp, vertical = 14.dp)
+                                                    .ambientGlow(glowColors, MaterialTheme.colorScheme.primary, carouselItemDrawInfo, 16.dp)
+                                                    .insetMaskClip(carouselItemDrawInfo, MaterialTheme.shapes.extraLarge, 16.dp),
                                                 onClick = {
                                                     when (item) {
                                                         is SongItem -> {
