@@ -681,7 +681,7 @@ private fun CarouselItemDrawInfo.cardRect(
 
 /** Like the carousel's own maskClip, but for a card inset from its item's edges (see [cardRect]). */
 @Composable
-private fun Modifier.insetMaskClip(
+internal fun Modifier.insetMaskClip(
     drawInfo: CarouselItemDrawInfo,
     shape: androidx.compose.ui.graphics.Shape,
     inset: Dp,
@@ -705,7 +705,7 @@ private fun Modifier.insetMaskClip(
  * The glow follows the carousel's mask around the card, and grows from faint to full as the card grows
  * from collapsed to its full size while scrolling.
  */
-private fun Modifier.ambientGlow(
+internal fun Modifier.ambientGlow(
     edgeColors: List<Color>?,
     fallback: Color,
     drawInfo: CarouselItemDrawInfo,

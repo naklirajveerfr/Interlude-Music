@@ -30,6 +30,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
+import androidx.compose.material3.carousel.HorizontalMultiBrowseCarousel
+import androidx.compose.material3.carousel.rememberCarouselState
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -41,8 +43,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -62,14 +62,17 @@ import com.metrolist.music.constants.SpeedDialGlowKey
 import com.metrolist.music.constants.SpeedDialGlowSpreadKey
 import com.metrolist.music.ui.component.GlassTopAppBar
 import com.metrolist.music.ui.component.IconButton
-import com.metrolist.music.ui.component.drawSpeedDialGlow
 import com.metrolist.music.ui.component.sampleCoverEdgeColors
 import com.metrolist.music.ui.icons.painterResource
 import com.metrolist.music.ui.screens.SpeedDialCard
+import com.metrolist.music.ui.screens.ambientGlow
+import com.metrolist.music.ui.screens.insetMaskClip
 import com.metrolist.music.ui.utils.backToMain
 import com.metrolist.music.ui.utils.resize
 import com.metrolist.music.utils.rememberPreference
 import com.metrolist.music.viewmodels.HomeViewModel
+
+private data class PreviewCard(val title: String, val subtitle: String, val thumbnail: String?)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -83,14 +86,18 @@ fun SpeedDialCustomizeScreen(navController: NavController) {
     var spreadDraft by remember(glowSpread) { mutableFloatStateOf(glowSpread) }
     var blurDraft by remember(glowBlur) { mutableFloatStateOf(glowBlur) }
 
-    // The preview uses the first real Speed dial item so it looks like the home screen
+    // The preview scrolls through the real Speed dial items so it matches the home screen
     val homeViewModel: HomeViewModel = hiltViewModel(viewModelStoreOwner = LocalContext.current as ComponentActivity)
     val homeFeed by homeViewModel.homeFeed.collectAsStateWithLifecycle()
-    val sample = remember(homeFeed) { homeFeed.speedDialItems.firstOrNull { it !is ArtistItem } }
     val context = LocalContext.current
-    val glowColors by produceState<List<Color>?>(null, sample?.thumbnail) {
-        value = sample?.thumbnail?.resize(200, 200)?.let { sampleCoverEdgeColors(context, it) }
-    }
+    val sampleTitle = stringResource(R.string.speed_dial)
+    val previewItems =
+        remember(homeFeed, sampleTitle) {
+            homeFeed.speedDialItems
+                .filterNot { it is ArtistItem }
+                .map { PreviewCard(it.title, (it as? SongItem)?.artists?.joinToString { a -> a.name }.orEmpty(), it.thumbnail) }
+                .ifEmpty { List(5) { PreviewCard(sampleTitle, "", null) } }
+        }
     val glowFallback = MaterialTheme.colorScheme.primary
 
     Column(
@@ -103,31 +110,45 @@ fun SpeedDialCustomizeScreen(navController: NavController) {
         Spacer(Modifier.windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Top)))
         Spacer(Modifier.height(32.dp))
 
-        Box(
+        val carouselState = rememberCarouselState { previewItems.size }
+        HorizontalMultiBrowseCarousel(
+            state = carouselState,
+            preferredItemWidth = 352.dp,
+            itemSpacing = 0.dp,
             modifier = Modifier
-                .padding(horizontal = 48.dp)
-                .size(width = 280.dp, height = 320.dp)
-                .drawBehind {
-                    if (glow) {
-                        drawSpeedDialGlow(
-                            card = Rect(0f, 0f, size.width, size.height),
-                            edgeColors = glowColors,
-                            fallback = glowFallback,
-                            strength = 1f,
-                            blurPx = blurDraft * density,
-                            spreadPx = spreadDraft * density,
-                            cornerPx = 28.dp.toPx(),
-                        )
-                    }
-                },
-        ) {
+                .fillMaxWidth()
+                .height(368.dp),
+        ) { i ->
+            val item = previewItems[i]
+            val itemGlowColors by produceState<List<Color>?>(null, item.thumbnail) {
+                value = item.thumbnail?.resize(200, 200)?.let { sampleCoverEdgeColors(context, it) }
+            }
+
             SpeedDialCard(
-                title = sample?.title ?: stringResource(R.string.speed_dial),
-                subtitle = (sample as? SongItem)?.artists?.joinToString { it.name }.orEmpty(),
-                thumbnail = sample?.thumbnail,
+                title = item.title,
+                subtitle = item.subtitle,
+                thumbnail = item.thumbnail,
                 onClick = {},
                 onLongClick = {},
                 showOutline = outline,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp, vertical = 14.dp)
+                    .then(
+                        if (glow) {
+                            Modifier.ambientGlow(
+                                itemGlowColors,
+                                glowFallback,
+                                carouselItemDrawInfo,
+                                16.dp,
+                                radius = blurDraft.dp,
+                                spread = spreadDraft.dp,
+                            )
+                        } else {
+                            Modifier
+                        },
+                    )
+                    .insetMaskClip(carouselItemDrawInfo, MaterialTheme.shapes.extraLarge, 16.dp),
             )
         }
 
