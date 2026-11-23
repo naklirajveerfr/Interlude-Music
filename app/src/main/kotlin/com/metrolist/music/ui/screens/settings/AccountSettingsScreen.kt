@@ -7,6 +7,7 @@ package com.metrolist.music.ui.screens.settings
 
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -78,8 +79,6 @@ import com.metrolist.music.viewmodels.HomeViewModel
 @Composable
 fun AccountSettingsScreen(navController: NavController) {
     val (innerTubeCookie, _) = rememberPreference(InnerTubeCookieKey, "")
-    val (accountEmail, _) = rememberPreference(AccountEmailKey, "")
-    val (accountChannelHandle, _) = rememberPreference(AccountChannelHandleKey, "")
     val (useLoginForBrowse, onUseLoginForBrowseChange) = rememberPreference(UseLoginForBrowse, true)
     val (ytmSync, onYtmSyncChange) = rememberPreference(YtmSyncKey, true)
 
@@ -87,18 +86,10 @@ fun AccountSettingsScreen(navController: NavController) {
         "SAPISID" in parseCookieString(innerTubeCookie)
     }
 
-    // Same instance the home screen uses, so the name/avatar are already loaded.
-    val activity = LocalContext.current as ComponentActivity
-    val homeViewModel: HomeViewModel = hiltViewModel(viewModelStoreOwner = activity)
     val accountSettingsViewModel: AccountSettingsViewModel = hiltViewModel()
-    val accountName by homeViewModel.accountName.collectAsStateWithLifecycle()
-    val accountImageUrl by homeViewModel.accountImageUrl.collectAsStateWithLifecycle()
 
     var showToken by remember { mutableStateOf(false) }
     var showTokenEditor by remember { mutableStateOf(false) }
-    var showLogoutDialog by remember { mutableStateOf(false) }
-    var showSpotifyImport by remember { mutableStateOf(false) }
-    var showLoginMenu by remember { mutableStateOf(false) }
 
     Column(
         Modifier
@@ -107,130 +98,7 @@ fun AccountSettingsScreen(navController: NavController) {
             .padding(bottom = LocalPlayerAwareWindowInsets.current.asPaddingValues().calculateBottomPadding())
             .padding(horizontal = 16.dp),
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(32.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                .padding(20.dp),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(72.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primaryContainer),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (isLoggedIn && accountImageUrl != null) {
-                        AsyncImage(
-                            model = accountImageUrl,
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.size(72.dp),
-                        )
-                    } else {
-                        Icon(
-                            painter = painterResource(if (isLoggedIn) R.drawable.account else R.drawable.login),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.size(32.dp),
-                        )
-                    }
-                }
-
-                Spacer(Modifier.width(16.dp))
-
-                Column {
-                    Text(
-                        text = if (isLoggedIn) accountName else stringResource(R.string.login),
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                    )
-                    Text(
-                        text = when {
-                            !isLoggedIn -> stringResource(R.string.account_not_logged_in)
-                            accountEmail.isNotBlank() -> accountEmail
-                            else -> accountChannelHandle
-                        },
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(20.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (isLoggedIn) {
-                    OutlinedButton(onClick = { showLogoutDialog = true }) {
-                        Text(stringResource(R.string.action_logout))
-                    }
-                    Spacer(Modifier.width(8.dp))
-                    TextButton(onClick = { navController.navigate("switch_channel") }) {
-                        Text(stringResource(R.string.switch_youtube_channel))
-                    }
-                } else {
-                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Button(
-                            onClick = { navController.navigate("login") },
-                            shape = RoundedCornerShape(
-                                topStart = 50.dp,
-                                bottomStart = 50.dp,
-                                topEnd = 6.dp,
-                                bottomEnd = 6.dp,
-                            ),
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.login),
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(stringResource(R.string.login))
-                        }
-                        Box {
-                            FilledTonalButton(
-                                onClick = { showLoginMenu = true },
-                                shape = RoundedCornerShape(
-                                    topStart = 6.dp,
-                                    bottomStart = 6.dp,
-                                    topEnd = 50.dp,
-                                    bottomEnd = 50.dp,
-                                ),
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.expand_more),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp),
-                                )
-                            }
-                            DropdownMenu(
-                                expanded = showLoginMenu,
-                                onDismissRequest = { showLoginMenu = false },
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.import_label)) },
-                                    leadingIcon = {
-                                        Icon(painterResource(R.drawable.download), contentDescription = null)
-                                    },
-                                    onClick = {
-                                        showLoginMenu = false
-                                        showSpotifyImport = true
-                                    },
-                                )
-                            }
-                        }
-                    }
-                    Spacer(Modifier.weight(1f))
-                    TextButton(onClick = { showTokenEditor = true }) {
-                        Text(stringResource(R.string.login_with_token))
-                    }
-                }
-            }
-        }
+        AccountCard(navController)
 
         Spacer(Modifier.height(24.dp))
 
@@ -318,6 +186,186 @@ fun AccountSettingsScreen(navController: NavController) {
         Spacer(Modifier.height(16.dp))
     }
 
+
+    if (showTokenEditor) {
+        AccountTokenEditorDialog(
+            viewModel = accountSettingsViewModel,
+            onDismiss = { showTokenEditor = false },
+        )
+    }
+
+    GlassTopAppBar(
+        title = { Text(stringResource(R.string.account)) },
+        navigationIcon = {
+            IconButton(
+                onClick = navController::navigateUp,
+                onLongClick = navController::backToMain,
+            ) {
+                Icon(
+                    painterResource(R.drawable.arrow_back),
+                    contentDescription = null,
+                )
+            }
+        },
+    )
+}
+
+/**
+ * The account card (avatar, name, login/logout/switch-channel actions).
+ * With [onClick] set, tapping the card body triggers it; the buttons keep their own actions.
+ */
+@Composable
+fun AccountCard(
+    navController: NavController,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+) {
+    val (innerTubeCookie, _) = rememberPreference(InnerTubeCookieKey, "")
+    val (accountEmail, _) = rememberPreference(AccountEmailKey, "")
+    val (accountChannelHandle, _) = rememberPreference(AccountChannelHandleKey, "")
+
+    val isLoggedIn = remember(innerTubeCookie) {
+        "SAPISID" in parseCookieString(innerTubeCookie)
+    }
+
+    // Same instance the home screen uses, so the name/avatar are already loaded.
+    val activity = LocalContext.current as ComponentActivity
+    val homeViewModel: HomeViewModel = hiltViewModel(viewModelStoreOwner = activity)
+    val accountSettingsViewModel: AccountSettingsViewModel = hiltViewModel()
+    val accountName by homeViewModel.accountName.collectAsStateWithLifecycle()
+    val accountImageUrl by homeViewModel.accountImageUrl.collectAsStateWithLifecycle()
+
+    var showTokenEditor by remember { mutableStateOf(false) }
+    var showLogoutDialog by remember { mutableStateOf(false) }
+    var showSpotifyImport by remember { mutableStateOf(false) }
+    var showLoginMenu by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(32.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(20.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(72.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (isLoggedIn && accountImageUrl != null) {
+                    AsyncImage(
+                        model = accountImageUrl,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.size(72.dp),
+                    )
+                } else {
+                    Icon(
+                        painter = painterResource(if (isLoggedIn) R.drawable.account else R.drawable.login),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(32.dp),
+                    )
+                }
+            }
+
+            Spacer(Modifier.width(16.dp))
+
+            Column {
+                Text(
+                    text = if (isLoggedIn) accountName else stringResource(R.string.login),
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                )
+                Text(
+                    text = when {
+                        !isLoggedIn -> stringResource(R.string.account_not_logged_in)
+                        accountEmail.isNotBlank() -> accountEmail
+                        else -> accountChannelHandle
+                    },
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+
+        Spacer(Modifier.height(20.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (isLoggedIn) {
+                OutlinedButton(onClick = { showLogoutDialog = true }) {
+                    Text(stringResource(R.string.action_logout))
+                }
+                Spacer(Modifier.width(8.dp))
+                TextButton(onClick = { navController.navigate("switch_channel") }) {
+                    Text(stringResource(R.string.switch_youtube_channel))
+                }
+            } else {
+                Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Button(
+                        onClick = { navController.navigate("login") },
+                        shape = RoundedCornerShape(
+                            topStart = 50.dp,
+                            bottomStart = 50.dp,
+                            topEnd = 6.dp,
+                            bottomEnd = 6.dp,
+                        ),
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.login),
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.login))
+                    }
+                    Box {
+                        FilledTonalButton(
+                            onClick = { showLoginMenu = true },
+                            shape = RoundedCornerShape(
+                                topStart = 6.dp,
+                                bottomStart = 6.dp,
+                                topEnd = 50.dp,
+                                bottomEnd = 50.dp,
+                            ),
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.expand_more),
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = showLoginMenu,
+                            onDismissRequest = { showLoginMenu = false },
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.import_label)) },
+                                leadingIcon = {
+                                    Icon(painterResource(R.drawable.download), contentDescription = null)
+                                },
+                                onClick = {
+                                    showLoginMenu = false
+                                    showSpotifyImport = true
+                                },
+                            )
+                        }
+                    }
+                }
+                Spacer(Modifier.weight(1f))
+                TextButton(onClick = { showTokenEditor = true }) {
+                    Text(stringResource(R.string.login_with_token))
+                }
+            }
+        }
+    }
+
     if (showLogoutDialog) {
         AccountLogoutDialog(
             viewModel = accountSettingsViewModel,
@@ -342,19 +390,4 @@ fun AccountSettingsScreen(navController: NavController) {
             },
         )
     }
-
-    GlassTopAppBar(
-        title = { Text(stringResource(R.string.account)) },
-        navigationIcon = {
-            IconButton(
-                onClick = navController::navigateUp,
-                onLongClick = navController::backToMain,
-            ) {
-                Icon(
-                    painterResource(R.drawable.arrow_back),
-                    contentDescription = null,
-                )
-            }
-        },
-    )
 }

@@ -76,16 +76,10 @@ fun SettingsScreen(
             )
         )
 
-        // Accounts Section
-        Material3SettingsGroup(
-            title = stringResource(R.string.settings_section_accounts),
-            items = listOf(
-                Material3SettingsItem(
-                    icon = painterResource(R.drawable.account),
-                    title = { Text(stringResource(R.string.account)) },
-                    onClick = { navController.navigate("settings/account") }
-                )
-            )
+        // Account card — tapping the card body opens the account page
+        AccountCard(
+            navController = navController,
+            onClick = { navController.navigate("settings/account") },
         )
 
         Spacer(modifier = Modifier.height(16.dp))

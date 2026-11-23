@@ -355,11 +355,28 @@ fun NavGraphBuilder.navigationBuilder(
         YouTubeBrowseScreen(navController)
     }
 
-    composable("settings") {
+    composable(
+        route = "settings",
+        // Fade (not swipe) while moving to/from the account page; null falls back to the default.
+        exitTransition = {
+            if (targetState.destination.route == "settings/account") fadeOut(tween(200)) else null
+        },
+        popEnterTransition = {
+            if (initialState.destination.route == "settings/account") fadeIn(tween(250)) else null
+        },
+    ) {
         SettingsScreen(navController, latestVersionName)
     }
 
-    composable("settings/account") {
+    composable(
+        route = "settings/account",
+        enterTransition = {
+            if (initialState.destination.route == "settings") fadeIn(tween(250)) else null
+        },
+        popExitTransition = {
+            if (targetState.destination.route == "settings") fadeOut(tween(200)) else null
+        },
+    ) {
         AccountSettingsScreen(navController)
     }
 
