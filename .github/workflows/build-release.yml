@@ -1,9 +1,7 @@
 name: Build release APKs
 
 on:
-  workflow_dispatch:        # run manually from the Actions tab
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -28,7 +26,7 @@ jobs:
 
       - name: Sign APKs
         env:
-          KEYSTORE_B64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_B64: ${{ secrets.KEYSTORE }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
