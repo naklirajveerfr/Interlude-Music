@@ -1,0 +1,55 @@
+name: Build release APKs
+
+on:
+  workflow_dispatch:        # run manually from the Actions tab
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        flavor: [Gms, Foss]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build ${{ matrix.flavor }} release
+        run: ./gradlew assemble${{ matrix.flavor }}Release --no-daemon
+
+      - name: Sign APKs
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          echo "$KEYSTORE_B64" | base64 -d > $RUNNER_TEMP/release.jks
+          BT=$(ls -d $ANDROID_HOME/build-tools/* | sort -V | tail -1)
+          mkdir -p signed
+          for apk in $(find app/build/outputs/apk -name "*-release*.apk"); do
+            out=signed/$(basename "${apk%.apk}")-signed.apk
+            $BT/zipalign -f -p 4 "$apk" "$out"
+            $BT/apksigner sign \
+              --ks $RUNNER_TEMP/release.jks \
+              --ks-pass pass:"$KEYSTORE_PASSWORD" \
+              --ks-key-alias "$KEY_ALIAS" \
+              --key-pass pass:"$KEY_PASSWORD" \
+              "$out"
+          done
+          rm $RUNNER_TEMP/release.jks
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: interlude-${{ matrix.flavor }}-release
+          path: signed/*.apk
+          retention-days: 30
